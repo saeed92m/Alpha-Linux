@@ -13,7 +13,7 @@ class CoreState(str, Enum):
 
 
 class CoreLifecycle:
-    """Deterministic lifecycle state machine for the Alpha Core process boundary."""
+    """Deterministic lifecycle state machine with explicit failure recovery."""
 
     def __init__(self, events: EventBus) -> None:
         self.state = CoreState.STOPPED
@@ -38,12 +38,24 @@ class CoreLifecycle:
     def fail(self, reason: str) -> None:
         if not reason.strip():
             raise ValueError("failure reason is required")
+        if self.state is CoreState.FAILED:
+            raise RuntimeError("core is already failed")
         self.state = CoreState.FAILED
         self._emit("core.failed", {"reason": reason})
 
+    def recover(self) -> None:
+        if self.state is not CoreState.FAILED:
+            raise RuntimeError("core can only recover from failed state")
+        self.state = CoreState.STOPPED
+        self._emit("core.recovered")
+
     def _emit(self, name: str, data=None) -> None:
         event = ObservabilityEvent.create(
-            "alpha-core", name, Severity.INFO if self.state is not CoreState.FAILED else Severity.ERROR,
-            "core-lifecycle", PrivacyClass.INTERNAL, data or {"state": self.state.value},
+            "alpha-core",
+            name,
+            Severity.ERROR if self.state is CoreState.FAILED else Severity.INFO,
+            "core-lifecycle",
+            PrivacyClass.INTERNAL,
+            data or {"state": self.state.value},
         )
         self.events.publish(event)

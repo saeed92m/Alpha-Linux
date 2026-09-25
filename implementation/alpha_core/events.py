@@ -14,10 +14,11 @@ class EventSubscription:
 
 
 class EventBus:
-    """In-process event boundary; subscribers cannot grant permissions."""
+    """In-process notification boundary; observer failures cannot alter control flow."""
 
     def __init__(self) -> None:
         self._subscriptions: dict[str, EventSubscription] = {}
+        self._last_failures: tuple[str, ...] = ()
 
     def subscribe(self, subscription: EventSubscription) -> None:
         if not subscription.subscription_id.strip() or not subscription.event_name.strip():
@@ -29,10 +30,21 @@ class EventBus:
     def unsubscribe(self, subscription_id: str) -> None:
         self._subscriptions.pop(subscription_id, None)
 
+    @property
+    def last_failures(self) -> tuple[str, ...]:
+        return self._last_failures
+
     def publish(self, event: ObservabilityEvent) -> int:
         delivered = 0
+        failures: list[str] = []
         for subscription in tuple(self._subscriptions.values()):
-            if subscription.event_name in {event.event, "*"}:
+            if subscription.event_name not in {event.event, "*"}:
+                continue
+            try:
                 subscription.callback(event)
-                delivered += 1
+            except Exception as exc:  # observers are isolated from the control plane
+                failures.append(f"{subscription.subscription_id}: {type(exc).__name__}: {exc}")
+                continue
+            delivered += 1
+        self._last_failures = tuple(failures)
         return delivered

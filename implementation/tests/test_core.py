@@ -11,13 +11,23 @@ def make_core():
     registry = ServiceRegistry()
     registry.register(ServiceRegistration("echo", "system.echo", lambda request: {"target": request.target}))
     service = SystemService(PolicyEngine())
-    return AlphaCore(PolicyEngine(), ServiceDispatcher(registry, service))
+    return AlphaCore(ServiceDispatcher(registry, service))
 
 
 def test_core_dispatch_requires_capability():
     core = make_core()
     request = ActionRequest("a1", "test", "echo", PermissionLevel.EXECUTE_SAFE, "system")
     with pytest.raises(PermissionError):
+        core.execute("echo", request)
+
+
+def test_core_dispatch_rejects_mismatched_service_capability():
+    core = make_core()
+    request = ActionRequest(
+        "a1", "test", "echo", PermissionLevel.EXECUTE_SAFE, "system",
+        required_capability="system.other", capabilities=frozenset({"system.other"}),
+    )
+    with pytest.raises(PermissionError, match="does not match service capability"):
         core.execute("echo", request)
 
 
