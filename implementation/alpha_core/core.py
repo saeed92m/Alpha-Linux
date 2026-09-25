@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from .models import ActionRequest, HealthResult
-from .policy import PolicyEngine
 from .registry import ServiceDispatcher
 
 
@@ -15,10 +14,9 @@ class CoreHealth:
 
 
 class AlphaCore:
-    """Orchestrates policy-authorized service dispatch without owning OS privilege."""
+    """Orchestrates service dispatch; authorization remains owned by the policy boundary."""
 
-    def __init__(self, policy: PolicyEngine, dispatcher: ServiceDispatcher) -> None:
-        self.policy = policy
+    def __init__(self, dispatcher: ServiceDispatcher) -> None:
         self.dispatcher = dispatcher
 
     def execute(self, service_id: str, request: ActionRequest, *, approved: bool = False):
