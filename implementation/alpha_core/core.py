@@ -25,5 +25,5 @@ class AlphaCore:
         return self.dispatcher.dispatch(service_id, request, approved=approved)
 
     def health(self) -> CoreHealth:
-        service = self.dispatcher._system_service.health()
+        service = self.dispatcher.health()
         return CoreHealth(healthy=service.healthy, components={"system-service": service})
