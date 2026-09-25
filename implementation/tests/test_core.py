@@ -38,3 +38,10 @@ def test_duplicate_service_registration_is_rejected():
     registry.register(registration)
     with pytest.raises(ValueError):
         registry.register(registration)
+
+
+def test_core_health_is_exposed_without_internal_access():
+    core = make_core()
+    health = core.health()
+    assert health.healthy
+    assert "system-service" in health.components
