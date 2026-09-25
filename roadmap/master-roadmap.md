@@ -1,0 +1,98 @@
+# Alpha Linux Master Roadmap
+
+## Phase 0 — Product and specification
+
+- Repository foundation
+- Master Specification
+- Master Handbook
+- Requirements
+- Architecture
+- Design System
+- Feature Matrix
+- Decision Log
+- Compatibility Matrix
+- Risk register
+- Specification audit
+- Specification freeze
+
+**Current phase**
+
+## Phase 1 — Foundation
+
+- Reproducible build system
+- Ubuntu 26.04 LTS integration
+- package policy
+- CI/CD
+- baseline QA
+- artifact pipeline
+
+## Phase 2 — Alpha Core
+
+- system integration
+- Control Center
+- Software Center
+- Hardware Manager
+- Observatory
+- Profiles
+- update/recovery foundations
+
+## Phase 3 — Desktop and interaction
+
+- COSMIC integration
+- multitasking
+- touch
+- pen
+- HiDPI
+- multi-display
+- theme system
+
+## Phase 4 — AI Platform
+
+- Alpha AI Core
+- Assistant
+- Memory
+- Knowledge Center
+- Command Bar
+- Agent Runtime
+- Orchestrator
+- permissions
+- verification
+
+## Phase 5 — Domain platform
+
+- Developer
+- AI/ML/HPC
+- Astronomy
+- Aerospace
+- Engineering
+- Motorsport
+- Electronics
+- SDR/RF
+- Creator
+- Music & Audio
+- Data/GIS
+- Business
+- Cloud/DevOps
+- Education and research
+
+## Phase 6 — Hardening
+
+- security
+- privacy
+- recovery
+- backup
+- compatibility
+- performance
+- hardware validation
+- accessibility
+- localization
+- release QA
+
+## Phase 7 — Alpha releases
+
+- Alpha 0.x
+- Alpha 1.0
+- Beta
+- Stable release
+
+Dates are intentionally not fixed until the specification and implementation plan are frozen.
