@@ -56,10 +56,10 @@ def test_event_observer_failure_isolated():
     lifecycle.start()
     assert lifecycle.state is CoreState.READY
     assert seen == ["core.starting", "core.ready"]
-    assert bus.last_failures == ("bad: RuntimeError: boom",)
+    assert bus.last_failures == ("bad: RuntimeError",)
 
     event = ObservabilityEvent.create(
         "test", "test.event", Severity.INFO, "test-correlation", PrivacyClass.INTERNAL, {}
     )
     assert bus.publish(event) == 1
-    assert bus.last_failures == ("bad: RuntimeError: boom",)
+    assert bus.last_failures == ("bad: RuntimeError",)
