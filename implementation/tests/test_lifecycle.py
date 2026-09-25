@@ -2,6 +2,7 @@ import pytest
 
 from alpha_core.events import EventBus, EventSubscription
 from alpha_core.lifecycle import CoreLifecycle, CoreState
+from alpha_core.observability import ObservabilityEvent, PrivacyClass, Severity
 
 
 def test_lifecycle_start_and_stop():
@@ -55,5 +56,10 @@ def test_event_observer_failure_isolated():
     lifecycle.start()
     assert lifecycle.state is CoreState.READY
     assert seen == ["core.starting", "core.ready"]
-    assert bus.last_failures == ()
-    bus.publish(lifecycle.events._subscriptions["good"] and next(iter(bus._subscriptions.values())) and None) if False else None
+    assert bus.last_failures == ("bad: RuntimeError: boom",)
+
+    event = ObservabilityEvent.create(
+        "test", "test.event", Severity.INFO, "test-correlation", PrivacyClass.INTERNAL, {}
+    )
+    assert bus.publish(event) == 1
+    assert bus.last_failures == ("bad: RuntimeError: boom",)
