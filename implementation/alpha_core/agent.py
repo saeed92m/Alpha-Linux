@@ -17,8 +17,13 @@ class AgentRuntime:
     """Execution state machine; authorization is delegated to PolicyEngine."""
 
     ORDER = (
-        AgentStage.UNDERSTAND, AgentStage.INSPECT, AgentStage.PLAN,
-        AgentStage.AUTHORIZE, AgentStage.EXECUTE, AgentStage.VERIFY, AgentStage.REPORT,
+        AgentStage.UNDERSTAND,
+        AgentStage.INSPECT,
+        AgentStage.PLAN,
+        AgentStage.AUTHORIZE,
+        AgentStage.EXECUTE,
+        AgentStage.VERIFY,
+        AgentStage.REPORT,
     )
 
     def authorize(self, request: ActionRequest, decision: ActionDecision) -> None:

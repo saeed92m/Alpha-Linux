@@ -17,8 +17,7 @@ def request(**kwargs):
 
 
 def test_safe_action_requires_capability():
-    decision = PolicyEngine().decide(request())
-    assert decision.allowed
+    assert PolicyEngine().decide(request()).allowed
 
 
 def test_missing_capability_is_denied():
