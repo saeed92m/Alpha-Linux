@@ -9,20 +9,133 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHON_VERSION: "3.11"
+
 jobs:
-  validate:
+  ci_val_001:
+    name: CI-VAL-001 Validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{env.PYTHON_VERSION}}
           cache: pip
       - name: Install
         run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+      - name: Validate repository
+        run: python implementation/validate.py
       - name: Compile
         run: python -m compileall -q implementation
-      - name: Lint
-        run: ruff check implementation
-      - name: Test
-        run: pytest
+
+  ci_doc_001:
+    name: CI-DOC-001 Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{env.PYTHON_VERSION}}
+      - run: python implementation/validate.py
+
+  ci_lint_001:
+    name: CI-LINT-001 Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{env.PYTHON_VERSION}}
+      - run: python -m pip install --upgrade pip ruff
+      - run: ruff check implementation
+
+  ci_test_001:
+    name: CI-TEST-001 Unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{env.PYTHON_VERSION}}
+          cache: pip
+      - run: python -m pip install -e ".[dev]"
+      - run: pytest -q
+
+  ci_test_002:
+    name: CI-TEST-002 Integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{env.PYTHON_VERSION}}
+      - run: python -m pip install -e ".[dev]"
+      - name: Contract integration tests
+        run: pytest -q implementation/tests/test_system_service.py implementation/tests/test_policy.py implementation/tests/test_agent.py
+
+  ci_pkg_001:
+    name: CI-PKG-001 Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{env.PYTHON_VERSION}}
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build
+      - name: Validate wheel installation
+        run: |
+          python -m pip install --force-reinstall dist/*.whl
+          python -c "import alpha_core; print(alpha_core.__version__)"
+
+  ci_sec_001:
+    name: CI-SEC-001 Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{env.PYTHON_VERSION}}
+      - run: python -m compileall -q implementation
+      - name: Scan tracked source for obvious hard-coded secrets
+        shell: bash
+        run: |
+          if git grep -nE '(api[_-]?key|password|token|private[_-]?key)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}' -- ':!*.md' ':!implementation/tests/*'; then
+            echo "Potential hard-coded secret detected"
+            exit 1
+          fi
+
+  evidence:
+    name: CI evidence summary
+    if: always()
+    needs: [ci_val_001, ci_doc_001, ci_lint_001, ci_test_001, ci_test_002, ci_pkg_001, ci_sec_001]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write gate evidence
+        env:
+          SOURCE_COMMIT: ${{github.sha}}
+          RUN_ID: ${{github.run_id}}
+        run: |
+          mkdir -p evidence
+          cat > evidence/phase-1-gates.json <<EOF
+          {
+            "source_commit": "$SOURCE_COMMIT",
+            "run_id": "$RUN_ID",
+            "workflow": "Alpha Linux Phase 1 Foundation",
+            "gates": {
+              "CI-VAL-001": "${{needs.ci_val_001.result}}",
+              "CI-DOC-001": "${{needs.ci_doc_001.result}}",
+              "CI-LINT-001": "${{needs.ci_lint_001.result}}",
+              "CI-TEST-001": "${{needs.ci_test_001.result}}",
+              "CI-TEST-002": "${{needs.ci_test_002.result}}",
+              "CI-PKG-001": "${{needs.ci_pkg_001.result}}",
+              "CI-SEC-001": "${{needs.ci_sec_001.result}}"
+            }
+          }
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase-1-gate-evidence
+          path: evidence/phase-1-gates.json
