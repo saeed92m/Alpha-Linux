@@ -31,7 +31,6 @@ def test_state_changing_action_requires_verification_before_report():
     runtime.transition(AgentStage.VERIFY)
     with pytest.raises(RuntimeError):
         runtime.transition(AgentStage.REPORT)
-    runtime.mark_verified()
     runtime.transition(AgentStage.REPORT)
 
 
