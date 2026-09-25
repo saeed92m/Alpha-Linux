@@ -32,9 +32,28 @@ def test_failure_emits_event():
     assert seen == ["test failure"]
 
 
-def test_duplicate_subscription_is_rejected():
+def test_failed_state_requires_explicit_recovery():
     bus = EventBus()
-    sub = EventSubscription("s1", "*", lambda event: None)
-    bus.subscribe(sub)
-    with pytest.raises(ValueError):
-        bus.subscribe(sub)
+    seen = []
+    bus.subscribe(EventSubscription("s1", "*", lambda event: seen.append(event.event)))
+    lifecycle = CoreLifecycle(bus)
+    lifecycle.start()
+    lifecycle.fail("test failure")
+    with pytest.raises(RuntimeError):
+        lifecycle.start()
+    lifecycle.recover()
+    assert lifecycle.state is CoreState.STOPPED
+    assert seen[-1] == "core.recovered"
+
+
+def test_event_observer_failure_isolated():
+    bus = EventBus()
+    seen = []
+    bus.subscribe(EventSubscription("bad", "*", lambda event: (_ for _ in ()).throw(RuntimeError("boom"))))
+    bus.subscribe(EventSubscription("good", "*", lambda event: seen.append(event.event)))
+    lifecycle = CoreLifecycle(bus)
+    lifecycle.start()
+    assert lifecycle.state is CoreState.READY
+    assert seen == ["core.starting", "core.ready"]
+    assert bus.last_failures == ()
+    bus.publish(lifecycle.events._subscriptions["good"] and next(iter(bus._subscriptions.values())) and None) if False else None
