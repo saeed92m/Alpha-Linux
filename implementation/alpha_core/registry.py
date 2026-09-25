@@ -33,6 +33,9 @@ class ServiceRegistry:
         except KeyError as exc:
             raise KeyError(f"unknown service: {service_id}") from exc
 
+    def health(self) -> bool:
+        return True
+
     def ids(self) -> tuple[str, ...]:
         return tuple(sorted(self._services))
 
