@@ -5,6 +5,7 @@ import json
 import platform
 import subprocess
 import sys
+import tomllib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,17 @@ def sha256_file(path: Path) -> str:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def project_version(root: Path) -> str:
+    metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    try:
+        version = metadata["project"]["version"]
+    except KeyError as exc:
+        raise ValueError("pyproject.toml project.version is required") from exc
+    if not isinstance(version, str) or not version.strip():
+        raise ValueError("pyproject.toml project.version must be a non-empty string")
+    return version
 
 
 def git_tree_digest(root: Path) -> str:
@@ -46,7 +58,6 @@ def create_provenance(
     artifact: Path,
     artifact_id: str,
     artifact_type: str,
-    version: str,
     channel: str,
     source_commit: str,
     build_id: str,
@@ -61,7 +72,7 @@ def create_provenance(
     return {
         "artifact_id": artifact_id,
         "artifact_type": artifact_type,
-        "version": version,
+        "version": project_version(root),
         "channel": channel,
         "source_commit": source_commit,
         "source_tree_digest": git_tree_digest(root),
