@@ -18,8 +18,8 @@ This is the authoritative implementation-readiness index. Detailed behavior rema
 | Agent Runtime | AL-AI-0001–0004 | AI Safety & Permissions | Intelligence Layer | Specified |
 | Orchestrator | AL-AI-0003–0004 | AI Safety & Permissions | Intelligence Layer | Specified |
 | Memory / Learning | AL-AI-0005 | AI Safety & Permissions | Intelligence Layer | Specified |
-| Knowledge Center | AL-REQ-0020 | Master Specification | Intelligence / Platform | Planned |
-| Adaptive Resource Intelligence | AL-REQ-0002, AL-NFR-0008 | Master Specification | Alpha System Layer | Planned |
+| Knowledge Center | AL-REQ-0020 | specs/knowledge-center.md | Intelligence / Platform | Specified |
+| Adaptive Resource Intelligence | AL-REQ-0002, AL-NFR-0008 | specs/adaptive-resource-intelligence.md | Alpha System Layer | Specified |
 | Hardware / Firmware | AL-REQ-0010, AL-COMP-0002–0003 | Hardware Validation | Alpha System Layer | Specified |
 | Installer / Boot | AL-REQ-0012, AL-COMP-0004 | Installer Architecture | Alpha System Layer | Specified |
 | Recovery / Rollback | AL-REQ-0011, AL-REC-* | Recovery Architecture | Alpha System Layer | Specified |
@@ -30,13 +30,14 @@ This is the authoritative implementation-readiness index. Detailed behavior rema
 | CI/CD | AL-BLD-0003 | CI/CD Policy | Build/Release | Specified |
 | ISO Build | AL-BLD-0001–0005 | ISO Build Architecture | Build/Release | Specified |
 | Release / Provenance | AL-BLD-0002, AL-BLD-0004, AL-REL-* | Release Engineering | Build/Release | Specified |
-| Developer Platform | AL-REQ-0020 | Master Specification | Domain Platform | Planned |
-| Astronomy / ZTF | AL-REQ-0020 | Master Specification | Domain Platform | Planned |
-| Engineering / CAE | AL-REQ-0020 | Master Specification | Domain Platform | Planned |
-| Motorsport | AL-REQ-0020 | Master Specification | Domain Platform | Planned |
-| Music & Audio | AL-REQ-0020 | Master Specification | Domain Platform | Planned |
-| Creator / Media | AL-REQ-0020 | Master Specification | Domain Platform | Planned |
-| Plugin / SDK | AL-SEC-0007 | Master Specification | Platform Services | Planned |
+| Developer Platform | AL-REQ-0020 | specs/developer-platform.md | Domain Platform | Specified |
+| Astronomy / ZTF | AL-REQ-0020 | specs/astronomy-ztf-suite.md | Domain Platform | Specified |
+| Engineering / CAE | AL-REQ-0020 | specs/engineering-cae-suite.md | Domain Platform | Specified |
+| Motorsport | AL-REQ-0020 | specs/motorsport-suite.md | Domain Platform | Specified |
+| Music & Audio | AL-REQ-0020 | specs/music-audio-suite.md | Domain Platform | Specified |
+| Creator / Media | AL-REQ-0020 | specs/creator-media-suite.md | Domain Platform | Specified |
+| Plugin / SDK | AL-SEC-0007 | specs/plugin-sdk.md | Platform Services | Specified |
+| Domain Platform Contract | AL-REQ-0020 | specs/domain-platform-contract.md | Domain Platform | Specified |
 | Localization / Accessibility | AL-NFR-0004 | UI/UX Requirements | Experience Layer | Specified |
 
 ## Readiness gate
