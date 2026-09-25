@@ -6,15 +6,13 @@ Alpha Linux is an Ubuntu 26.04 LTS–based, AI-native universal workstation plat
 
 > Own the experience, integrate the ecosystem, don’t reinvent the foundation.
 
-Alpha Linux is designed to preserve Ubuntu compatibility while providing an integrated platform for AI, scientific computing, engineering, astronomy, aerospace, motorsport, development, creator workflows, music and audio, education, business, and advanced desktop computing.
+Alpha Linux preserves Ubuntu compatibility while providing an integrated platform for AI, scientific computing, engineering, astronomy, aerospace, motorsport, development, creator workflows, music and audio, education, business, and advanced desktop computing.
 
 ## Project Status
 
-**Current phase: Product Definition → Requirements → Architecture → Specification → Documentation**
+**Current phase: Phase 1 Foundation**
 
-Implementation has **not** started.
-
-The current objective is to establish a complete, traceable and reviewable specification before implementation begins.
+Phase 0 specification and architecture are frozen. Phase 1 implementation is active. The repository is moving from normative contracts to executable foundation components, automated tests and CI evidence.
 
 ## Core principles
 
@@ -41,8 +39,8 @@ The current objective is to establish a complete, traceable and reviewable speci
 - `planning/` — decisions, assumptions, risks and open questions
 - `roadmap/` — milestones and delivery planning
 - `integrations/` — external software and project integrations
-- `future/` — experimental and long-term concepts
-- `implementation/` — implementation boundary; intentionally inactive during specification
+- `implementation/` — executable implementation boundary
+- `.github/workflows/` — executable CI gates
 
 ## Documentation hierarchy
 
@@ -64,15 +62,13 @@ Reference brand colors:
 - Alpha Blue: `#003C91`
 - Alpha Gray: `#8A8A8A`
 
-The product logo supplied by the project owner is part of the Alpha Linux branding reference and will be incorporated into the Design System documentation.
-
 ## Repository governance
 
-New scope after specification freeze must enter through a documented Change Request and update the relevant requirement, architecture, traceability and roadmap records.
+Phase 0 is frozen. Material changes to normative scope follow the Change Request process. Implementation changes remain subordinate to requirements, specifications, architecture, security and recovery boundaries.
 
 See:
 - [Master Specification](specs/master-specification.md)
 - [Master Handbook](docs/handbook/00-handbook-overview.md)
-- [Master Feature Matrix](requirements/master-feature-matrix.md)
+- [Phase 0 Freeze Decision](docs/audits/phase-0-freeze-decision.md)
 - [Decision Log](planning/decision-log.md)
 - [Roadmap](roadmap/master-roadmap.md)
