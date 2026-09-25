@@ -56,8 +56,8 @@ class ServiceDispatcher:
 
     def dispatch(self, service_id: str, request: ActionRequest, *, approved: bool = False) -> DispatchResult:
         registration = self._registry.resolve(service_id)
-        if registration.capability not in request.capabilities:
-            raise PermissionError("service capability was not granted")
+        if request.required_capability != registration.capability:
+            raise PermissionError("request capability does not match service capability")
         result = self._system_service.execute(
             request, approved=approved, handler=registration.handler
         )
