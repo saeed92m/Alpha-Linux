@@ -51,6 +51,9 @@ class ServiceDispatcher:
         self._registry = registry
         self._system_service = system_service
 
+    def health(self):
+        return self._system_service.health()
+
     def dispatch(self, service_id: str, request: ActionRequest, *, approved: bool = False) -> DispatchResult:
         registration = self._registry.resolve(service_id)
         if registration.capability not in request.capabilities:
