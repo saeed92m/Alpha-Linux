@@ -104,7 +104,7 @@ jobs:
               artifact=artifact,
               artifact_id=artifact.name,
               artifact_type="python-wheel",
-              version="0.1.0.dev1",
+              version=__import__("alpha_core.provenance", fromlist=["project_version"]).project_version(Path(".")),
               channel="foundation",
               source_commit="${{github.sha}}",
               build_id="${{github.run_id}}",
