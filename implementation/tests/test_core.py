@@ -45,3 +45,8 @@ def test_core_health_is_exposed_without_internal_access():
     health = core.health()
     assert health.healthy
     assert "system-service" in health.components
+
+
+def test_core_cli_builds():
+    from alpha_core.cli import build_core
+    assert build_core().health().healthy
