@@ -11,6 +11,15 @@ def test_event_has_identity_and_utc_timestamp():
     assert event.timestamp.tzinfo is not None
 
 
+def test_event_redacts_secret_fields():
+    event = ObservabilityEvent.create(
+        "core", "auth", "warning", "corr-1", PrivacyClass.SENSITIVE,
+        {"token": "secret-value", "ok": True},
+    )
+    assert event.data["token"] == "[REDACTED]"
+    assert event.data["ok"] is True
+
+
 def test_event_requires_identity():
     with pytest.raises(ValueError):
         ObservabilityEvent.create("", "event", "info", "corr-1", PrivacyClass.PUBLIC, {})
