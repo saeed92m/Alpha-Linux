@@ -26,6 +26,7 @@ class ActionRequest:
     description: str
     permission: PermissionLevel
     target: str
+    required_capability: str | None = None
     capabilities: frozenset[str] = field(default_factory=frozenset)
     risk: RiskLevel = RiskLevel.LOW
     parameters: Mapping[str, object] = field(default_factory=dict)
