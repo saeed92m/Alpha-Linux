@@ -6,5 +6,6 @@
 | PolicyEngine | AL-SEC-0001..0003 | authorization tests |
 | HealthResult / evaluate_component | AL-NFR-0003, AL-NFR-0009 | health tests |
 | Foundation CI | AL-BLD-0003, AL-TEST-0001..0005 | CI execution |
+| AlphaService | AL-SEC-0001..0003, AL-REC-0001 | service boundary tests |
 
 The implementation remains intentionally small so each behavior is directly testable.
