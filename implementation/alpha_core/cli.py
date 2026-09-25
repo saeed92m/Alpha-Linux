@@ -8,7 +8,7 @@ from .system_service import SystemService
 def build_core() -> AlphaCore:
     registry = ServiceRegistry()
     service = SystemService(PolicyEngine())
-    return AlphaCore(PolicyEngine(), ServiceDispatcher(registry, service))
+    return AlphaCore(ServiceDispatcher(registry, service))
 
 
 def main() -> int:
