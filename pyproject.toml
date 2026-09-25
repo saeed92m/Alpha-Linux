@@ -10,6 +10,9 @@ requires-python = ">=3.11"
 license = {file = "LICENSE.md"}
 dependencies = []
 
+[project.scripts]
+alpha-core = "alpha_core.cli:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
 
