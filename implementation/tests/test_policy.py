@@ -1,26 +1,41 @@
-from alpha_core.models import ActionRequest, PermissionLevel
+from alpha_core.models import ActionRequest, PermissionLevel, RiskLevel
 from alpha_core.policy import PolicyEngine
 
 
-def test_model_output_cannot_authorize_admin_action():
-    request = ActionRequest(
+def request(**kwargs):
+    values = dict(
         action_id="system.update",
         actor="agent",
-        description="update system",
-        permission=PermissionLevel.RESTRICTED_ADMIN,
-        parameters={},
+        description="update",
+        permission=PermissionLevel.EXECUTE_SAFE,
+        target="system",
+        required_capability="system.update",
+        capabilities=frozenset({"system.update"}),
     )
-    result = PolicyEngine().decide(request, approved=False)
-    assert result.allowed is False
-    assert result.policy_id == "POL-APPROVAL-001"
+    values.update(kwargs)
+    return ActionRequest(**values)
 
 
-def test_safe_action_can_be_authorized_by_policy():
-    request = ActionRequest(
-        action_id="system.inspect",
-        actor="agent",
-        description="inspect system",
-        permission=PermissionLevel.READ,
-        parameters={},
+def test_safe_action_requires_capability():
+    decision = PolicyEngine().decide(request())
+    assert decision.allowed
+
+
+def test_missing_capability_is_denied():
+    decision = PolicyEngine().decide(request(capabilities=frozenset()))
+    assert not decision.allowed
+    assert decision.policy_id == "POL-CAPABILITY-002"
+
+
+def test_admin_requires_explicit_approval():
+    decision = PolicyEngine().decide(
+        request(permission=PermissionLevel.RESTRICTED_ADMIN, approved=False)
     )
-    assert PolicyEngine().decide(request).allowed is True
+    assert not decision.allowed
+    assert decision.requires_approval
+
+
+def test_high_risk_requires_approval():
+    decision = PolicyEngine().decide(request(risk=RiskLevel.HIGH))
+    assert not decision.allowed
+    assert decision.requires_approval
