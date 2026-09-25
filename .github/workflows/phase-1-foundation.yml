@@ -158,6 +158,28 @@ jobs:
               raise SystemExit(f"missing provenance fields: {missing}")
           PY
 
+  ci_rep_001:
+    name: CI-REP-001 Reproducibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{env.PYTHON_VERSION}}
+      - name: Build twice from identical inputs
+        env:
+          SOURCE_DATE_EPOCH: "0"
+          PYTHONHASHSEED: "0"
+        run: |
+          python -m pip install --upgrade pip build
+          rm -rf build dist1 dist2 *.egg-info
+          python -m build --wheel --outdir dist1
+          rm -rf build *.egg-info
+          python -m build --wheel --outdir dist2
+          sha256sum dist1/*.whl
+          sha256sum dist2/*.whl
+          test "$(sha256sum dist1/*.whl | awk '{print $1}')" = "$(sha256sum dist2/*.whl | awk '{print $1}')"
+
   ci_sec_001:
     name: CI-SEC-001 Security
     runs-on: ubuntu-latest
@@ -178,7 +200,7 @@ jobs:
   evidence:
     name: CI evidence summary
     if: always()
-    needs: [ci_val_001, ci_doc_001, ci_lint_001, ci_test_001, ci_test_002, ci_pkg_001, ci_bld_001, ci_art_001, ci_sec_001]
+    needs: [ci_val_001, ci_doc_001, ci_lint_001, ci_test_001, ci_test_002, ci_pkg_001, ci_bld_001, ci_art_001, ci_rep_001, ci_sec_001]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -202,6 +224,7 @@ jobs:
               "CI-PKG-001": "${{needs.ci_pkg_001.result}}",
               "CI-BLD-001": "${{needs.ci_bld_001.result}}",
               "CI-ART-001": "${{needs.ci_art_001.result}}",
+              "CI-REP-001": "${{needs.ci_rep_001.result}}",
               "CI-SEC-001": "${{needs.ci_sec_001.result}}"
             }
           }
