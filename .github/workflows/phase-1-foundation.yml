@@ -88,6 +88,75 @@ jobs:
         run: |
           python -m pip install --force-reinstall dist/*.whl
           python -c "import alpha_core; print(alpha_core.__version__)"
+      - name: Generate package provenance
+        env:
+          SOURCE_COMMIT: ${{github.sha}}
+          RUN_ID: ${{github.run_id}}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from alpha_core.provenance import create_provenance, write_provenance
+          import hashlib
+          artifact = next(Path("dist").glob("*.whl"))
+          config = hashlib.sha256(Path("pyproject.toml").read_bytes()).hexdigest()
+          record = create_provenance(
+              root=Path(".").resolve(),
+              artifact=artifact,
+              artifact_id=artifact.name,
+              artifact_type="python-wheel",
+              version="0.1.0.dev1",
+              channel="foundation",
+              source_commit="${{github.sha}}",
+              build_id="${{github.run_id}}",
+              builder_identity="github-actions",
+              package_set="pyproject.toml",
+              configuration_digest=config,
+              dependency_inventory="python-project-dependencies",
+              test_evidence="CI-TEST-001;CI-TEST-002",
+          )
+          write_provenance(record, Path("dist/provenance.json"))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase-1-package-artifacts
+          path: dist/
+
+  ci_bld_001:
+    name: CI-BLD-001 Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{env.PYTHON_VERSION}}
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build --wheel
+
+  ci_art_001:
+    name: CI-ART-001 Artifact
+    needs: [ci_pkg_001]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: phase-1-package-artifacts
+          path: dist
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{env.PYTHON_VERSION}}
+      - name: Validate artifact and provenance
+        run: |
+          test -n "$(find dist -name '*.whl' -print -quit)"
+          test -s dist/provenance.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          record = json.loads(Path("dist/provenance.json").read_text())
+          required = ["artifact_id","artifact_type","version","source_commit","source_tree_digest","build_id","build_timestamp","builder_identity","toolchain","package_set","configuration_digest","dependency_inventory","test_evidence","artifact_digest"]
+          missing = [key for key in required if not record.get(key)]
+          if missing:
+              raise SystemExit(f"missing provenance fields: {missing}")
+          PY
 
   ci_sec_001:
     name: CI-SEC-001 Security
@@ -109,7 +178,7 @@ jobs:
   evidence:
     name: CI evidence summary
     if: always()
-    needs: [ci_val_001, ci_doc_001, ci_lint_001, ci_test_001, ci_test_002, ci_pkg_001, ci_sec_001]
+    needs: [ci_val_001, ci_doc_001, ci_lint_001, ci_test_001, ci_test_002, ci_pkg_001, ci_bld_001, ci_art_001, ci_sec_001]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -131,6 +200,8 @@ jobs:
               "CI-TEST-001": "${{needs.ci_test_001.result}}",
               "CI-TEST-002": "${{needs.ci_test_002.result}}",
               "CI-PKG-001": "${{needs.ci_pkg_001.result}}",
+              "CI-BLD-001": "${{needs.ci_bld_001.result}}",
+              "CI-ART-001": "${{needs.ci_art_001.result}}",
               "CI-SEC-001": "${{needs.ci_sec_001.result}}"
             }
           }

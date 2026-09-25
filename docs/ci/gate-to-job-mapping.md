@@ -31,3 +31,6 @@ This document maps stable gate identifiers to implementation jobs. Job names are
 ## Phase 1 applicability
 
 For the current Phase 1 foundation, CI-VAL-001, CI-DOC-001, CI-LINT-001, CI-TEST-001, CI-TEST-002, CI-PKG-001 and CI-SEC-001 are executable and blocking. CI-BLD-001, CI-ART-001, CI-REP-001, CI-ISO-001 and CI-REL-001 remain release-scoped and are not represented as passed by the Phase 1 workflow. They become blocking when their corresponding release artifacts and promotion process are implemented.
+
+
+Phase 1 now also executes CI-BLD-001 and CI-ART-001 for the Python foundation package. CI-REP-001, CI-ISO-001 and CI-REL-001 remain deferred until reproducible distribution/ISO and promotion artifacts exist.
