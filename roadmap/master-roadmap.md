@@ -119,6 +119,6 @@
 - ISO/IMG artifact contract defined.
 - Deterministic naming and evidence model implemented.
 - Executable image-file validation and tests added.
-- Actual OS image build, boot/install validation and image release evidence remain required before any OS image release claim.
+- Actual OS image build workflow is implemented. The first verified image artifact, boot/install validation, reproducibility evidence, and image release evidence remain required before any OS image release claim.
 
 Dates are intentionally not fixed until the relevant implementation and release evidence is available.
