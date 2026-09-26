@@ -77,7 +77,7 @@ echo "Repacking bootable Ubuntu ISO while preserving original boot metadata"
 xorriso   -indev "${BASE_PATH}"   -outdev "${OUTPUT_PATH}"   -map "${SEED_PATH}" /alpha-release.json   -boot_image any replay   -compliance no_emul_toc   -padding included
 
 echo "Validating ISO structure and embedded Alpha metadata"
-xorriso -indev "${OUTPUT_PATH}" -find /alpha-release.json -type f -print | grep -F '/alpha-release.json'
+xorriso -indev "${OUTPUT_PATH}" -ls /alpha-release.json | grep -F 'alpha-release.json'
 xorriso -indev "${OUTPUT_PATH}" -report_el_torito plain | tee "${OUT_DIR}/el-torito-report.txt"
 grep -Eq 'BIOS|EFI|El Torito' "${OUT_DIR}/el-torito-report.txt"
 
