@@ -115,10 +115,9 @@ class ElectronicsPlanner:
         normalized_components = self.normalize_components(components)
         normalized_requirements = self.normalize_requirements(requirements)
 
-        board_support = {
-            interface.kind: set(interface.capabilities)
-            for interface in board.interfaces
-        }
+        board_support: dict[ElectronicsInterfaceKind, set[str]] = {}
+        for interface in board.interfaces:
+            board_support.setdefault(interface.kind, set()).update(interface.capabilities)
         selected: list[ElectronicsComponent] = []
 
         for requirement in normalized_requirements:
