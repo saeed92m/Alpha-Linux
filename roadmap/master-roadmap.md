@@ -98,7 +98,7 @@
 - localization
 - release QA
 
-**Status:** Active hardening implementation after completion of Phase 5 domain foundations.
+**Status:** Active hardening implementation. Security hardening foundation is implemented, tested, CI-validated, and merged; remaining Phase 6 slices continue under the hardening program.
 
 ## Phase 7 — Alpha releases
 
