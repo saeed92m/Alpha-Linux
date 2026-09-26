@@ -12,7 +12,7 @@ The Permissions layer is a declarative Phase 4 reference foundation.
 ## Invariants
 - Rule IDs and capabilities are non-empty.
 - Permission effects are explicit.
-- Rule IDs are unique within an evaluated policy.
+- Rule IDs and capabilities are unique within an evaluated policy.
 - Matching decisions are deterministic.
 - Capabilities without a matching rule are denied.
 
