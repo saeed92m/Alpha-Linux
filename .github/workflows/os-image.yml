@@ -10,6 +10,15 @@ on:
       - "implementation/tests/test_os_image.py"
       - "specs/alpha-os-image-artifact-contract.md"
       - ".github/workflows/os-image.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/build_alpha_os_image.sh"
+      - "implementation/alpha_core/os_image.py"
+      - "implementation/tests/test_os_image.py"
+      - "specs/alpha-os-image-artifact-contract.md"
+      - ".github/workflows/os-image.yml"
   workflow_dispatch:
 
 permissions:
