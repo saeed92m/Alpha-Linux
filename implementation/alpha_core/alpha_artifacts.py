@@ -23,8 +23,8 @@ class AlphaArtifactSpec:
         ):
             if not value.strip():
                 raise ValueError(f"{name} is required")
-        if not re.fullmatch(r"0\.\d+(?:\.\d+)?", self.version):
-            raise ValueError("version must use Alpha 0.x format")
+        if not re.fullmatch(r"0\.\d+(?:\.\d+)?(?:a\d+|b\d+|rc\d+)?$", self.version):
+            raise ValueError("version must use Alpha 0.x format (optionally with a/b/rc prerelease)")
 
 
 @dataclass(frozen=True)
