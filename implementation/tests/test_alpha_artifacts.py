@@ -68,7 +68,7 @@ def test_alpha_version_required():
     try:
         AlphaArtifactSpec("a", "1.0.0", "linux", "x86_64", "iso")
     except ValueError as exc:
-        assert str(exc) == "version must use Alpha 0.x format"
+        assert str(exc) == "version must use Alpha 0.x format (optionally with a/b/rc prerelease)"
     else:
         raise AssertionError("expected alpha version rejection")
 
@@ -82,3 +82,7 @@ def test_plan_is_bounded():
         assert str(exc) == "artifact plan exceeds artifact limit"
     else:
         raise AssertionError("expected bound rejection")
+
+
+def test_alpha_prerelease_version_is_accepted():
+    assert AlphaArtifactSpec("a", "0.1.0a1", "linux", "x86_64", "iso").version == "0.1.0a1"
