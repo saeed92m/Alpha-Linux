@@ -36,6 +36,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 SDR/RF domain foundation with immutable frequency-band, SDR capability, and acquisition-requirement contracts, deterministic compatibility planning, and bounded device selection.
 - Phase 5 Creator domain foundation with immutable project, media-asset lifecycle, tool-capability, and production-requirement contracts, deterministic normalization, bounded planning, and explicit source/proxy/cache/generated-output separation.
 - Phase 5 Music & Audio domain foundation with immutable session, track, capability, and routing-requirement contracts, deterministic normalization, bounded routing planning, and explicit source/processed/rendered track separation.
+- Phase 5 Data/GIS domain foundation with immutable project, layer, spatial-reference, tool, and analysis-requirement contracts, deterministic normalization, bounded compatibility planning, and explicit source/derived/output layer separation.
 
 ### Changed
 
@@ -51,6 +52,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Electronics domain foundation is complete; SDR/RF became the active domain slice.
 - Phase 5 SDR/RF foundation is complete; Creator became the active domain slice.
 - Phase 5 Creator foundation is complete; Music & Audio became the active domain slice.
+- Phase 5 Music & Audio foundation is complete; Data/GIS became the active domain slice.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
