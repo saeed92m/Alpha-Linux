@@ -20,6 +20,7 @@ class OSImageEvidence:
     ci_run_id: str
     build_environment: str
     reproducibility_result: str
+    reproducibility_reference_sha256: str
 
     def __post_init__(self) -> None:
         fields = (
@@ -34,6 +35,7 @@ class OSImageEvidence:
             ("ci_run_id", self.ci_run_id),
             ("build_environment", self.build_environment),
             ("reproducibility_result", self.reproducibility_result),
+            ("reproducibility_reference_sha256", self.reproducibility_reference_sha256),
         )
         missing = [name for name, value in fields if not str(value).strip()]
         if missing:
@@ -42,11 +44,17 @@ class OSImageEvidence:
             raise ValueError("artifact_format must be iso or img")
         if self.artifact_size <= 0:
             raise ValueError("artifact_size must be positive")
-        if (
-            len(self.artifact_sha256) != 64
-            or any(character not in string.hexdigits for character in self.artifact_sha256)
+        for name, digest in (
+            ("artifact_sha256", self.artifact_sha256),
+            ("reproducibility_reference_sha256", self.reproducibility_reference_sha256),
         ):
-            raise ValueError("artifact_sha256 must be a SHA-256 hex digest")
+            if (
+                len(digest) != 64
+                or any(character not in string.hexdigits for character in digest)
+            ):
+                raise ValueError(f"{name} must be a SHA-256 hex digest")
+        if self.reproducibility_result not in {"not-run", "passed", "failed"}:
+            raise ValueError("reproducibility_result must be not-run, passed, or failed")
 
     @property
     def deterministic_filename(self) -> str:
@@ -72,6 +80,7 @@ class OSImageEvidence:
         ci_run_id: str,
         build_environment: str,
         reproducibility_result: str,
+        reproducibility_reference_sha256: str,
     ) -> "OSImageEvidence":
         if path.suffix.lower() not in {".iso", ".img"}:
             raise ValueError("OS image format must be .iso or .img")
@@ -89,4 +98,5 @@ class OSImageEvidence:
             ci_run_id=ci_run_id,
             build_environment=build_environment,
             reproducibility_result=reproducibility_result,
+            reproducibility_reference_sha256=reproducibility_reference_sha256,
         )

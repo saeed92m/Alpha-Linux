@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 
 import pytest
 
@@ -18,7 +19,8 @@ def make_evidence(**overrides) -> OSImageEvidence:
         "source_commit": "commit",
         "ci_run_id": "206",
         "build_environment": "github-hosted-ubuntu-latest",
-        "reproducibility_result": "not-run",
+        "reproducibility_result": "passed",
+        "reproducibility_reference_sha256": "b" * 64,
     }
     values.update(overrides)
     return OSImageEvidence(**values)
@@ -46,10 +48,11 @@ def test_file_evidence_binds_size_and_sha256(tmp_path: Path):
         source_commit="abc123",
         ci_run_id="206",
         build_environment="github-hosted-ubuntu-latest",
-        reproducibility_result="not-run",
+        reproducibility_result="passed",
+        reproducibility_reference_sha256="b" * 64,
     )
     assert evidence.artifact_size == len(b"alpha-image")
-    assert evidence.artifact_sha256 == __import__("hashlib").sha256(b"alpha-image").hexdigest()
+    assert evidence.artifact_sha256 == hashlib.sha256(b"alpha-image").hexdigest()
     evidence.validate_filename()
 
 
@@ -66,15 +69,26 @@ def test_non_image_format_rejected(tmp_path: Path):
             source_commit="abc123",
             ci_run_id="206",
             build_environment="github-hosted-ubuntu-latest",
-            reproducibility_result="not-run",
+            reproducibility_result="passed",
+            reproducibility_reference_sha256="b" * 64,
         )
 
 
 def test_invalid_sha256_rejected():
-    with pytest.raises(ValueError, match="SHA-256 hex digest"):
+    with pytest.raises(ValueError, match="artifact_sha256"):
         make_evidence(artifact_sha256="g" * 64)
+
+
+def test_invalid_reference_sha256_rejected():
+    with pytest.raises(ValueError, match="reproducibility_reference_sha256"):
+        make_evidence(reproducibility_reference_sha256="g" * 64)
 
 
 def test_invalid_artifact_format_rejected():
     with pytest.raises(ValueError, match="artifact_format must be iso or img"):
         make_evidence(artifact_format="tar")
+
+
+def test_invalid_reproducibility_result_rejected():
+    with pytest.raises(ValueError, match="reproducibility_result"):
+        make_evidence(reproducibility_result="unknown")
