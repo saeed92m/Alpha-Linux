@@ -121,14 +121,14 @@ jobs:
 
       - name: Build unified release-candidate evidence
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           PACKAGE_RUN_ID="$(gh run list --workflow phase-1-foundation.yml --commit "$GITHUB_SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
           test -n "$PACKAGE_RUN_ID"
           rm -rf dist/package-evidence
           gh run download "$PACKAGE_RUN_ID" --name alpha-release-evidence --dir dist/package-evidence
-          PYTHONPATH="\${GITHUB_WORKSPACE}/implementation" python3 - <<'PY'
+          PYTHONPATH="${GITHUB_WORKSPACE}/implementation" python3 - <<'PY'
           import json
           from pathlib import Path
           from alpha_core.alpha_release import AlphaReleaseCandidateEvidence, AlphaReleaseManifest
