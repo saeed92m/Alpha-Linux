@@ -28,7 +28,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: alpha-os-image-${{ github.ref }}
+  group: alpha-os-image-\${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
     if: github.event_name != 'issue_comment' || (github.event.issue.number == 158 && github.event.comment.body == '/run-alpha-os-image' && github.event.comment.author_association == 'OWNER')
     name: Build Alpha OS ISO
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Check out repository
@@ -65,7 +65,8 @@ jobs:
           ALPHA_ARCH: "amd64"
           ALPHA_RELEASE_ID: "alpha-os-0-1-0a1"
           ALPHA_BUILD_ENVIRONMENT: "github-hosted-ubuntu-latest"
-          ALPHA_REPRODUCIBILITY_RESULT: "not-run"
+          ALPHA_VERIFY_REPRODUCIBILITY: "true"
+          SOURCE_DATE_EPOCH: "946684800"
         run: |
           chmod +x scripts/build_alpha_os_image.sh
           scripts/build_alpha_os_image.sh
@@ -90,14 +91,16 @@ jobs:
               "ci_run_id",
               "build_environment",
               "reproducibility_result",
+              "reproducibility_reference_sha256",
+              "source_date_epoch",
           ]
           missing = [key for key in required if key not in manifest]
           if missing:
               raise SystemExit(f"missing evidence fields: {missing}")
 
-          if manifest["source_commit"] != "${{ github.sha }}":
+          if manifest["source_commit"] != "\${{ github.sha }}":
               raise SystemExit("manifest source commit does not match workflow SHA")
-          if manifest["ci_run_id"] != "${{ github.run_id }}":
+          if manifest["ci_run_id"] != "\${{ github.run_id }}":
               raise SystemExit("manifest CI run ID does not match workflow run")
           if manifest["artifact_filename"] != "alpha-linux-0.1.0a1-alpha-amd64.iso":
               raise SystemExit("unexpected deterministic artifact filename")
@@ -105,6 +108,12 @@ jobs:
               raise SystemExit("artifact size must be positive")
           if len(manifest["artifact_sha256"]) != 64:
               raise SystemExit("artifact SHA-256 is invalid")
+          if manifest["reproducibility_result"] != "passed":
+              raise SystemExit("reproducibility gate did not pass")
+          if manifest["artifact_sha256"] != manifest["reproducibility_reference_sha256"]:
+              raise SystemExit("reproducibility reference digest differs from final artifact")
+          if manifest["source_date_epoch"] != 946684800:
+              raise SystemExit("unexpected SOURCE_DATE_EPOCH")
 
           print(json.dumps(manifest, indent=2, sort_keys=True))
           PY
@@ -114,11 +123,12 @@ jobs:
           echo "## Alpha OS Image" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Artifact: alpha-linux-0.1.0a1-alpha-amd64.iso" >> "$GITHUB_STEP_SUMMARY"
-          echo "Source commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "CI run: ${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Source commit: \${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "CI run: \${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Boot metadata: validated with xorriso" >> "$GITHUB_STEP_SUMMARY"
           echo "Install validation: not performed" >> "$GITHUB_STEP_SUMMARY"
-          echo "Reproducibility: not-run" >> "$GITHUB_STEP_SUMMARY"
+          echo "Reproducibility: passed (two same-input builds, matching SHA-256)" >> "$GITHUB_STEP_SUMMARY"
+          echo "SOURCE_DATE_EPOCH: 946684800" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Alpha OS ISO
         uses: actions/upload-artifact@v7
@@ -129,14 +139,14 @@ jobs:
           if-no-files-found: error
 
       - name: Publish issue-comment execution evidence
-        if: ${{ always() && github.event_name == 'issue_comment' }}
+        if: \${{ always() && github.event_name == 'issue_comment' }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: \${{ github.token }}
         run: |
           gh api --method POST \
             -H "Accept: application/vnd.github+json" \
-            "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
-            -f body="Alpha OS image workflow run \`${{ github.run_id }}\` completed with job status \`${{ job.status }}\`. Trigger: \`${{ github.event.comment.body }}\`. Source commit: \`${{ github.sha }}\`."
+            "/repos/\${{ github.repository }}/issues/\${{ github.event.issue.number }}/comments" \
+            -f body="Alpha OS image workflow run \`\${{ github.run_id }}\` completed with job status \`\${{ job.status }}\`. Trigger: \`\${{ github.event.comment.body }}\`. Source commit: \`\${{ github.sha }}\`. Reproducibility: two-build comparison."
 
       - name: Upload Alpha OS evidence
         uses: actions/upload-artifact@v7
