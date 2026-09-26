@@ -20,20 +20,34 @@ def board() -> ElectronicsBoard:
     return ElectronicsBoard(
         "board-1",
         "Alpha Control Board",
-        (interface("digital-1"),),
+        (
+            interface("digital-1"),
+            interface(
+                "analog-1",
+                ElectronicsInterfaceKind.ANALOG,
+                ("adc",),
+            ),
+        ),
     )
 
 
 def component(
     component_id: str,
     *,
+    kind: ElectronicsInterfaceKind = ElectronicsInterfaceKind.DIGITAL,
     capabilities: tuple[str, ...] = ("gpio",),
     enabled: bool = True,
 ) -> ElectronicsComponent:
     return ElectronicsComponent(
         component_id,
         component_id,
-        (interface(f"{component_id}-if", capabilities=capabilities),),
+        (
+            interface(
+                f"{component_id}-if",
+                kind,
+                capabilities,
+            ),
+        ),
         enabled,
     )
 
@@ -121,15 +135,27 @@ def test_component_limit_is_bounded() -> None:
     )
     requirements = (
         requirement("req-a"),
-        requirement("req-b"),
+        CircuitRequirement(
+            "req-b",
+            ElectronicsInterfaceKind.ANALOG,
+            ("adc",),
+        ),
+    )
+    components = (
+        component("sensor-a"),
+        component(
+            "sensor-b",
+            kind=ElectronicsInterfaceKind.ANALOG,
+            capabilities=("adc",),
+        ),
     )
     result = planner.plan(board(), components, requirements, max_components=2)
-    assert result.component_ids == ("sensor-a", "sensor-a")
+    assert result.component_ids == ("sensor-a", "sensor-b")
 
     try:
-        planner.plan(board(), components, requirements, max_components=0)
+        planner.plan(board(), components, requirements, max_components=1)
     except ValueError as exc:
-        assert str(exc) == "max_components must be positive"
+        assert str(exc) == "circuit exceeds component limit"
     else:
         raise AssertionError("expected ValueError")
 
