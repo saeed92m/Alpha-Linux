@@ -1,15 +1,20 @@
 # Recovery and Backup Contract
 
-Phase 6 recovery/backup is a deterministic reference planning foundation. It models recovery intent, backup scope, verification, and retention without performing recovery or backup operations.
+## Scope
+
+Phase 6 recovery and backup is a deterministic reference-planning foundation. It models recovery intent, backup scope, verification, and retention without performing recovery or backup operations.
 
 ## Contracts
 
-RecoveryPolicy defines recovery kind, backup scope, retention bound, and verification requirement. RecoveryRequest describes requested recovery state. RecoveryDecision explicitly returns allow/deny. RecoveryPlan provides bounded deterministic policy and denied-request identifiers.
+- RecoveryPolicy defines recovery kind, backup scope, retention bound, and verification requirement.
+- RecoveryRequest describes a requested recovery and the age/verification state of its backup.
+- RecoveryDecision explicitly returns allow/deny and the matched policy when present.
+- RecoveryPlan provides bounded, deterministic policy IDs and denied request IDs.
 
-## Determinism and validation
+## Determinism
 
-Policies normalize by policy_id; duplicate IDs are rejected. Requests evaluate in request_id order. Plans enforce a positive max_policies bound.
+Policies normalize by policy_id; duplicate IDs are rejected. Requests are evaluated by request_id order. Plans enforce a positive max_policies bound.
 
 ## Boundary
 
-No filesystem, network, subprocess, credential, archive, encryption, upload, download, restore, deletion, or host mutation is performed.
+No filesystem or network access, subprocess execution, credential handling, archive/encryption operation, upload/download, restore/delete operation, or host mutation is performed.
