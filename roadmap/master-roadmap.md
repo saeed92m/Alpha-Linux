@@ -83,7 +83,7 @@
 - Cloud/DevOps
 - Education and research
 
-**Status:** Active domain implementation. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, and SDR/RF reference foundations are implemented, tested, CI-validated, and merged. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, SDR/RF, and Creator reference foundations are implemented, tested, CI-validated, and merged. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, SDR/RF, Creator, Music & Audio, and Data/GIS reference foundations are implemented, tested, CI-validated, and merged. Business is the current active domain slice.
+**Status:** Active domain implementation. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, SDR/RF, Creator, Music & Audio, Data/GIS, and Business reference foundations are implemented, tested, CI-validated, and merged. Cloud/DevOps is the current active domain slice.
 
 ## Phase 6 — Hardening
 
