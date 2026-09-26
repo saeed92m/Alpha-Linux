@@ -121,6 +121,7 @@ class AlphaReleaseCandidateEvidence:
             "ready": self.ready,
         }
 
+    @property
     def missing_gate_ids(self) -> tuple[str, ...]:
         required = set(self.required_gate_ids)
         passing = set(self.passing_gate_ids)
