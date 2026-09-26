@@ -38,7 +38,7 @@
 - Profiles
 - update/recovery foundations
 
-**Current phase:** Active implementation and system integration.
+**Status:** Completed reference-runtime baseline. Integrated system surfaces are implemented, tested, validated by CI, and merged. Privileged OS adapters, desktop integration and release-scoped evidence remain in later phases.
 
 ## Phase 3 — Desktop and interaction
 
