@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   issues: write
 
 concurrency:
@@ -118,6 +119,54 @@ jobs:
           print(json.dumps(manifest, indent=2, sort_keys=True))
           PY
 
+      - name: Build unified release-candidate evidence
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          set -euo pipefail
+          PACKAGE_RUN_ID="$(gh run list --workflow phase-1-foundation.yml --commit "$GITHUB_SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$PACKAGE_RUN_ID"
+          rm -rf dist/package-evidence
+          gh run download "$PACKAGE_RUN_ID" --name alpha-release-evidence --dir dist/package-evidence
+          PYTHONPATH="\${GITHUB_WORKSPACE}/implementation" python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from alpha_core.alpha_release import AlphaReleaseCandidateEvidence, AlphaReleaseManifest
+
+          package = json.loads(next(Path("dist/package-evidence").rglob("release-evidence.json")).read_text())
+          os_manifest = json.loads(Path("dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json").read_text())
+
+          package_manifest = AlphaReleaseManifest(
+              release_id=package["release_id"],
+              version=package["version"],
+              artifact_id=package["artifact_id"],
+              artifact_sha256=package["artifact_sha256"],
+              source_commit=package["source_commit"],
+              ci_run_id=package["ci_run_id"],
+          )
+          candidate = AlphaReleaseCandidateEvidence.from_manifests(
+              package_manifest,
+              os_release_id=os_manifest["release_id"],
+              os_version=os_manifest["version"],
+              os_artifact_id=os_manifest["artifact_filename"],
+              os_artifact_sha256=os_manifest["artifact_sha256"],
+              os_source_commit=os_manifest["source_commit"],
+              os_ci_run_id=os_manifest["ci_run_id"],
+              required_gate_ids=("package-release-evidence", "os-image-evidence", "os-reproducibility"),
+              passing_gate_ids=(
+                  "package-release-evidence",
+                  "os-image-evidence",
+                  "os-reproducibility",
+              ),
+          )
+          if not candidate.ready:
+              raise SystemExit("release candidate is not ready")
+          Path("dist/alpha-release-candidate-evidence.json").write_text(
+              json.dumps(candidate.to_dict(), indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
       - name: Write CI summary
         run: |
           echo "## Alpha OS Image" >> "$GITHUB_STEP_SUMMARY"
@@ -155,4 +204,5 @@ jobs:
           path: |
             dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json
             dist/el-torito-report.txt
+            dist/alpha-release-candidate-evidence.json
           if-no-files-found: error
