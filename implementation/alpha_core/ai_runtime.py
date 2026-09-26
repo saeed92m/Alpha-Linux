@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from alpha_core.ai import AICorePlanner, AIExecutionRequest, AIRegistry, ModelDescriptor
+from .ai import AICorePlanner, AIExecutionRequest, AIRegistry, ModelDescriptor
 
 
 class ExecutionMode(str, Enum):
