@@ -35,6 +35,8 @@ def test_invalid_filename_rejected():
         "a" * 64,
         "commit",
         "206",
+        "ubuntu-24.04-github-hosted",
+        "not-run",
     )
     with pytest.raises(ValueError, match="deterministic naming"):
         evidence.validate_filename()
