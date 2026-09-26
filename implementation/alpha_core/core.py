@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from .models import ActionRequest, HealthResult
-from .registry import ServiceDispatcher
+from .registry import DispatchResult, ServiceDispatcher
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,13 @@ class AlphaCore:
     def __init__(self, dispatcher: ServiceDispatcher) -> None:
         self.dispatcher = dispatcher
 
-    def execute(self, service_id: str, request: ActionRequest, *, approved: bool = False):
+    def execute(
+        self,
+        service_id: str,
+        request: ActionRequest,
+        *,
+        approved: bool = False,
+    ) -> DispatchResult:
         return self.dispatcher.dispatch(service_id, request, approved=approved)
 
     def health(self) -> CoreHealth:
