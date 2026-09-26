@@ -102,6 +102,25 @@ class AlphaReleaseCandidateEvidence:
         return not (required - passing - failed) and not (required & failed)
 
     @property
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "release_id": self.release_id,
+            "version": self.version,
+            "tag": self.tag,
+            "source_commit": self.source_commit,
+            "package_artifact_id": self.package_artifact_id,
+            "package_artifact_sha256": self.package_artifact_sha256,
+            "package_ci_run_id": self.package_ci_run_id,
+            "os_artifact_id": self.os_artifact_id,
+            "os_artifact_sha256": self.os_artifact_sha256,
+            "os_ci_run_id": self.os_ci_run_id,
+            "required_gate_ids": list(self.required_gate_ids),
+            "passing_gate_ids": list(self.passing_gate_ids),
+            "failed_gate_ids": list(self.failed_gate_ids),
+            "missing_gate_ids": list(self.missing_gate_ids),
+            "ready": self.ready,
+        }
+
     def missing_gate_ids(self) -> tuple[str, ...]:
         required = set(self.required_gate_ids)
         passing = set(self.passing_gate_ids)
@@ -123,14 +142,12 @@ class AlphaReleaseCandidateEvidence:
         passing_gate_ids: tuple[str, ...],
         failed_gate_ids: tuple[str, ...] = (),
     ) -> "AlphaReleaseCandidateEvidence":
-        if package.release_id != os_release_id:
-            raise ValueError("package and OS release IDs must match")
         if package.version != os_version:
             raise ValueError("package and OS versions must match")
         if package.source_commit != os_source_commit:
             raise ValueError("package and OS source commits must match")
         return cls(
-            release_id=package.release_id,
+            release_id=f"alpha-release-{package.version.replace(".", "-")}",
             version=package.version,
             tag=f"v{package.version}",
             source_commit=package.source_commit,
