@@ -84,6 +84,7 @@ def test_release_candidate_binds_package_and_os_evidence():
     assert result.source_commit == "7f649163ba3dada9975afee13ed792cb95ebd9fe"
     assert result.package_ci_run_id == "36277302593"
     assert result.os_ci_run_id == "36277327395"
+    assert result.to_dict()["ready"] is True
 
 
 def test_release_candidate_allows_distinct_track_release_ids():
