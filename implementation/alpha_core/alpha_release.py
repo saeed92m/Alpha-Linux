@@ -148,7 +148,7 @@ class AlphaReleaseCandidateEvidence:
         if package.source_commit != os_source_commit:
             raise ValueError("package and OS source commits must match")
         return cls(
-            release_id=f"alpha-release-{package.version.replace(".", "-")}",
+            release_id="alpha-release-" + package.version.replace(".", "-"),
             version=package.version,
             tag=f"v{package.version}",
             source_commit=package.source_commit,
