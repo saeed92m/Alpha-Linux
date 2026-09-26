@@ -7,8 +7,8 @@ def manifest():
         "0.1.0a1",
         "alpha_linux_core-0.1.0a1-py3-none-any.whl",
         "a" * 64,
-        "4e74041f50a0f3ba3d4dc183df3ac23159e4f374",
-        "36269757043",
+        "871e1ba5fb24555766262df3cb9234e0022de78a",
+        "36270066321",
     )
 
 

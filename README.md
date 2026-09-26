@@ -10,11 +10,13 @@ Alpha Linux preserves Ubuntu compatibility while providing an integrated platfor
 
 ## Project Status
 
-**Current phase: Phase 5 Domain Platform — Creator active**
+**Current phase: Phase 7 — Alpha Releases**
 
-Phase 0 specification/architecture work is frozen as the normative foundation. Phases 1–4 established the executable engineering, Alpha Core, desktop/interaction, and AI platform reference-runtime foundations. Phase 5 is implementing domain-specific reference foundations with deterministic contracts, executable tests, CI evidence, and explicit non-goal boundaries.
+Phase 0 specification/architecture work is frozen as the normative foundation. Phases 1–6 established the executable engineering, Alpha Core, desktop/interaction, AI platform, domain platform, and hardening reference foundations. Phase 7 is implementing release-scoped artifact, traceability, readiness, and publication foundations with deterministic contracts, executable tests, CI evidence, and explicit non-goal boundaries.
 
-The current CI/CD workflow is authoritative for runtime gate evidence. Phase 5 domain foundations do not claim privileged host integration, production application execution, hardware mutation, or release readiness unless separately evidenced.
+The current CI/CD workflow is authoritative for runtime and release-gate evidence. Phase 7 release foundations do not claim a public product release, OS ISO/IMG release, privileged host integration, production application execution, or repository publication side effects unless separately evidenced.
+
+The current Alpha package target is **0.1.0a1**. Its release-publication foundation binds release metadata to the verified package artifact, source commit, CI evidence, and checksum. The deterministic tag intent is `v0.1.0a1`; tag creation and release publication remain separately gated.
 
 ## Core principles
 

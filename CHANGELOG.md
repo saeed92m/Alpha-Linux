@@ -45,9 +45,9 @@ The project follows a release-oriented change history. Unreleased work is kept u
 
 ### Changed
 
-- Phase 5 Domain Platform is complete and Phase 6 — Hardening is the active implementation phase.
 - Phase 6 security hardening is complete; privacy hardening is complete; recovery and backup are complete; compatibility is complete; performance is complete; hardware validation is complete; accessibility is complete; localization is complete; release QA is complete. Phase 6 Hardening is complete and Phase 7 — Alpha releases is active. The repository currently contains release-readiness foundations only; no product release is claimed until an actual build artifact and independent evidence are present.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
+- Phase 7 release evidence now includes a machine-readable artifact SHA-256 binding through CI-REL-001.
 
 - Phase 7 Alpha 0.x artifact foundation: immutable artifact specifications, deterministic evidence validation, filename semantics, bounded planning, and pure SHA-256 support.
 
