@@ -98,7 +98,7 @@
 - localization
 - release QA
 
-**Status:** Active hardening implementation. Security, privacy, recovery/backup, and compatibility foundations are implemented, tested, CI-validated, and merged. Performance is implemented on the current hardening branch; hardware validation is implemented on the current hardening branch; accessibility is implemented on the current hardening branch; localization is implemented on the current hardening branch; release QA is the next active Phase 6 slice and remaining hardening work continues under the program.
+**Status:** Active hardening implementation. Security, privacy, recovery/backup, and compatibility foundations are implemented, tested, CI-validated, and merged. Performance is implemented on the current hardening branch; hardware validation is implemented on the current hardening branch; accessibility is implemented on the current hardening branch; localization is implemented on the current hardening branch; release QA is implemented on the current hardening branch; after CI validation and merge, Phase 6 Hardening will be complete and Phase 7 — Alpha releases becomes the active program.
 
 ## Phase 7 — Alpha releases
 
