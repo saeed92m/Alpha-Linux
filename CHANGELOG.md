@@ -38,6 +38,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Music & Audio domain foundation with immutable session, track, capability, and routing-requirement contracts, deterministic normalization, bounded routing planning, and explicit source/processed/rendered track separation.
 - Phase 5 Data/GIS domain foundation with immutable project, layer, spatial-reference, tool, and analysis-requirement contracts, deterministic normalization, bounded compatibility planning, and explicit source/derived/output layer separation.
 - Phase 5 Business domain foundation with immutable workspace, workflow, capability, and requirement contracts, deterministic normalization, bounded compatibility planning, and explicit input/process/output workflow roles.
+- Phase 5 Cloud/DevOps domain foundation with immutable environment, service, and requirement contracts, deterministic normalization, bounded compatibility planning, and explicit reference-only cloud execution boundaries.
 
 ### Changed
 
@@ -54,6 +55,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 SDR/RF foundation is complete; Creator became the active domain slice.
 - Phase 5 Creator foundation is complete; Music & Audio became the active domain slice.
 - Phase 5 Music & Audio foundation is complete; Data/GIS became the active domain slice.
+- Phase 5 Data/GIS foundation is complete; Business became the active domain slice.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
