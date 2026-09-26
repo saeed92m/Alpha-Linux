@@ -32,3 +32,7 @@ The reference implementation is host-safe: update application is a no-op backend
 ## Software Center boundary
 
 Software Center sits beside the Control Center as a read/plan service. It may expose catalog state and deterministic install/remove plans, but it does not authorize or execute privileged package operations. Future package-manager adapters must cross the existing Policy / System Service boundary and provide verification and recovery evidence.
+
+## Recovery boundary
+
+Recovery orchestration is independent of the Control Center UI. It may prepare and verify restore plans, but it does not authorize or perform privileged mutation. Future snapshot, filesystem, package, boot, or firmware recovery adapters must cross the existing Policy / System Service boundary.
