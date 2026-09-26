@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
-from .control_center import ControlCenterSnapshot
+from .control_center import ControlCenter, ControlCenterSnapshot
 from .profiles import ProfileRegistry, ProfileResolver
 from .recovery import RecoveryCheckpoint, RecoveryPlan, RecoveryPlanner
 from .software_center import SoftwareCatalog, SoftwareCatalogLoader, SoftwareTransactionPlan, SoftwareTransactionPlanner
@@ -31,7 +31,7 @@ class Phase2IntegrationFacade:
     def __init__(
         self,
         *,
-        control_center,
+        control_center: ControlCenter,
         software_catalog_loader: SoftwareCatalogLoader,
         profiles: ProfileRegistry,
         update_planner: UpdatePlanner | None = None,
