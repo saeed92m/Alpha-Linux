@@ -75,7 +75,7 @@ def test_spatial_reference_contract() -> None:
     assert spatial_reference.code == "4326"
 
     try:
-        SpatialReference("", SpatialReferenceKind.GEOGRAPHIC, "EPSG", "4326")
+        SpatialReference("epsg-4326", SpatialReferenceKind.GEOGRAPHIC, "", "4326")
     except ValueError as exc:
         assert str(exc) == "authority is required"
     else:
