@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.event_name != 'issue_comment' || (github.event.issue.number == 158 && github.event.comment.body == '/run-alpha-os-image')
+    if: github.event_name != 'issue_comment' || (github.event.issue.number == 158 && github.event.comment.body == '/run-alpha-os-image' && github.event.comment.author_association == 'OWNER')
     name: Build Alpha OS ISO
     runs-on: ubuntu-latest
     timeout-minutes: 45
