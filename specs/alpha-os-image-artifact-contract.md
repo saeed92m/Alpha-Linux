@@ -29,6 +29,8 @@ Every produced image candidate must have machine-readable evidence containing:
 - deterministic artifact name
 - build environment identifier
 - reproducibility result
+- SHA-256 digest of the reproducibility comparison build
+- fixed `SOURCE_DATE_EPOCH` used by the reproducible build
 
 ## Deterministic naming
 
@@ -45,6 +47,20 @@ Examples:
 
 The exact filename is part of the release evidence and must not be silently changed after evidence generation.
 
+## Reproducibility
+
+The Alpha ISO build uses a fixed `SOURCE_DATE_EPOCH` and performs a second build from the same verified Ubuntu base image and the same generated provenance input during the same CI run.
+
+The reproducibility gate passes only when the SHA-256 digest of the final artifact exactly matches the SHA-256 digest of the comparison build.
+
+The evidence records:
+
+- `reproducibility_result`: `passed`, `failed`, or `not-run`;
+- `reproducibility_reference_sha256`: digest of the comparison build;
+- `source_date_epoch`: fixed timestamp input.
+
+This is a same-run deterministic reproducibility check. It does not by itself establish reproducibility across different xorriso versions, runner images, operating systems, or independently reconstructed environments.
+
 ## Validation gates
 
 An OS image candidate must pass:
@@ -56,7 +72,7 @@ An OS image candidate must pass:
 5. CI-run binding;
 6. deterministic filename validation;
 7. metadata completeness validation;
-8. reproducibility validation when the build target supports a second independent build;
+8. executable two-build reproducibility validation;
 9. package-path regression validation.
 
 ## Non-goals
@@ -68,7 +84,7 @@ This contract does not itself provide:
 - disk repartitioning;
 - unattended host modification;
 - public release publication;
-- a claim that an ISO/IMG already exists.
+- a claim that an ISO/IMG is installable merely because the artifact was generated.
 
 ## Release rule
 
