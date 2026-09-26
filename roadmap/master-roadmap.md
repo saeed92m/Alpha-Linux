@@ -64,7 +64,7 @@
 - permissions
 - verification
 
-**Status:** Completed reference-runtime foundation. Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, Orchestrator, Permissions, and Verification foundations are implemented, tested, CI-validated, and merged. Phase 5 — Domain Platform is the next active implementation phase.
+**Status:** Completed reference-runtime foundation. Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, Orchestrator, Permissions, and Verification foundations are implemented, tested, CI-validated, and merged. Phase 5 — Domain Platform is the active implementation phase.
 
 ## Phase 5 — Domain platform
 
@@ -83,7 +83,7 @@
 - Cloud/DevOps
 - Education and research
 
-**Status:** Active domain implementation. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, and SDR/RF reference foundations are implemented, tested, CI-validated, and merged. Creator is the next active domain slice.
+**Status:** Active domain implementation. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, and SDR/RF reference foundations are implemented, tested, CI-validated, and merged. Creator is the current active domain slice.
 
 ## Phase 6 — Hardening
 

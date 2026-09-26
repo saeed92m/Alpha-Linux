@@ -10,11 +10,11 @@ Alpha Linux preserves Ubuntu compatibility while providing an integrated platfor
 
 ## Project Status
 
-**Current phase: Phase 2 System Integration and Core Runtime**
+**Current phase: Phase 5 Domain Platform — Creator active**
 
-Phase 0 specification/architecture work is frozen as the normative foundation. Phase 1 established the executable engineering foundation. Phase 2 is implementing the Alpha Core runtime and system-integration vertical slices, with executable tests and CI evidence.
+Phase 0 specification/architecture work is frozen as the normative foundation. Phases 1–4 established the executable engineering, Alpha Core, desktop/interaction, and AI platform reference-runtime foundations. Phase 5 is implementing domain-specific reference foundations with deterministic contracts, executable tests, CI evidence, and explicit non-goal boundaries.
 
-The current CI/CD baseline is maintained as an executable Phase 2-aware workflow and is authoritative for runtime gate evidence.
+The current CI/CD workflow is authoritative for runtime gate evidence. Phase 5 domain foundations do not claim privileged host integration, production application execution, hardware mutation, or release readiness unless separately evidenced.
 
 ## Core principles
 
@@ -46,7 +46,7 @@ The current CI/CD baseline is maintained as an executable Phase 2-aware workflow
 
 ## CI/CD gates
 
-The Phase 2 CI/CD workflow covers:
+The CI/CD workflow covers:
 
 - repository and documentation validation;
 - linting and unit/contract tests;

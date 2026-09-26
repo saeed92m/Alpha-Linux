@@ -34,9 +34,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Motorsport domain foundation with immutable vehicle/component/setup contracts, deterministic compatibility planning, and bounded setup selection.
 - Phase 5 Electronics domain foundation with immutable board/interface/component/circuit contracts, deterministic compatibility planning, and bounded component selection.
 - Phase 5 SDR/RF domain foundation with immutable frequency-band, SDR capability, and acquisition-requirement contracts, deterministic compatibility planning, and bounded device selection.
-- Phase 5 Motorsport domain foundation with immutable vehicle/component/setup contracts, deterministic compatibility planning, and bounded setup selection.
-- Phase 5 Electronics domain foundation with immutable board/interface/component/circuit contracts, deterministic compatibility planning, and bounded component selection.
-- Phase 5 Motorsport domain foundation with immutable vehicle/component/setup contracts, deterministic compatibility planning, and bounded setup selection.
+- Phase 5 Creator domain foundation with immutable project, media-asset lifecycle, tool-capability, and production-requirement contracts, deterministic normalization, bounded planning, and explicit source/proxy/cache/generated-output separation.
 
 ### Changed
 
@@ -48,7 +46,9 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Astronomy domain foundation is complete; Aerospace became the active domain slice.
 - Phase 5 Aerospace domain foundation is complete; Engineering became the active domain slice.
 - Phase 5 Engineering domain foundation is complete; Motorsport became the active domain slice.
-- Phase 5 Motorsport domain foundation is complete; Electronics is the next active domain slice.
+- Phase 5 Motorsport domain foundation is complete; Electronics became the active domain slice.
+- Phase 5 Electronics domain foundation is complete; SDR/RF became the active domain slice.
+- Phase 5 SDR/RF foundation is complete; Creator became the active domain slice.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
@@ -57,3 +57,4 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - No stable, beta, or alpha product release is claimed by this changelog until release artifacts and the required release evidence exist.
 - Phase 3 completion refers to the deterministic reference/runtime foundation. Privileged host mutation, production COSMIC runtime integration, installer/ISO delivery, and release-scoped validation remain governed by their respective roadmap phases.
 - Phase 4 reference-runtime implementation is complete. Production provider execution, persistent knowledge/memory backends, autonomous host actions, privileged integration, and release-scoped evidence remain outside these foundations and are governed by later implementation/release phases.
+- Phase 5 domain foundations remain reference-domain contracts only unless their individual implementation evidence explicitly expands the boundary.
