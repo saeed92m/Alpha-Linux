@@ -12,11 +12,33 @@ class CreatorMediaKind(str, Enum):
     GRAPHICS = "graphics"
 
 
+class CreatorAssetRole(str, Enum):
+    SOURCE = "source"
+    PROXY = "proxy"
+    CACHE = "cache"
+    GENERATED_OUTPUT = "generated-output"
+
+
+@dataclass(frozen=True)
+class CreatorAsset:
+    asset_id: str
+    name: str
+    media_kind: CreatorMediaKind
+    role: CreatorAssetRole
+
+    def __post_init__(self) -> None:
+        if not self.asset_id.strip():
+            raise ValueError("asset_id is required")
+        if not self.name.strip():
+            raise ValueError("name is required")
+
+
 @dataclass(frozen=True)
 class CreatorProject:
     project_id: str
     name: str
     media_kinds: tuple[CreatorMediaKind, ...]
+    assets: tuple[CreatorAsset, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.project_id.strip():
@@ -27,6 +49,12 @@ class CreatorProject:
             raise ValueError("media_kinds must be non-empty")
         if len(set(self.media_kinds)) != len(self.media_kinds):
             raise ValueError("media_kinds must be unique")
+        asset_ids = [asset.asset_id for asset in self.assets]
+        if len(set(asset_ids)) != len(asset_ids):
+            raise ValueError("asset IDs must be unique")
+        project_media = set(self.media_kinds)
+        if any(asset.media_kind not in project_media for asset in self.assets):
+            raise ValueError("asset media kind is outside project scope")
 
 
 @dataclass(frozen=True)
@@ -74,12 +102,21 @@ class CreatorRequirement:
 @dataclass(frozen=True)
 class CreatorPlan:
     project_id: str
+    asset_ids: tuple[str, ...]
     tool_ids: tuple[str, ...]
     requirement_ids: tuple[str, ...]
 
 
 class CreatorPlanner:
     """Deterministic creator-tool planning only."""
+
+    def normalize_assets(
+        self, assets: tuple[CreatorAsset, ...]
+    ) -> tuple[CreatorAsset, ...]:
+        ids = [asset.asset_id for asset in assets]
+        if len(set(ids)) != len(ids):
+            raise ValueError("asset IDs must be unique")
+        return tuple(sorted(assets, key=lambda item: item.asset_id))
 
     def normalize_tools(
         self, tools: tuple[CreatorTool, ...]
@@ -107,6 +144,7 @@ class CreatorPlanner:
         if max_tools <= 0:
             raise ValueError("max_tools must be positive")
 
+        normalized_assets = self.normalize_assets(project.assets)
         normalized_tools = self.normalize_tools(tools)
         normalized_requirements = self.normalize_requirements(requirements)
         project_media = set(project.media_kinds)
@@ -135,6 +173,7 @@ class CreatorPlanner:
 
         return CreatorPlan(
             project_id=project.project_id,
+            asset_ids=tuple(asset.asset_id for asset in normalized_assets),
             tool_ids=selected_ids,
             requirement_ids=tuple(
                 requirement.requirement_id for requirement in normalized_requirements
