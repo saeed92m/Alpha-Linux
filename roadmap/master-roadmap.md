@@ -15,7 +15,7 @@
 - Specification audit
 - Specification freeze
 
-**Current phase**
+**Status:** Completed baseline; frozen specification is maintained through Change Requests.
 
 ## Phase 1 — Foundation
 
@@ -26,6 +26,8 @@
 - baseline QA
 - artifact pipeline
 
+**Status:** Completed foundation baseline; release/ISO-scoped evidence remains conditional on applicable artifacts.
+
 ## Phase 2 — Alpha Core
 
 - system integration
@@ -35,6 +37,8 @@
 - Observatory
 - Profiles
 - update/recovery foundations
+
+**Current phase:** Active implementation and system integration.
 
 ## Phase 3 — Desktop and interaction
 
@@ -95,4 +99,4 @@
 - Beta
 - Stable release
 
-Dates are intentionally not fixed until the specification and implementation plan are frozen.
+Dates are intentionally not fixed until the relevant implementation and release evidence is available.
