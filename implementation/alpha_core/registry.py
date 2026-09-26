@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Mapping
 
-from .models import ActionRequest
-from .system_service import ServiceResult
+from .models import ActionRequest, HealthResult
+from .system_service import ServiceResult, SystemService
 
 
 @dataclass(frozen=True)
@@ -47,14 +47,20 @@ class DispatchResult:
 
 
 class ServiceDispatcher:
-    def __init__(self, registry: ServiceRegistry, system_service) -> None:
+    def __init__(self, registry: ServiceRegistry, system_service: SystemService) -> None:
         self._registry = registry
         self._system_service = system_service
 
-    def health(self):
+    def health(self) -> HealthResult:
         return self._system_service.health()
 
-    def dispatch(self, service_id: str, request: ActionRequest, *, approved: bool = False) -> DispatchResult:
+    def dispatch(
+        self,
+        service_id: str,
+        request: ActionRequest,
+        *,
+        approved: bool = False,
+    ) -> DispatchResult:
         registration = self._registry.resolve(service_id)
         if request.required_capability != registration.capability:
             raise PermissionError("request capability does not match service capability")

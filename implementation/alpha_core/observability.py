@@ -44,7 +44,15 @@ class ObservabilityEvent:
     data: Mapping[str, object]
 
     @classmethod
-    def create(cls, subsystem, event, severity, correlation_id, privacy, data):
+    def create(
+        cls,
+        subsystem: str,
+        event: str,
+        severity: Severity,
+        correlation_id: str,
+        privacy: PrivacyClass,
+        data: Mapping[str, object],
+    ) -> "ObservabilityEvent":
         if not subsystem or not event or not correlation_id:
             raise ValueError("observability identity fields are required")
         if not isinstance(severity, Severity):
@@ -53,7 +61,10 @@ class ObservabilityEvent:
             raise TypeError("privacy must be a PrivacyClass")
         if not isinstance(data, Mapping):
             raise TypeError("data must be a mapping")
+        redacted = _redact(dict(data))
+        if not isinstance(redacted, Mapping):
+            raise TypeError("redacted data must be a mapping")
         return cls(
             subsystem, event, severity, correlation_id, privacy,
-            datetime.now(timezone.utc), _redact(dict(data)),
+            datetime.now(timezone.utc), redacted,
         )
