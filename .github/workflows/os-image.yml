@@ -168,6 +168,7 @@ jobs:
                   "os-reproducibility",
               ),
           )
+          print("RELEASE_CANDIDATE_GATES", candidate.required_gate_ids, candidate.passing_gate_ids, candidate.failed_gate_ids, candidate.missing_gate_ids, candidate.ready)
           if not candidate.ready:
               raise SystemExit("release candidate is not ready")
           Path("dist/alpha-release-candidate-evidence.json").write_text(
