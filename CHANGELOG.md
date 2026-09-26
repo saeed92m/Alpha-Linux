@@ -24,12 +24,14 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 4 Command Bar foundation with immutable command contracts, deterministic normalization, availability enforcement, and bounded argument validation.
 - Phase 4 Agent Runtime foundation with immutable agent contracts, explicit capability allowlists, deterministic planning, and bounded step budgets.
 - Phase 4 Orchestrator foundation with immutable dependency graphs, deterministic topological planning, cycle rejection, and bounded workflow size.
+- Phase 4 Permissions foundation with immutable rules/requests, deterministic policy evaluation, explicit allow/deny decisions, and default-deny behavior.
+- Phase 4 Verification foundation with immutable evidence contracts, deterministic normalization, bounded reports, and explicit pass/fail aggregation.
 
 ### Changed
 
 - Completed the Phase 2 reference-runtime baseline and activated Phase 3 — Desktop and Interaction.
 - Completed the Phase 3 desktop and interaction reference-runtime foundation; Phase 4 — AI Platform became the active implementation phase.
-- Phase 4 now has eight merged reference-runtime foundations: Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, and Orchestrator.
+- Phase 4 now has ten merged reference-runtime foundations: Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, Orchestrator, Permissions, and Verification.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
@@ -37,4 +39,4 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - The repository does not yet contain an installable Alpha Linux release.
 - No stable, beta, or alpha product release is claimed by this changelog until release artifacts and the required release evidence exist.
 - Phase 3 completion refers to the deterministic reference/runtime foundation. Privileged host mutation, production COSMIC runtime integration, installer/ISO delivery, and release-scoped validation remain governed by their respective roadmap phases.
-- Phase 4 remains in implementation; completion will not be claimed until all roadmap slices and their required evidence are complete.
+- Phase 4 reference-runtime implementation is complete. Production provider execution, persistent knowledge/memory backends, autonomous host actions, privileged integration, and release-scoped evidence remain outside these foundations and are governed by later implementation/release phases.
