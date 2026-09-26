@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Mapping
 
@@ -19,7 +19,7 @@ class WindowDescriptor:
     application_id: str
     workspace_id: str
     state: WindowState = WindowState.NORMAL
-    metadata: Mapping[str, object] = None
+    metadata: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.window_id.strip():
@@ -56,9 +56,11 @@ class MultitaskingSnapshot:
 
     def __post_init__(self) -> None:
         workspace_ids = [item.workspace_id for item in self.workspaces]
-        if workspace_ids != sorted(workspace_ids, key=lambda value: next(
-            item.index for item in self.workspaces if item.workspace_id == value
-        )):
+        ordered_ids = [
+            item.workspace_id
+            for item in sorted(self.workspaces, key=lambda item: (item.index, item.workspace_id))
+        ]
+        if workspace_ids != ordered_ids:
             raise ValueError("workspaces must be ordered by index")
         if len(workspace_ids) != len(set(workspace_ids)):
             raise ValueError("workspace identifiers must be unique")
