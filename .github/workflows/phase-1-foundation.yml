@@ -239,6 +239,44 @@ jobs:
               raise SystemExit(f"missing provenance fields: {missing}")
           PY
 
+  ci_rel_001:
+    name: CI-REL-001 Release Evidence
+    needs: [ci_pkg_001, ci_art_001, ci_rep_001]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: alpha-package-artifacts
+          path: dist
+      - name: Compute release evidence
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          artifact = next(Path("dist").glob("*.whl"))
+          evidence = {
+              "release_id": "alpha-0-1-0a1",
+              "version": "0.1.0a1",
+              "artifact_id": artifact.name,
+              "artifact_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
+              "source_commit": "${SOURCE_COMMIT}",
+              "ci_run_id": "${RUN_ID}",
+              "deterministic_tag": "v0.1.0a1",
+          }
+          Path("dist/release-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: alpha-release-evidence
+          path: dist/release-evidence.json
+          if-no-files-found: error
+
   ci_rep_001:
     name: CI-REP-001 Reproducibility
     runs-on: ubuntu-latest
@@ -328,6 +366,7 @@ jobs:
       - ci_bld_001
       - ci_art_001
       - ci_rep_001
+      - ci_rel_001
       - ci_sec_001
       - ci_scan_001
       - ci_sbom_001
