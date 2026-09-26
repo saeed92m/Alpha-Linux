@@ -57,6 +57,9 @@ class PermissionPlanner:
         rule_ids = [rule.rule_id for rule in normalized]
         if len(set(rule_ids)) != len(rule_ids):
             raise ValueError("rule IDs must be unique")
+        capabilities = [rule.capability for rule in normalized]
+        if len(set(capabilities)) != len(capabilities):
+            raise ValueError("capabilities must be unique")
         matches = [
             rule for rule in normalized if rule.capability == request.capability
         ]
