@@ -30,8 +30,8 @@ class WindowDescriptor:
             raise ValueError("application_id is required")
         if not self.workspace_id.strip():
             raise ValueError("workspace_id is required")
-        if self.metadata is None:
-            object.__setattr__(self, "metadata", {})
+        if not isinstance(self.state, WindowState):
+            raise ValueError("state must be a WindowState")
 
 
 @dataclass(frozen=True)
