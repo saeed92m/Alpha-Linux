@@ -3,7 +3,6 @@ import pytest
 from alpha_core.multitasking import (
     MultitaskingPlanner,
     WindowDescriptor,
-    WindowState,
     WorkspaceDescriptor,
 )
 
