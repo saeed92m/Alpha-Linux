@@ -8,6 +8,11 @@ The project follows a release-oriented change history. Unreleased work is kept u
 
 ### Added
 
+- Alpha 0.1.0a1 release-publication foundation binding the verified package artifact to source commit, CI evidence, checksum, and deterministic tag intent without publication side effects.
+
+
+### Added
+
 - Phase 2 reference-runtime surfaces covering system integration, Control Center, Software Center, Hardware Manager, Observatory, Profiles, update/recovery foundations, and the unified integration facade.
 - Phase 3 desktop and interaction foundation covering deterministic desktop/session capability modeling.
 - Phase 3 COSMIC integration boundary with deterministic, non-mutating reference binding.
