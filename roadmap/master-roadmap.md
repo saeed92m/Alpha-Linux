@@ -50,6 +50,8 @@
 - multi-display
 - theme system
 
+**Status:** Completed reference-runtime foundation. All listed desktop and interaction slices are implemented, tested, CI-validated, and merged. Production privileged host mutation, production COSMIC runtime integration, and release-scoped validation remain governed by later phases.
+
 ## Phase 4 — AI Platform
 
 - Alpha AI Core
@@ -61,6 +63,8 @@
 - Orchestrator
 - permissions
 - verification
+
+**Status:** Next active phase.
 
 ## Phase 5 — Domain platform
 

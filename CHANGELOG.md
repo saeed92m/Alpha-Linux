@@ -11,15 +11,20 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 2 reference-runtime surfaces covering system integration, Control Center, Software Center, Hardware Manager, Observatory, Profiles, update/recovery foundations, and the unified integration facade.
 - Phase 3 desktop and interaction foundation covering deterministic desktop/session capability modeling.
 - Phase 3 COSMIC integration boundary with deterministic, non-mutating reference binding.
+- Phase 3 multitasking foundation with immutable workspace/window contracts and deterministic planning.
+- Phase 3 touch and pen foundation with immutable input-device contracts and deterministic capability planning.
+- Phase 3 HiDPI foundation with immutable display-scaling contracts and deterministic policy validation.
+- Phase 3 multi-display foundation with immutable topology, primary-display semantics, and deterministic display selection.
 - Phase 3 theme-system foundation with immutable theme contracts, token validation, deterministic overlays, and stable theme identity.
 
 ### Changed
 
 - Completed the Phase 2 reference-runtime baseline and activated Phase 3 — Desktop and Interaction.
+- Completed the Phase 3 desktop and interaction reference-runtime foundation; Phase 4 — AI Platform is now the next active implementation phase.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
 
 - The repository does not yet contain an installable Alpha Linux release.
 - No stable, beta, or alpha product release is claimed by this changelog until release artifacts and the required release evidence exist.
-- The current implementation remains a reference/runtime foundation; privileged host mutation, production COSMIC runtime integration, installer/ISO delivery, and release-scoped validation remain governed by their respective roadmap phases.
+- Phase 3 completion refers to the deterministic reference/runtime foundation. Privileged host mutation, production COSMIC runtime integration, installer/ISO delivery, and release-scoped validation remain governed by their respective roadmap phases.
