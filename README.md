@@ -61,9 +61,10 @@ The CI/CD workflow covers:
 - Bandit and dependency vulnerability auditing;
 - Gitleaks secret scanning;
 - CycloneDX SBOM generation;
-- machine-readable gate evidence.
+- machine-readable gate evidence;
+- Alpha OS ISO build, base-image verification, boot-metadata preservation, artifact hashing, provenance, and evidence publication on the OS image track.
 
-ISO and release-promotion gates remain deferred until those actual promotion artifacts and workflows exist.
+Public OS release, installation validation, and release promotion remain deferred until the actual image artifact and corresponding release evidence are verified.
 
 ## Documentation hierarchy
 
