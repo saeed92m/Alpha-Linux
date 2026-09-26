@@ -83,7 +83,7 @@
 - Cloud/DevOps
 - Education and research
 
-**Status:** Active domain implementation. Developer, AI/ML/HPC, and Astronomy reference foundations are implemented, tested, CI-validated, and merged. Aerospace is the next active domain slice.
+**Status:** Active domain implementation. Developer, AI/ML/HPC, Astronomy, and Aerospace reference foundations are implemented, tested, CI-validated, and merged. Engineering is the next active domain slice.
 
 ## Phase 6 — Hardening
 
