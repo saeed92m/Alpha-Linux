@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Mapping
 
 from .events import EventBus
 from .observability import ObservabilityEvent, PrivacyClass, Severity
@@ -49,13 +50,13 @@ class CoreLifecycle:
         self.state = CoreState.STOPPED
         self._emit("core.recovered")
 
-    def _emit(self, name: str, data=None) -> None:
+    def _emit(self, name: str, data: Mapping[str, object] | None = None) -> None:
         event = ObservabilityEvent.create(
             "alpha-core",
             name,
             Severity.ERROR if self.state is CoreState.FAILED else Severity.INFO,
             "core-lifecycle",
             PrivacyClass.INTERNAL,
-            data or {"state": self.state.value},
+            data if data is not None else {"state": self.state.value},
         )
         self.events.publish(event)
