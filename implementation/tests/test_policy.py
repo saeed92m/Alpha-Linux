@@ -28,7 +28,8 @@ def test_missing_capability_is_denied():
 
 def test_admin_requires_explicit_approval():
     decision = PolicyEngine().decide(
-        request(permission=PermissionLevel.RESTRICTED_ADMIN, approved=False)
+        request(permission=PermissionLevel.RESTRICTED_ADMIN),
+        approved=False,
     )
     assert not decision.allowed
     assert decision.requires_approval

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+import hashlib
 from platform import machine, platform, processor
 from typing import Mapping
 
@@ -53,6 +54,9 @@ class ConfigurationStore:
     def delete(self, namespace: str, key: str) -> None:
         self._values.pop(f"{namespace}.{key}", None)
 
+    def snapshot(self) -> Mapping[str, object]:
+        return dict(self._values)
+
 
 class SystemDiscovery:
     """Read-only host discovery with no privileged operations."""
@@ -87,9 +91,11 @@ class UpdatePlanner:
     def plan(self, package_actions: tuple[str, ...], *, requires_privilege: bool = True) -> UpdatePlan:
         if any(not action.strip() for action in package_actions):
             raise ValueError("package actions must be non-empty")
+        normalized = tuple(action.strip() for action in package_actions)
+        identity = hashlib.sha256("\\0".join(normalized).encode("utf-8")).hexdigest()[:16]
         return UpdatePlan(
-            plan_id="update-plan",
-            package_actions=tuple(package_actions),
+            plan_id=f"update-{identity}",
+            package_actions=normalized,
             requires_privilege=requires_privilege,
             dry_run=True,
         )

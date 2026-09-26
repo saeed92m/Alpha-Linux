@@ -43,7 +43,7 @@ class EventBus:
             try:
                 subscription.callback(event)
             except Exception as exc:  # observers are isolated from the control plane
-                failures.append(f"{subscription.subscription_id}: {type(exc).__name__}: {exc}")
+                failures.append(f"{subscription.subscription_id}: {type(exc).__name__}")
                 continue
             delivered += 1
         self._last_failures = tuple(failures)
