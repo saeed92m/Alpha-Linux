@@ -13,6 +13,7 @@ The Verification layer is a declarative Phase 4 reference foundation.
 - Check IDs, categories, and evidence are non-empty.
 - Check IDs are unique within a report.
 - Verification limits are positive.
+- Reports must contain at least one check.
 - Report ordering is deterministic.
 - A report passes only when every included check passes.
 
