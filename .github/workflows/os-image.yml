@@ -40,7 +40,7 @@ jobs:
       - name: Install Alpha package
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install -e .
+          python3 -m pip install -e ".[dev]"
 
       - name: Validate OS image evidence tests
         run: python3 -m pytest implementation/tests/test_os_image.py
