@@ -83,7 +83,7 @@
 - Cloud/DevOps
 - Education and research
 
-**Status:** Active domain implementation. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, and SDR/RF reference foundations are implemented, tested, CI-validated, and merged. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, SDR/RF, and Creator reference foundations are implemented, tested, CI-validated, and merged. Music & Audio is the current active domain slice.
+**Status:** Active domain implementation. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, and SDR/RF reference foundations are implemented, tested, CI-validated, and merged. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, SDR/RF, and Creator reference foundations are implemented, tested, CI-validated, and merged. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, SDR/RF, Creator, and Music & Audio reference foundations are implemented, tested, CI-validated, and merged. Data/GIS is the current active domain slice.
 
 ## Phase 6 — Hardening
 
