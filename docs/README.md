@@ -15,10 +15,12 @@
 
 ## Current phase
 
-**Phase 0 — Product Definition, Specification and Engineering Foundation**
+**Phase 2 — System Integration and Core Runtime**
 
-Implementation remains gated until the specification/architecture baseline is audited and frozen.
+Phase 0 provides the frozen normative foundation. Phase 1 established executable engineering contracts and CI evidence. Phase 2 is implementing Alpha Core and system-integration vertical slices, while CI/CD continuously verifies the executable implementation boundary.
 
 ## Working rule
 
 If implementation reveals a missing requirement or architectural assumption, stop and update the appropriate authoritative document before silently encoding the assumption in code.
+
+The CI/CD workflow is executable engineering policy: its runtime results are evidence, while specifications and architecture remain the authoritative sources for required behavior.
