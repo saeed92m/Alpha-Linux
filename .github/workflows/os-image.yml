@@ -1,0 +1,119 @@
+name: Alpha OS Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/build_alpha_os_image.sh"
+      - "implementation/alpha_core/os_image.py"
+      - "implementation/tests/test_os_image.py"
+      - "specs/alpha-os-image-artifact-contract.md"
+      - ".github/workflows/os-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alpha-os-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Alpha OS ISO
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Inspect runner storage
+        run: df -h
+
+      - name: Install image build tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends xorriso
+
+      - name: Install Alpha package
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e .
+
+      - name: Validate OS image evidence tests
+        run: python3 -m pytest implementation/tests/test_os_image.py
+
+      - name: Build and validate Alpha OS ISO
+        env:
+          ALPHA_VERSION: "0.1.0a1"
+          ALPHA_CHANNEL: "alpha"
+          ALPHA_ARCH: "amd64"
+          ALPHA_RELEASE_ID: "alpha-os-0-1-0a1"
+          ALPHA_BUILD_ENVIRONMENT: "github-hosted-ubuntu-latest"
+          ALPHA_REPRODUCIBILITY_RESULT: "not-run"
+        run: |
+          chmod +x scripts/build_alpha_os_image.sh
+          scripts/build_alpha_os_image.sh
+
+      - name: Verify manifest and embedded provenance
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json").read_text())
+
+          required = [
+              "release_id",
+              "version",
+              "channel",
+              "architecture",
+              "artifact_filename",
+              "artifact_size",
+              "artifact_sha256",
+              "source_commit",
+              "ci_run_id",
+              "build_environment",
+              "reproducibility_result",
+          ]
+          missing = [key for key in required if key not in manifest]
+          if missing:
+              raise SystemExit(f"missing evidence fields: {missing}")
+
+          if manifest["source_commit"] != "${{ github.sha }}":
+              raise SystemExit("manifest source commit does not match workflow SHA")
+          if manifest["ci_run_id"] != "${{ github.run_id }}":
+              raise SystemExit("manifest CI run ID does not match workflow run")
+          if manifest["artifact_filename"] != "alpha-linux-0.1.0a1-alpha-amd64.iso":
+              raise SystemExit("unexpected deterministic artifact filename")
+          if manifest["artifact_size"] <= 0:
+              raise SystemExit("artifact size must be positive")
+          if len(manifest["artifact_sha256"]) != 64:
+              raise SystemExit("artifact SHA-256 is invalid")
+
+          print(json.dumps(manifest, indent=2, sort_keys=True))
+          PY
+
+      - name: Write CI summary
+        run: |
+          echo "## Alpha OS Image" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: alpha-linux-0.1.0a1-alpha-amd64.iso" >> "$GITHUB_STEP_SUMMARY"
+          echo "Source commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "CI run: ${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Boot metadata: validated with xorriso" >> "$GITHUB_STEP_SUMMARY"
+          echo "Install validation: not performed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Reproducibility: not-run" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Alpha OS image
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a1-alpha-amd64
+          path: |
+            dist/alpha-linux-0.1.0a1-alpha-amd64.iso
+            dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json
+            dist/el-torito-report.txt
+          archive: false
+          if-no-files-found: error
