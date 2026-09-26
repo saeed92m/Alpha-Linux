@@ -30,6 +30,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 AI/ML/HPC domain foundation with immutable training/inference workload contracts, compute-resource capability contracts, deterministic compatibility planning, and bounded resource selection.
 - Phase 5 Astronomy domain foundation with immutable sky-position, photometry, and observation contracts, deterministic normalization, and bounded object-specific planning.
 - Phase 5 Aerospace domain foundation with immutable vehicle capability and mission-phase contracts, deterministic capability validation, ordered sequencing, and bounded mission planning.
+- Phase 5 Engineering domain foundation with immutable engineering project/analysis contracts, explicit unit-bearing values, deterministic resource compatibility planning, and bounded analysis planning.
 
 ### Changed
 
@@ -39,7 +40,8 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Developer domain foundation is complete; AI/ML/HPC became the active domain slice.
 - Phase 5 AI/ML/HPC domain foundation is complete; Astronomy became the active domain slice.
 - Phase 5 Astronomy domain foundation is complete; Aerospace became the active domain slice.
-- Phase 5 Aerospace domain foundation is complete; Engineering is the next active domain slice.
+- Phase 5 Aerospace domain foundation is complete; Engineering became the active domain slice.
+- Phase 5 Engineering domain foundation is complete; Motorsport is the next active domain slice.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
