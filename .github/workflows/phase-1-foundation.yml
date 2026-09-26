@@ -265,8 +265,8 @@ jobs:
               "version": "0.1.0a1",
               "artifact_id": artifact.name,
               "artifact_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
-              "source_commit": "${SOURCE_COMMIT}",
-              "ci_run_id": "${RUN_ID}",
+              "source_commit": "${{ env.SOURCE_COMMIT }}",
+              "ci_run_id": "${{ env.RUN_ID }}",
               "deterministic_tag": "v0.1.0a1",
           }
           Path("dist/release-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
