@@ -1,6 +1,6 @@
 # Alpha Linux — Master Specification
 
-**Status:** Phase 2 implementation baseline / normative specification
+**Status:** Phase 2 reference-runtime baseline completed; Phase 3 desktop and interaction implementation is the active next phase.
 
 ## 1. Product definition
 
