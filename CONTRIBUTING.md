@@ -4,7 +4,7 @@ Alpha Linux is developed documentation-first and specification-first.
 
 ## Current phase
 
-The repository is currently in **Phase 2 — System Integration and Core Runtime**. Phase 0 specification and Phase 1 foundation baselines are established; implementation work must remain traceable to the frozen specification.
+The repository has completed the **Phase 2 reference-runtime baseline** and is entering **Phase 3 — Desktop and Interaction**. Phase 0 specification and Phase 1 foundation baselines remain established; all implementation work must remain traceable to the frozen specification.
 
 ## Workflow
 
