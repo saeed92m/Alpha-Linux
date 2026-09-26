@@ -107,4 +107,7 @@
 - Beta
 - Stable release
 
+- Alpha 0.1.0a1 package artifact verified in CI; release publication remains gated by release-specific evidence.
+- OS ISO/IMG release remains a separate future artifact track.
+
 Dates are intentionally not fixed until the relevant implementation and release evidence is available.
