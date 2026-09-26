@@ -77,7 +77,7 @@ def test_spatial_reference_contract() -> None:
     try:
         SpatialReference("", SpatialReferenceKind.GEOGRAPHIC, "EPSG", "4326")
     except ValueError as exc:
-        assert str(exc) == "reference_id is required"
+        assert str(exc) == "authority is required"
     else:
         raise AssertionError("expected ValueError")
 
@@ -112,7 +112,7 @@ def test_planning_and_spatial_compatibility() -> None:
 
     try:
         DataGISPlanner().plan(
-            project(),
+            project(data_kinds=(DataKind.TABULAR,)),
             (tool("tab"),),
             (req(data_kind=DataKind.RASTER),),
         )
