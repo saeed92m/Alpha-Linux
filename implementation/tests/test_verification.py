@@ -57,6 +57,15 @@ def test_duplicate_check_ids_are_rejected() -> None:
         raise AssertionError("expected rejection")
 
 
+def test_empty_report_is_rejected() -> None:
+    try:
+        VerificationPlanner().build_report((), VerificationRequest(1))
+    except ValueError as exc:
+        assert str(exc) == "at least one check is required"
+    else:
+        raise AssertionError("expected rejection")
+
+
 def test_invalid_request_is_rejected() -> None:
     try:
         VerificationRequest(0)
