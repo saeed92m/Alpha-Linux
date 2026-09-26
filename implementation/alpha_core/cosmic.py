@@ -48,7 +48,7 @@ class CosmicReferenceAdapter:
         missing = tuple(sorted(set(config.display_ids) - available))
         if missing:
             state = IntegrationState.UNAVAILABLE
-        elif config.hidpi_scale != 1.0 and capabilities.interaction.hidpi is IntegrationState.UNAVAILABLE:
+        elif config.hidpi_scale != 1.0 and capabilities.interaction.hidpi.value == "unavailable":
             state = IntegrationState.DEGRADED
         else:
             state = IntegrationState.SUPPORTED
