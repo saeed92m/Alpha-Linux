@@ -101,7 +101,6 @@ class AlphaReleaseCandidateEvidence:
         failed = set(self.failed_gate_ids)
         return not (required - passing - failed) and not (required & failed)
 
-    @property
     def to_dict(self) -> dict[str, object]:
         return {
             "release_id": self.release_id,
