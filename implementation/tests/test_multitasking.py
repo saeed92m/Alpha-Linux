@@ -61,7 +61,9 @@ def test_duplicate_window_ids_are_rejected():
 
 
 def test_window_cannot_reference_unknown_workspace():
-    windows = (WindowDescriptor("win-a", "Editor", "org.cosmic.Editor", "ws-9"),)
+    windows = (
+        WindowDescriptor("win-a", "Editor", "org.cosmic.Editor", "ws-9"),
+    )
     with pytest.raises(ValueError, match="unavailable workspace"):
         MultitaskingPlanner().normalize(workspaces(), windows)
 
