@@ -33,11 +33,12 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 6 compatibility foundation with immutable target/requirement/decision/plan contracts, deterministic platform/version/capability evaluation, and bounded reference-only planning.
 - Phase 6 performance foundation with immutable target/requirement/decision/plan contracts, deterministic latency/throughput/resource-budget evaluation, and bounded reference-only planning.
 - Phase 6 hardware validation foundation with immutable capability/requirement/decision/plan contracts, deterministic declared-capability validation, and bounded reference-only planning.
+- Phase 6 accessibility foundation with immutable capability/requirement/decision/plan contracts, deterministic declared-feature validation, and bounded reference-only planning.
 
 ### Changed
 
 - Phase 5 Domain Platform is complete and Phase 6 — Hardening is the active implementation phase.
-- Phase 6 security hardening is complete; privacy hardening is complete; recovery and backup are complete; compatibility is complete; performance is complete; hardware validation is implemented on the current hardening branch and accessibility is the next active Phase 6 slice.
+- Phase 6 security hardening is complete; privacy hardening is complete; recovery and backup are complete; compatibility is complete; performance is complete; hardware validation is complete; accessibility is implemented on the current hardening branch and localization is the next active Phase 6 slice.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
