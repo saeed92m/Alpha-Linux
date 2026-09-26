@@ -194,7 +194,7 @@ jobs:
       - name: Validate PEP 517 metadata
         run: |
           metadata="$(python -m build --metadata)"
-          python -c 'import json,sys; m=json.loads(sys.stdin.read()); assert m["name"]=="alpha-linux-core"; assert m["version"]=="0.1.0.dev1"' <<< "$metadata"
+          python -c 'import json,sys; m=json.loads(sys.stdin.read()); assert m["name"]=="alpha-linux-core"; assert m["version"]=="0.1.0a1"' <<< "$metadata"
 
   ci_art_001:
     name: CI-ART-001 Artifact
