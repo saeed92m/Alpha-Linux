@@ -98,7 +98,7 @@
 - localization
 - release QA
 
-**Status:** Active hardening implementation. Security hardening foundation is implemented, tested, CI-validated, and merged; privacy hardening is the active implementation slice and remaining Phase 6 work continues under the hardening program.
+**Status:** Active hardening implementation. Security, privacy, and recovery/backup foundations are implemented on the hardening branch; recovery/backup is the current validation slice and remaining Phase 6 work continues under the hardening program.
 
 ## Phase 7 — Alpha releases
 
