@@ -55,6 +55,19 @@ def test_duplicate_rule_ids_are_rejected() -> None:
         raise AssertionError("expected rejection")
 
 
+def test_duplicate_capabilities_are_rejected() -> None:
+    duplicate = (
+        PermissionRule("rule-a", "same", PermissionEffect.ALLOW),
+        PermissionRule("rule-b", "same", PermissionEffect.DENY),
+    )
+    try:
+        PermissionPlanner().evaluate(duplicate, PermissionRequest("same"))
+    except ValueError as exc:
+        assert str(exc) == "capabilities must be unique"
+    else:
+        raise AssertionError("expected rejection")
+
+
 def test_invalid_request_is_rejected() -> None:
     try:
         PermissionRequest(" ")
