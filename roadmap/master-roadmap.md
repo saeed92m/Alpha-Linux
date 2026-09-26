@@ -64,7 +64,7 @@
 - permissions
 - verification
 
-**Status:** Active implementation. Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, and Orchestrator reference foundations are implemented, tested, CI-validated, and merged. Permissions is the next active slice.
+**Status:** Completed reference-runtime foundation. Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, Orchestrator, Permissions, and Verification foundations are implemented, tested, CI-validated, and merged. Phase 5 — Domain Platform is the next active implementation phase.
 
 ## Phase 5 — Domain platform
 
