@@ -1,6 +1,6 @@
 # Alpha Linux — Master Specification
 
-**Status:** Draft / Specification Phase
+**Status:** Phase 2 implementation baseline / normative specification
 
 ## 1. Product definition
 
@@ -69,17 +69,6 @@ Planned → Specified → Designed → Ready → Implementing → Implemented �
 
 ## 5. Specification freeze
 
-Before implementation begins, the master specification must be audited for:
+The Phase 0 specification baseline has been frozen. New scope is introduced through the Change Request process.
 
-- scope completeness;
-- internal consistency;
-- security and privacy;
-- Ubuntu compatibility;
-- hardware coverage;
-- accessibility;
-- UI/UX;
-- traceability;
-- testability;
-- release feasibility.
-
-After freeze, new scope is introduced through Change Requests.
+Implementation work in later phases must continue to trace back to the frozen specification and preserve its security, compatibility, recovery, testability and release constraints.
