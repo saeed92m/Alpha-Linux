@@ -17,6 +17,8 @@ def test_deterministic_filename():
         "a" * 64,
         "commit",
         "206",
+        "ubuntu-24.04-github-hosted",
+        "not-run",
     )
     evidence.validate_filename()
 
