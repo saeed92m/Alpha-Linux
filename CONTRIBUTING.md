@@ -4,19 +4,20 @@ Alpha Linux is developed documentation-first and specification-first.
 
 ## Current phase
 
-The repository is currently in Product Definition, Requirements, Architecture and Specification work. Do not begin implementation work unless the relevant specification is approved.
+The repository is currently in **Phase 2 — System Integration and Core Runtime**. Phase 0 specification and Phase 1 foundation baselines are established; implementation work must remain traceable to the frozen specification.
 
 ## Workflow
 
 1. Identify or create the requirement.
-2. Update the relevant specification.
-3. Update architecture and traceability where necessary.
-4. Create an issue or change request for non-trivial work.
-5. Use a focused branch.
-6. Submit a pull request.
-7. Pass required automated checks.
-8. Complete review.
-9. Merge only when the change is traceable and documented.
+2. Confirm the relevant specification and architecture boundary.
+3. Create an issue or approved change request for non-trivial work.
+4. Use a focused branch.
+5. Implement the smallest coherent change.
+6. Add or update unit/integration tests and traceability.
+7. Run applicable automated checks.
+8. Submit a pull request.
+9. Complete review and resolve findings.
+10. Merge only when the change is traceable, tested and documented.
 
 ## Commit convention
 
