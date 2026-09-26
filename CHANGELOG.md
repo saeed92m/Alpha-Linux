@@ -28,6 +28,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 4 Verification foundation with immutable evidence contracts, deterministic normalization, bounded reports, and explicit pass/fail aggregation.
 - Phase 5 Developer domain foundation with immutable workspace/toolchain contracts, deterministic normalization, compatibility selection, and bounded toolchain planning.
 - Phase 5 AI/ML/HPC domain foundation with immutable training/inference workload contracts, compute-resource capability contracts, deterministic compatibility planning, and bounded resource selection.
+- Phase 5 Astronomy domain foundation with immutable sky-position, photometry, and observation contracts, deterministic normalization, and bounded object-specific planning.
 
 ### Changed
 
@@ -35,7 +36,8 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Completed the Phase 3 desktop and interaction reference-runtime foundation; Phase 4 — AI Platform became the active implementation phase.
 - Phase 4 now has ten merged reference-runtime foundations: Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, Orchestrator, Permissions, and Verification.
 - Phase 5 Developer domain foundation is complete; AI/ML/HPC became the active domain slice.
-- Phase 5 AI/ML/HPC domain foundation is complete; Astronomy is the next active domain slice.
+- Phase 5 AI/ML/HPC domain foundation is complete; Astronomy became the active domain slice.
+- Phase 5 Astronomy domain foundation is complete; Aerospace is the next active domain slice.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
