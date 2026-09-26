@@ -7,7 +7,7 @@ Define release-scoped artifact specifications and evidence validation for Alpha 
 ## Semantics
 
 - Artifact specifications are immutable and uniquely identified.
-- Alpha versions use `0.x` or `0.x.y` format.
+- Alpha versions use `0.x`/`0.x.y` with optional PEP 440-compatible `aN`, `bN`, or `rcN` prerelease suffix.
 - Evidence requires a lowercase SHA-256 digest and positive artifact size.
 - Expected filenames encode version, platform, architecture, and artifact type.
 - Missing or filename-invalid evidence is reported deterministically.
