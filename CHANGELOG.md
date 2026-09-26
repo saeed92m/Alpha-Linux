@@ -37,6 +37,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Creator domain foundation with immutable project, media-asset lifecycle, tool-capability, and production-requirement contracts, deterministic normalization, bounded planning, and explicit source/proxy/cache/generated-output separation.
 - Phase 5 Music & Audio domain foundation with immutable session, track, capability, and routing-requirement contracts, deterministic normalization, bounded routing planning, and explicit source/processed/rendered track separation.
 - Phase 5 Data/GIS domain foundation with immutable project, layer, spatial-reference, tool, and analysis-requirement contracts, deterministic normalization, bounded compatibility planning, and explicit source/derived/output layer separation.
+- Phase 5 Business domain foundation with immutable workspace, workflow, capability, and requirement contracts, deterministic normalization, bounded compatibility planning, and explicit input/process/output workflow roles.
 
 ### Changed
 
