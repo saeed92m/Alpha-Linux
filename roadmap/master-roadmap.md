@@ -107,7 +107,18 @@
 - Beta
 - Stable release
 
-- Alpha 0.1.0a1 package artifact verified in CI; release publication remains gated by release-specific evidence.
-- OS ISO/IMG release remains a separate future artifact track.
+### Alpha 0.1.0a1 package track
+
+- Package artifact verified in CI.
+- Release-publication foundation complete.
+- Release evidence bound to source commit, CI run and artifact SHA-256.
+- Publication/tag remain separately gated.
+
+### Alpha OS image track
+
+- ISO/IMG artifact contract defined.
+- Deterministic naming and evidence model implemented.
+- Executable image-file validation and tests added.
+- Actual OS image build, boot/install validation and image release evidence remain required before any OS image release claim.
 
 Dates are intentionally not fixed until the relevant implementation and release evidence is available.
