@@ -58,7 +58,9 @@ class MultitaskingSnapshot:
         workspace_ids = [item.workspace_id for item in self.workspaces]
         ordered_ids = [
             item.workspace_id
-            for item in sorted(self.workspaces, key=lambda item: (item.index, item.workspace_id))
+            for item in sorted(
+                self.workspaces, key=lambda item: (item.index, item.workspace_id)
+            )
         ]
         if workspace_ids != ordered_ids:
             raise ValueError("workspaces must be ordered by index")
@@ -80,7 +82,9 @@ class MultitaskingPlanner:
         workspaces: tuple[WorkspaceDescriptor, ...],
         windows: tuple[WindowDescriptor, ...],
     ) -> MultitaskingSnapshot:
-        ordered_workspaces = tuple(sorted(workspaces, key=lambda item: (item.index, item.workspace_id)))
+        ordered_workspaces = tuple(
+            sorted(workspaces, key=lambda item: (item.index, item.workspace_id))
+        )
         ordered_windows = tuple(
             sorted(windows, key=lambda item: (item.workspace_id, item.window_id))
         )
@@ -91,7 +95,9 @@ class MultitaskingPlanner:
         snapshot: MultitaskingSnapshot,
         workspace_id: str,
     ) -> tuple[WindowDescriptor, ...]:
-        if workspace_id not in {item.workspace_id for item in snapshot.workspaces}:
+        if workspace_id not in {
+            item.workspace_id for item in snapshot.workspaces
+        }:
             raise ValueError("unknown workspace")
         return tuple(
             item for item in snapshot.windows if item.workspace_id == workspace_id
