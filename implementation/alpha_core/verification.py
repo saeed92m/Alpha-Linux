@@ -57,6 +57,8 @@ class VerificationPlanner:
         request: VerificationRequest,
     ) -> VerificationReport:
         normalized = self.normalize(checks)
+        if not normalized:
+            raise ValueError("at least one check is required")
         if len(normalized) > request.max_checks:
             raise ValueError("check limit exceeded")
         check_ids = [check.check_id for check in normalized]
