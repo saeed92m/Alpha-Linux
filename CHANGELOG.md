@@ -36,11 +36,12 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 6 accessibility foundation with immutable capability/requirement/decision/plan contracts, deterministic declared-feature validation, and bounded reference-only planning.
 - Phase 6 localization foundation with immutable locale/bundle/planning contracts, deterministic locale fallback and missing-bundle reporting, and bounded reference-only planning.
 - Phase 6 release QA foundation with immutable gate/evidence/result contracts, deterministic required-evidence aggregation, and explicit pass/fail semantics.
+- Phase 7 Alpha release foundation with immutable release manifest/evidence/readiness contracts and deterministic no-release-until-ready evaluation.
 
 ### Changed
 
 - Phase 5 Domain Platform is complete and Phase 6 — Hardening is the active implementation phase.
-- Phase 6 security hardening is complete; privacy hardening is complete; recovery and backup are complete; compatibility is complete; performance is complete; hardware validation is complete; accessibility is complete; localization is complete; release QA is implemented on the current hardening branch. After CI validation and merge, Phase 6 Hardening will be complete and Phase 7 — Alpha releases becomes active.
+- Phase 6 security hardening is complete; privacy hardening is complete; recovery and backup are complete; compatibility is complete; performance is complete; hardware validation is complete; accessibility is complete; localization is complete; release QA is implemented on the current hardening branch. Phase 6 Hardening is complete and Phase 7 — Alpha releases is now active. The current Alpha release slice establishes release-readiness contracts only; no product release is claimed without actual release artifacts and evidence.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
