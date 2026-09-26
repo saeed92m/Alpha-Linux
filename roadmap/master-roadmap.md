@@ -64,7 +64,7 @@
 - permissions
 - verification
 
-**Status:** Next active phase.
+**Status:** Active implementation. Alpha AI Core, AI Execution Runtime, Assistant, and Memory reference foundations are implemented, tested, CI-validated, and merged. Knowledge Center is the next active slice.
 
 ## Phase 5 — Domain platform
 
