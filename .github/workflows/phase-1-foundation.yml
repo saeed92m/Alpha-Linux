@@ -291,7 +291,7 @@ jobs:
           fetch-depth: 0
       - name: Gitleaks
         run: |
-          docker run --rm             -v "$PWD:/repo"             -w /repo             ghcr.io/gitleaks/gitleaks@sha256:c00c3c7c8c0aeb4a2f0e5b9c4c9d9b3c0a5e3b7d0f1e5d6c7b8a9f0e1d2c3b4             detect --source /repo --no-banner --redact
+          docker run --rm             -v "$PWD:/repo"             -w /repo             ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb307bbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f             detect --source /repo --no-banner --redact
 
   ci_sbom_001:
     name: CI-SBOM-001 SBOM
