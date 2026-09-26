@@ -1,102 +1,161 @@
-name: Alpha Linux Phase 1 Foundation
+name: Alpha Linux CI/CD
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: alpha-ci-\${{ github.workflow }}-\${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  PYTHON_VERSION: "3.11"
+  PYTHON_DEFAULT: "3.11"
 
 jobs:
   ci_val_001:
     name: CI-VAL-001 Validate
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
+          python-version: \${{ env.PYTHON_DEFAULT }}
           cache: pip
-      - name: Install
-        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+      - name: Install project
+        run: python -m pip install -e ".[dev]"
       - name: Validate repository
         run: python implementation/validate.py
-      - name: Compile
+      - name: Compile implementation
         run: python -m compileall -q implementation
 
   ci_doc_001:
     name: CI-DOC-001 Documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
-      - run: python implementation/validate.py
+          python-version: \${{ env.PYTHON_DEFAULT }}
+      - name: Validate documentation and internal links
+        run: python implementation/validate.py
 
   ci_lint_001:
     name: CI-LINT-001 Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
-      - run: python -m pip install --upgrade pip ruff
-      - run: ruff check implementation
+          python-version: \${{ env.PYTHON_DEFAULT }}
+      - name: Install project tooling
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check implementation
 
   ci_test_001:
-    name: CI-TEST-001 Unit
+    name: CI-TEST-001 Unit Matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
+          python-version: \${{ matrix.python-version }}
           cache: pip
-      - run: python -m pip install -e ".[dev]"
-      - run: pytest -q
+      - name: Install project
+        run: python -m pip install -e ".[dev]"
+      - name: Run unit tests
+        run: pytest -q
 
   ci_test_002:
-    name: CI-TEST-002 Integration
+    name: CI-TEST-002 Contract
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
-      - run: python -m pip install -e ".[dev]"
-      - name: Contract integration tests
+          python-version: \${{ env.PYTHON_DEFAULT }}
+          cache: pip
+      - name: Install project
+        run: python -m pip install -e ".[dev]"
+      - name: Run contract/component tests
         run: pytest -q implementation/tests/test_system_service.py implementation/tests/test_policy.py implementation/tests/test_agent.py
+
+  ci_type_001:
+    name: CI-TYPE-001 Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: \${{ env.PYTHON_DEFAULT }}
+          cache: pip
+      - name: Install project
+        run: python -m pip install -e ".[dev]"
+      - name: Mypy
+        run: mypy implementation/alpha_core
+
+  ci_cov_001:
+    name: CI-COV-001 Coverage Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: \${{ env.PYTHON_DEFAULT }}
+          cache: pip
+      - name: Install project
+        run: python -m pip install -e ".[dev]"
+      - name: Execute tests with coverage
+        run: |
+          coverage run --source=implementation/alpha_core -m pytest -q
+          coverage report
+          coverage xml -o coverage.xml
+      - uses: actions/upload-artifact@v7
+        with:
+          name: alpha-coverage
+          path: coverage.xml
+          if-no-files-found: error
 
   ci_pkg_001:
     name: CI-PKG-001 Package
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
-      - run: python -m pip install --upgrade pip build
-      - run: python -m build
+          python-version: \${{ env.PYTHON_DEFAULT }}
+          cache: pip
+      - name: Build distribution
+        run: python -m pip install build && python -m build
       - name: Validate wheel installation
         run: |
           python -m pip install --force-reinstall dist/*.whl
           python -c "import alpha_core; print(alpha_core.__version__)"
       - name: Generate package provenance
-        env:
-          SOURCE_COMMIT: ${{github.sha}}
-          RUN_ID: ${{github.run_id}}
         run: |
           python - <<'PY'
           from pathlib import Path
-          from alpha_core.provenance import create_provenance, write_provenance
           import hashlib
+          from alpha_core.provenance import create_provenance, write_provenance
+
           artifact = next(Path("dist").glob("*.whl"))
           config = hashlib.sha256(Path("pyproject.toml").read_bytes()).hexdigest()
           record = create_provenance(
@@ -104,45 +163,53 @@ jobs:
               artifact=artifact,
               artifact_id=artifact.name,
               artifact_type="python-wheel",
-              channel="foundation",
-              source_commit="${{github.sha}}",
-              build_id="${{github.run_id}}",
+              channel="phase-2",
+              source_commit="\${{ github.sha }}",
+              build_id="\${{ github.run_id }}",
               builder_identity="github-actions",
               package_set="pyproject.toml",
               configuration_digest=config,
-              dependency_inventory="python-project-dependencies",
-              test_evidence="CI-TEST-001;CI-TEST-002",
+              dependency_inventory="pyproject.toml[project.dependencies,project.optional-dependencies]",
+              test_evidence="CI-TEST-001;CI-TEST-002;CI-TYPE-001",
           )
           write_provenance(record, Path("dist/provenance.json"))
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: phase-1-package-artifacts
+          name: alpha-package-artifacts
           path: dist/
+          if-no-files-found: error
 
   ci_bld_001:
-    name: CI-BLD-001 Build
+    name: CI-BLD-001 Build Metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
-      - run: python -m pip install --upgrade pip build
-      - run: python -m build --wheel
+          python-version: \${{ env.PYTHON_DEFAULT }}
+      - name: Install build frontend
+        run: python -m pip install build
+      - name: Validate PEP 517 metadata
+        run: |
+          rm -rf dist
+          python -m build --metadata
+          test -s dist/*.whl.metadata.json
 
   ci_art_001:
     name: CI-ART-001 Artifact
     needs: [ci_pkg_001]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
-          name: phase-1-package-artifacts
+          name: alpha-package-artifacts
           path: dist
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
+          python-version: \${{ env.PYTHON_DEFAULT }}
       - name: Validate artifact and provenance
         run: |
           test -n "$(find dist -name '*.whl' -print -quit)"
@@ -150,8 +217,24 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+
           record = json.loads(Path("dist/provenance.json").read_text())
-          required = ["artifact_id","artifact_type","version","source_commit","source_tree_digest","build_id","build_timestamp","builder_identity","toolchain","package_set","configuration_digest","dependency_inventory","test_evidence","artifact_digest"]
+          required = [
+              "artifact_id",
+              "artifact_type",
+              "version",
+              "source_commit",
+              "source_tree_digest",
+              "build_id",
+              "build_timestamp",
+              "builder_identity",
+              "toolchain",
+              "package_set",
+              "configuration_digest",
+              "dependency_inventory",
+              "test_evidence",
+              "artifact_digest",
+          ]
           missing = [key for key in required if not record.get(key)]
           if missing:
               raise SystemExit(f"missing provenance fields: {missing}")
@@ -160,75 +243,131 @@ jobs:
   ci_rep_001:
     name: CI-REP-001 Reproducibility
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
+          python-version: \${{ env.PYTHON_DEFAULT }}
       - name: Build twice from identical inputs
         env:
           SOURCE_DATE_EPOCH: "0"
           PYTHONHASHSEED: "0"
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install build
           rm -rf build dist1 dist2 *.egg-info
           python -m build --wheel --outdir dist1
           rm -rf build *.egg-info
           python -m build --wheel --outdir dist2
-          sha256sum dist1/*.whl
-          sha256sum dist2/*.whl
           test "$(sha256sum dist1/*.whl | awk '{print $1}')" = "$(sha256sum dist2/*.whl | awk '{print $1}')"
 
   ci_sec_001:
-    name: CI-SEC-001 Security
+    name: CI-SEC-001 Static Security
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{env.PYTHON_VERSION}}
-      - run: python -m compileall -q implementation
-      - name: Scan tracked source for obvious hard-coded secrets
-        shell: bash
-        run: |
-          if git grep -nE '(api[_-]?key|password|token|private[_-]?key)[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"']{8,}' -- ':!*.md' ':!implementation/tests/*'; then
-            echo "Potential hard-coded secret detected"
-            exit 1
-          fi
+          python-version: \${{ env.PYTHON_DEFAULT }}
+          cache: pip
+      - name: Install project security tooling
+        run: python -m pip install -e ".[dev]"
+      - name: Bandit
+        run: bandit -q -r implementation/alpha_core -ll
+      - name: Dependency audit
+        run: pip-audit
+      - name: Compile
+        run: python -m compileall -q implementation
+
+  ci_scan_001:
+    name: CI-SCAN-001 Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
+  ci_sbom_001:
+    name: CI-SBOM-001 SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: \${{ env.PYTHON_DEFAULT }}
+          cache: pip
+      - name: Install project and audit tooling
+        run: python -m pip install -e ".[dev]"
+      - name: Generate CycloneDX SBOM
+        run: pip-audit --format cyclonedx-json --output sbom.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: alpha-sbom
+          path: sbom.json
+          if-no-files-found: error
 
   evidence:
     name: CI evidence summary
     if: always()
-    needs: [ci_val_001, ci_doc_001, ci_lint_001, ci_test_001, ci_test_002, ci_pkg_001, ci_bld_001, ci_art_001, ci_rep_001, ci_sec_001]
+    needs:
+      - ci_val_001
+      - ci_doc_001
+      - ci_lint_001
+      - ci_test_001
+      - ci_test_002
+      - ci_type_001
+      - ci_cov_001
+      - ci_pkg_001
+      - ci_bld_001
+      - ci_art_001
+      - ci_rep_001
+      - ci_sec_001
+      - ci_scan_001
+      - ci_sbom_001
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Write gate evidence
         env:
-          SOURCE_COMMIT: ${{github.sha}}
-          RUN_ID: ${{github.run_id}}
+          SOURCE_COMMIT: \${{ github.sha }}
+          RUN_ID: \${{ github.run_id }}
         run: |
           mkdir -p evidence
-          cat > evidence/phase-1-gates.json <<EOF
+          cat > evidence/ci-gates.json <<EOF
           {
             "source_commit": "$SOURCE_COMMIT",
             "run_id": "$RUN_ID",
-            "workflow": "Alpha Linux Phase 1 Foundation",
+            "workflow": "Alpha Linux CI/CD",
             "gates": {
-              "CI-VAL-001": "${{needs.ci_val_001.result}}",
-              "CI-DOC-001": "${{needs.ci_doc_001.result}}",
-              "CI-LINT-001": "${{needs.ci_lint_001.result}}",
-              "CI-TEST-001": "${{needs.ci_test_001.result}}",
-              "CI-TEST-002": "${{needs.ci_test_002.result}}",
-              "CI-PKG-001": "${{needs.ci_pkg_001.result}}",
-              "CI-BLD-001": "${{needs.ci_bld_001.result}}",
-              "CI-ART-001": "${{needs.ci_art_001.result}}",
-              "CI-REP-001": "${{needs.ci_rep_001.result}}",
-              "CI-SEC-001": "${{needs.ci_sec_001.result}}"
+              "CI-VAL-001": "\${{ needs.ci_val_001.result }}",
+              "CI-DOC-001": "\${{ needs.ci_doc_001.result }}",
+              "CI-LINT-001": "\${{ needs.ci_lint_001.result }}",
+              "CI-TEST-001": "\${{ needs.ci_test_001.result }}",
+              "CI-TEST-002": "\${{ needs.ci_test_002.result }}",
+              "CI-TYPE-001": "\${{ needs.ci_type_001.result }}",
+              "CI-COV-001": "\${{ needs.ci_cov_001.result }}",
+              "CI-PKG-001": "\${{ needs.ci_pkg_001.result }}",
+              "CI-BLD-001": "\${{ needs.ci_bld_001.result }}",
+              "CI-ART-001": "\${{ needs.ci_art_001.result }}",
+              "CI-REP-001": "\${{ needs.ci_rep_001.result }}",
+              "CI-SEC-001": "\${{ needs.ci_sec_001.result }}",
+              "CI-SCAN-001": "\${{ needs.ci_scan_001.result }}",
+              "CI-SBOM-001": "\${{ needs.ci_sbom_001.result }}"
             }
           }
           EOF
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: phase-1-gate-evidence
-          path: evidence/phase-1-gates.json
+          name: alpha-ci-gate-evidence
+          path: evidence/ci-gates.json
+          if-no-files-found: error
