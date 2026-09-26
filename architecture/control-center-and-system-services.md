@@ -28,3 +28,7 @@ OS-backed privileged adapters (future)
 ## Current implementation status
 
 The reference implementation is host-safe: update application is a no-op backend and hardware discovery reads standard Linux pseudo-filesystems only.
+
+## Software Center boundary
+
+Software Center sits beside the Control Center as a read/plan service. It may expose catalog state and deterministic install/remove plans, but it does not authorize or execute privileged package operations. Future package-manager adapters must cross the existing Policy / System Service boundary and provide verification and recovery evidence.
