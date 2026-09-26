@@ -31,12 +31,15 @@ def test_workspace_plans_compatible_toolchain() -> None:
 
 def test_disabled_toolchain_is_not_selected() -> None:
     workspace = DeveloperWorkspace("ws", "application", ("python",))
-    plan = DeveloperPlanner().plan(
-        workspace,
-        (ToolchainDescriptor("disabled", "Disabled", ("python",), False),),
-    )
-    # No enabled candidate means planning must reject rather than select it.
-    assert plan.toolchain_ids == ("python",)
+    try:
+        DeveloperPlanner().plan(
+            workspace,
+            (ToolchainDescriptor("disabled", "Disabled", ("python",), False),),
+        )
+    except ValueError as exc:
+        assert str(exc) == "no compatible toolchain"
+    else:
+        raise AssertionError("expected rejection")
 
 
 def test_unsupported_language_is_rejected() -> None:
