@@ -49,7 +49,7 @@ def test_expired_backup_is_denied():
 
 def test_missing_policy_match_is_denied():
     value = RecoveryBackupRequest(
-        "r1", RecoveryState.ROLLBACK, BackupScope.STATE, True, 1
+        "r1", RecoveryState.FAIL, BackupScope.STATE, True, 1
     )
     decision = RecoveryBackupPlanner().evaluate((policy(),), value)
     assert decision.disposition == RecoveryBackupDisposition.DENY
