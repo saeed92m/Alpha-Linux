@@ -42,6 +42,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Education and research domain foundation with immutable workspace, workflow, capability, and requirement contracts, deterministic normalization, bounded compatibility planning, and explicit reference-only education/research execution boundaries.
 - Phase 6 security hardening foundation with immutable security classification, control, audit-event, and hardening-plan contracts, deterministic bounded planning, and deny-by-default reference semantics.
 - Phase 6 privacy hardening foundation with immutable classification, purpose, consent, retention, request, decision, and plan contracts.
+- Phase 6 recovery and backup foundation with immutable recovery policy/request/decision contracts, deterministic normalization, bounded planning, verification and retention semantics.
 
 ### Changed
 
@@ -62,7 +63,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Business foundation is complete; Cloud/DevOps became the active domain slice.
 - Phase 5 Cloud/DevOps foundation is complete; Education and research became the active domain slice.
 - Phase 5 Education and research foundation is complete; Phase 5 Domain Platform is complete and Phase 6 — Hardening became the active implementation phase.
-- Phase 6 security hardening foundation is complete; security hardening remains the active Phase 6 slice.
+- Phase 6 security hardening foundation is complete; privacy hardening is complete; recovery and backup became the active Phase 6 slice.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
