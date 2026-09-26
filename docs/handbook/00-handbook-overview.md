@@ -59,4 +59,8 @@ Testing demonstrates that the system satisfies its requirements.
 
 ## Current phase
 
-The project is currently in documentation/specification. The Handbook is therefore being established before implementation.
+The project is currently in **Phase 2 — System Integration and Core Runtime**.
+
+The implementation baseline now includes executable Alpha Core and system-integration reference surfaces. CI/CD provides runtime evidence for validation, packaging, reproducibility, security, SBOM generation and compatibility across supported Python versions.
+
+The Handbook remains educational and must not be treated as a substitute for normative requirements or architecture decisions.
