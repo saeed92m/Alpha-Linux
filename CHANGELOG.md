@@ -41,6 +41,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Cloud/DevOps domain foundation with immutable environment, service, and requirement contracts, deterministic normalization, bounded compatibility planning, and explicit reference-only cloud execution boundaries.
 - Phase 5 Education and research domain foundation with immutable workspace, workflow, capability, and requirement contracts, deterministic normalization, bounded compatibility planning, and explicit reference-only education/research execution boundaries.
 - Phase 6 security hardening foundation with immutable security classification, control, audit-event, and hardening-plan contracts, deterministic bounded planning, and deny-by-default reference semantics.
+- Phase 6 privacy hardening foundation with immutable classification, purpose, consent, retention, request, decision, and plan contracts.
 
 ### Changed
 
