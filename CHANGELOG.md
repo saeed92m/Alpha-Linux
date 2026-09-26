@@ -23,12 +23,13 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 4 Knowledge Center foundation with immutable source/document contracts, explicit provenance, deterministic normalization, and namespace-scoped bounded planning.
 - Phase 4 Command Bar foundation with immutable command contracts, deterministic normalization, availability enforcement, and bounded argument validation.
 - Phase 4 Agent Runtime foundation with immutable agent contracts, explicit capability allowlists, deterministic planning, and bounded step budgets.
+- Phase 4 Orchestrator foundation with immutable dependency graphs, deterministic topological planning, cycle rejection, and bounded workflow size.
 
 ### Changed
 
 - Completed the Phase 2 reference-runtime baseline and activated Phase 3 — Desktop and Interaction.
 - Completed the Phase 3 desktop and interaction reference-runtime foundation; Phase 4 — AI Platform became the active implementation phase.
-- Phase 4 now has seven merged reference-runtime foundations: Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, and Agent Runtime.
+- Phase 4 now has eight merged reference-runtime foundations: Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, and Orchestrator.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
