@@ -15,24 +15,6 @@ class RecoveryState(str, Enum):
     FAIL = "fail"
 
 
-class RecoveryKind(str, Enum):
-    RESTORE = "restore"
-    ROLLBACK = "rollback"
-    REBUILD = "rebuild"
-
-
-class BackupScope(str, Enum):
-    CONFIGURATION = "configuration"
-    STATE = "state"
-    ARTIFACT = "artifact"
-    FULL = "full"
-
-
-class RecoveryDisposition(str, Enum):
-    ALLOW = "allow"
-    DENY = "deny"
-
-
 @dataclass(frozen=True)
 class RecoveryCheckpoint:
     checkpoint_id: str
@@ -45,8 +27,6 @@ class RecoveryPlan:
     plan_id: str
     checkpoint_id: str
     dry_run: bool = True
-    policy_ids: tuple[str, ...] = ()
-    denied_request_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -56,43 +36,6 @@ class RecoveryResult:
     history: tuple[RecoveryState, ...]
     dry_run: bool
     evidence: dict[str, object]
-
-
-@dataclass(frozen=True)
-class RecoveryPolicy:
-    policy_id: str
-    kind: RecoveryKind
-    scope: BackupScope
-    retention_days: int
-    requires_verified_backup: bool
-
-    def __post_init__(self) -> None:
-        if not self.policy_id.strip():
-            raise ValueError("policy_id is required")
-        if self.retention_days < 0:
-            raise ValueError("retention_days must be non-negative")
-
-
-@dataclass(frozen=True)
-class RecoveryRequest:
-    request_id: str
-    kind: RecoveryKind
-    scope: BackupScope
-    backup_verified: bool
-    backup_age_days: int
-
-    def __post_init__(self) -> None:
-        if not self.request_id.strip():
-            raise ValueError("request_id is required")
-        if self.backup_age_days < 0:
-            raise ValueError("backup_age_days must be non-negative")
-
-
-@dataclass(frozen=True)
-class RecoveryDecision:
-    request_id: str
-    disposition: RecoveryDisposition
-    policy_id: str | None
 
 
 class RecoveryBackend(Protocol):
@@ -129,66 +72,13 @@ class RecoveryPlanner:
         identity = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
         return RecoveryCheckpoint(checkpoint_id=f"checkpoint-{identity}", label=normalized)
 
-    def normalize(self, policies: tuple[RecoveryPolicy, ...]) -> tuple[RecoveryPolicy, ...]:
-        ids = [policy.policy_id for policy in policies]
-        if len(set(ids)) != len(ids):
-            raise ValueError("policy IDs must be unique")
-        return tuple(sorted(policies, key=lambda item: item.policy_id))
-
-    def evaluate(self, policies: tuple[RecoveryPolicy, ...], request: RecoveryRequest) -> RecoveryDecision:
-        for policy in self.normalize(policies):
-            if policy.kind != request.kind or policy.scope != request.scope:
-                continue
-            if policy.requires_verified_backup and not request.backup_verified:
-                return RecoveryDecision(request.request_id, RecoveryDisposition.DENY, policy.policy_id)
-            if request.backup_age_days > policy.retention_days:
-                return RecoveryDecision(request.request_id, RecoveryDisposition.DENY, policy.policy_id)
-            return RecoveryDecision(request.request_id, RecoveryDisposition.ALLOW, policy.policy_id)
-        return RecoveryDecision(request.request_id, RecoveryDisposition.DENY, None)
-
-    def plan(self, checkpoint: RecoveryCheckpoint, requests: tuple[RecoveryRequest, ...] = ()) -> RecoveryPlan:
+    def plan(self, checkpoint: RecoveryCheckpoint) -> RecoveryPlan:
         if not checkpoint.checkpoint_id.strip():
             raise ValueError("checkpoint identity is required")
         return RecoveryPlan(
             plan_id=f"restore-{checkpoint.checkpoint_id}",
             checkpoint_id=checkpoint.checkpoint_id,
             dry_run=True,
-            denied_request_ids=tuple(
-                decision.request_id
-                for decision in (
-                    self.evaluate((), request)
-                    for request in sorted(requests, key=lambda item: item.request_id)
-                )
-                if decision.disposition == RecoveryDisposition.DENY
-            ),
-        )
-
-    def plan_with_policies(
-        self,
-        checkpoint: RecoveryCheckpoint,
-        policies: tuple[RecoveryPolicy, ...],
-        requests: tuple[RecoveryRequest, ...],
-        max_policies: int = 16,
-    ) -> RecoveryPlan:
-        normalized = self.normalize(policies)
-        if max_policies <= 0:
-            raise ValueError("max_policies must be positive")
-        if len(normalized) > max_policies:
-            raise ValueError("recovery plan exceeds policy limit")
-        decisions = tuple(
-            self.evaluate(normalized, request)
-            for request in sorted(requests, key=lambda item: item.request_id)
-        )
-        return RecoveryPlan(
-            plan_id=f"restore-{checkpoint.checkpoint_id}",
-            checkpoint_id=checkpoint.checkpoint_id,
-            dry_run=True,
-            policy_ids=tuple(policy.policy_id for policy in normalized),
-            denied_request_ids=tuple(
-                decision.request_id
-                for decision in decisions
-                if decision.disposition == RecoveryDisposition.DENY
-            ),
         )
 
 
@@ -198,22 +88,147 @@ class RecoveryEngine:
     def __init__(self, backend: RecoveryBackend) -> None:
         self._backend = backend
 
-    def execute(self, checkpoint: RecoveryCheckpoint, plan: RecoveryPlan) -> RecoveryResult:
+    def execute(
+        self,
+        checkpoint: RecoveryCheckpoint,
+        plan: RecoveryPlan,
+    ) -> RecoveryResult:
         if plan.checkpoint_id != checkpoint.checkpoint_id:
             raise ValueError("recovery plan/checkpoint mismatch")
+
         history: list[RecoveryState] = []
         evidence: dict[str, object] = {}
+
         history.append(RecoveryState.CHECKPOINT)
         evidence["checkpoint"] = self._backend.checkpoint(checkpoint)
+
         history.append(RecoveryState.PREPARE)
         evidence["prepare"] = self._backend.prepare(plan)
+
         history.append(RecoveryState.RESTORE)
         evidence["restore"] = self._backend.restore(plan)
+
         history.append(RecoveryState.VERIFY)
         verified = self._backend.verify(plan)
         evidence["verify"] = {"verified": verified}
+
         if not verified:
             history.append(RecoveryState.FAIL)
             return RecoveryResult(plan.plan_id, RecoveryState.FAIL, tuple(history), plan.dry_run, evidence)
+
         history.append(RecoveryState.KEEP)
         return RecoveryResult(plan.plan_id, RecoveryState.KEEP, tuple(history), plan.dry_run, evidence)
+
+
+class BackupScope(str, Enum):
+    CONFIGURATION = "configuration"
+    STATE = "state"
+    ARTIFACT = "artifact"
+    FULL = "full"
+
+
+class RecoveryBackupDisposition(str, Enum):
+    ALLOW = "allow"
+    DENY = "deny"
+
+
+@dataclass(frozen=True)
+class RecoveryBackupPolicy:
+    policy_id: str
+    recovery_state: RecoveryState
+    scope: BackupScope
+    retention_days: int
+    requires_verified_backup: bool
+
+    def __post_init__(self) -> None:
+        if not self.policy_id.strip():
+            raise ValueError("policy_id is required")
+        if self.retention_days < 0:
+            raise ValueError("retention_days must be non-negative")
+
+
+@dataclass(frozen=True)
+class RecoveryBackupRequest:
+    request_id: str
+    recovery_state: RecoveryState
+    scope: BackupScope
+    backup_verified: bool
+    backup_age_days: int
+
+    def __post_init__(self) -> None:
+        if not self.request_id.strip():
+            raise ValueError("request_id is required")
+        if self.backup_age_days < 0:
+            raise ValueError("backup_age_days must be non-negative")
+
+
+@dataclass(frozen=True)
+class RecoveryBackupDecision:
+    request_id: str
+    disposition: RecoveryBackupDisposition
+    policy_id: str | None
+
+
+@dataclass(frozen=True)
+class RecoveryBackupPlanningResult:
+    policy_ids: tuple[str, ...]
+    denied_request_ids: tuple[str, ...]
+
+
+class RecoveryBackupPlanner:
+    """Deterministic recovery/backup policy planning; no side effects."""
+
+    def normalize(
+        self, policies: tuple[RecoveryBackupPolicy, ...]
+    ) -> tuple[RecoveryBackupPolicy, ...]:
+        ids = [policy.policy_id for policy in policies]
+        if len(set(ids)) != len(ids):
+            raise ValueError("policy IDs must be unique")
+        return tuple(sorted(policies, key=lambda item: item.policy_id))
+
+    def evaluate(
+        self,
+        policies: tuple[RecoveryBackupPolicy, ...],
+        request: RecoveryBackupRequest,
+    ) -> RecoveryBackupDecision:
+        for policy in self.normalize(policies):
+            if policy.recovery_state != request.recovery_state or policy.scope != request.scope:
+                continue
+            if policy.requires_verified_backup and not request.backup_verified:
+                return RecoveryBackupDecision(
+                    request.request_id, RecoveryBackupDisposition.DENY, policy.policy_id
+                )
+            if request.backup_age_days > policy.retention_days:
+                return RecoveryBackupDecision(
+                    request.request_id, RecoveryBackupDisposition.DENY, policy.policy_id
+                )
+            return RecoveryBackupDecision(
+                request.request_id, RecoveryBackupDisposition.ALLOW, policy.policy_id
+            )
+        return RecoveryBackupDecision(
+            request.request_id, RecoveryBackupDisposition.DENY, None
+        )
+
+    def plan(
+        self,
+        policies: tuple[RecoveryBackupPolicy, ...],
+        requests: tuple[RecoveryBackupRequest, ...],
+        max_policies: int = 16,
+    ) -> RecoveryBackupPlanningResult:
+        if max_policies <= 0:
+            raise ValueError("max_policies must be positive")
+        normalized = self.normalize(policies)
+        if len(normalized) > max_policies:
+            raise ValueError("recovery plan exceeds policy limit")
+        decisions = tuple(
+            self.evaluate(normalized, request)
+            for request in sorted(requests, key=lambda item: item.request_id)
+        )
+        return RecoveryBackupPlanningResult(
+            policy_ids=tuple(policy.policy_id for policy in normalized),
+            denied_request_ids=tuple(
+                decision.request_id
+                for decision in decisions
+                if decision.disposition == RecoveryBackupDisposition.DENY
+            ),
+        )
