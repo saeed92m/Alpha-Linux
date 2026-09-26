@@ -145,6 +145,8 @@ jobs:
           package = json.loads(next(Path("dist/package-evidence").rglob("release-evidence.json")).read_text())
           os_manifest = json.loads(Path("dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json").read_text())
 
+          print("PACKAGE_EVIDENCE", json.dumps(package, sort_keys=True))
+          print("OS_EVIDENCE", json.dumps(os_manifest, sort_keys=True))
           package_manifest = AlphaReleaseManifest(
               release_id=package["release_id"],
               version=package["version"],
