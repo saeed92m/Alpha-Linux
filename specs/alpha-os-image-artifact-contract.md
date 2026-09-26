@@ -45,6 +45,10 @@ Examples:
 
 The exact filename is part of the release evidence and must not be silently changed after evidence generation.
 
+## Build implementation
+
+The first Alpha image build target uses the verified Ubuntu 26.04.1 LTS amd64 desktop ISO as its immutable base, injects machine-readable Alpha provenance, and preserves the source image boot metadata through the xorriso replay mechanism. The build workflow must publish the resulting ISO and its evidence separately from the package release path.
+
 ## Validation gates
 
 An OS image candidate must pass:
