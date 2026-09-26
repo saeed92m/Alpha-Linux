@@ -144,7 +144,11 @@ jobs:
           test -n "$ARTIFACT_ID"
           rm -rf dist/package-evidence
           mkdir -p dist/package-evidence
-          gh api --method GET "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > dist/package-evidence/release-evidence.zip
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" \
+            --output dist/package-evidence/release-evidence.zip
           unzip -o dist/package-evidence/release-evidence.zip -d dist/package-evidence >/dev/null
           test -s "$(find dist/package-evidence -name release-evidence.json -print -quit)"
           PYTHONPATH="${GITHUB_WORKSPACE}/implementation" python3 - <<'PY'
