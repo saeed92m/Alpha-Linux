@@ -33,6 +33,9 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Engineering domain foundation with immutable engineering project/analysis contracts, explicit unit-bearing values, deterministic resource compatibility planning, and bounded analysis planning.
 - Phase 5 Motorsport domain foundation with immutable vehicle/component/setup contracts, deterministic compatibility planning, and bounded setup selection.
 - Phase 5 Electronics domain foundation with immutable board/interface/component/circuit contracts, deterministic compatibility planning, and bounded component selection.
+- Phase 5 SDR/RF domain foundation with immutable frequency-band, SDR capability, and acquisition-requirement contracts, deterministic compatibility planning, and bounded device selection.
+- Phase 5 Motorsport domain foundation with immutable vehicle/component/setup contracts, deterministic compatibility planning, and bounded setup selection.
+- Phase 5 Electronics domain foundation with immutable board/interface/component/circuit contracts, deterministic compatibility planning, and bounded component selection.
 - Phase 5 Motorsport domain foundation with immutable vehicle/component/setup contracts, deterministic compatibility planning, and bounded setup selection.
 
 ### Changed
