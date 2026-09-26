@@ -10,9 +10,11 @@ Alpha Linux preserves Ubuntu compatibility while providing an integrated platfor
 
 ## Project Status
 
-**Current phase: Phase 1 Foundation**
+**Current phase: Phase 2 System Integration and Core Runtime**
 
-Phase 0 specification and architecture are frozen. Phase 1 implementation is active. The repository is moving from normative contracts to executable foundation components, automated tests and CI evidence.
+Phase 0 specification/architecture work is frozen as the normative foundation. Phase 1 established the executable engineering foundation. Phase 2 is implementing the Alpha Core runtime and system-integration vertical slices, with executable tests and CI evidence.
+
+The current CI/CD baseline is maintained as an executable Phase 2-aware workflow and is authoritative for runtime gate evidence.
 
 ## Core principles
 
@@ -40,7 +42,26 @@ Phase 0 specification and architecture are frozen. Phase 1 implementation is act
 - `roadmap/` — milestones and delivery planning
 - `integrations/` — external software and project integrations
 - `implementation/` — executable implementation boundary
-- `.github/workflows/` — executable CI gates
+- `.github/workflows/` — executable CI/CD gates
+
+## CI/CD gates
+
+The Phase 2 CI/CD workflow covers:
+
+- repository and documentation validation;
+- linting and unit/contract tests;
+- Python 3.11/3.12/3.13 compatibility;
+- static type checking;
+- coverage reporting;
+- package build, metadata and installation validation;
+- artifact provenance;
+- reproducible builds;
+- Bandit and dependency vulnerability auditing;
+- Gitleaks secret scanning;
+- CycloneDX SBOM generation;
+- machine-readable gate evidence.
+
+ISO and release-promotion gates remain deferred until those actual promotion artifacts and workflows exist.
 
 ## Documentation hierarchy
 
