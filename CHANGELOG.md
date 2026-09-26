@@ -23,7 +23,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 
 - The repository does not yet contain an installable Alpha Linux OS image release.
 - No stable, beta, or alpha product release is claimed by this changelog until the relevant release artifact and required evidence exist.
-- The Alpha OS image track currently provides the contract and executable evidence-validation foundation; it does not perform privileged host mutation, disk repartitioning, installation, or public release publication.
+- The Alpha OS image track now includes a real CI build path that repacks the verified Ubuntu 26.04.1 amd64 desktop image while preserving boot metadata and emits deterministic image/provenance evidence. It does not perform privileged host mutation, disk repartitioning, installation, or public release publication.
 - Phase 3 completion refers to the deterministic reference/runtime foundation. Privileged host mutation, production COSMIC runtime integration, installer/ISO delivery, and release-scoped validation remain governed by their respective roadmap phases.
 - Phase 4 reference-runtime implementation is complete. Production provider execution, persistent knowledge/memory backends, autonomous host actions, privileged integration, and release-scoped evidence remain outside these foundations and are governed by later implementation/release phases.
 - Phase 5 and Phase 6 foundations remain reference contracts only unless their individual implementation evidence explicitly expands the boundary.
