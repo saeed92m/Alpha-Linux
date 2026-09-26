@@ -64,7 +64,7 @@
 - permissions
 - verification
 
-**Status:** Active implementation. Alpha AI Core, AI Execution Runtime, Assistant, Memory, and Knowledge Center reference foundations are implemented, tested, CI-validated, and merged. Command Bar is the next active slice.
+**Status:** Active implementation. Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, and Command Bar reference foundations are implemented, tested, CI-validated, and merged. Agent Runtime is the next active slice.
 
 ## Phase 5 — Domain platform
 
