@@ -124,10 +124,29 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          PACKAGE_RUN_ID="$(gh run list --workflow phase-1-foundation.yml --commit "$GITHUB_SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          PACKAGE_RUN_ID=""
+          for _ in $(seq 1 30); do
+            PACKAGE_RUN_ID="$(gh run list --workflow phase-1-foundation.yml --commit "$GITHUB_SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+            if [[ -n "$PACKAGE_RUN_ID" ]]; then
+              break
+            fi
+            sleep 10
+          done
           test -n "$PACKAGE_RUN_ID"
+          ARTIFACT_ID=""
+          for _ in $(seq 1 30); do
+            ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$PACKAGE_RUN_ID/artifacts" --jq '.artifacts[] | select(.name=="alpha-release-evidence" and .expired==false) | .id' | head -n 1)"
+            if [[ -n "$ARTIFACT_ID" ]]; then
+              break
+            fi
+            sleep 10
+          done
+          test -n "$ARTIFACT_ID"
           rm -rf dist/package-evidence
-          gh run download "$PACKAGE_RUN_ID" --name alpha-release-evidence --dir dist/package-evidence
+          mkdir -p dist/package-evidence
+          gh api --method GET "/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > dist/package-evidence/release-evidence.zip
+          unzip -o dist/package-evidence/release-evidence.zip -d dist/package-evidence >/dev/null
+          test -s "$(find dist/package-evidence -name release-evidence.json -print -quit)"
           PYTHONPATH="${GITHUB_WORKSPACE}/implementation" python3 - <<'PY'
           import json
           from pathlib import Path
