@@ -17,6 +17,8 @@ class OSImageEvidence:
     artifact_sha256: str
     source_commit: str
     ci_run_id: str
+    build_environment: str
+    reproducibility_result: str
 
     def __post_init__(self) -> None:
         fields = (
@@ -29,6 +31,8 @@ class OSImageEvidence:
             ("artifact_sha256", self.artifact_sha256),
             ("source_commit", self.source_commit),
             ("ci_run_id", self.ci_run_id),
+            ("build_environment", self.build_environment),
+            ("reproducibility_result", self.reproducibility_result),
         )
         missing = [name for name, value in fields if not str(value).strip()]
         if missing:
