@@ -39,6 +39,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Data/GIS domain foundation with immutable project, layer, spatial-reference, tool, and analysis-requirement contracts, deterministic normalization, bounded compatibility planning, and explicit source/derived/output layer separation.
 - Phase 5 Business domain foundation with immutable workspace, workflow, capability, and requirement contracts, deterministic normalization, bounded compatibility planning, and explicit input/process/output workflow roles.
 - Phase 5 Cloud/DevOps domain foundation with immutable environment, service, and requirement contracts, deterministic normalization, bounded compatibility planning, and explicit reference-only cloud execution boundaries.
+- Phase 5 Education and research domain foundation with immutable workspace, workflow, capability, and requirement contracts, deterministic normalization, bounded compatibility planning, and explicit reference-only education/research execution boundaries.
 
 ### Changed
 
@@ -56,6 +57,9 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 5 Creator foundation is complete; Music & Audio became the active domain slice.
 - Phase 5 Music & Audio foundation is complete; Data/GIS became the active domain slice.
 - Phase 5 Data/GIS foundation is complete; Business became the active domain slice.
+- Phase 5 Business foundation is complete; Cloud/DevOps became the active domain slice.
+- Phase 5 Cloud/DevOps foundation is complete; Education and research became the active domain slice.
+- Phase 5 Education and research foundation is complete; Phase 5 Domain Platform is complete and Phase 6 — Hardening became the active implementation phase.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes

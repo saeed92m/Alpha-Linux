@@ -83,7 +83,7 @@
 - Cloud/DevOps
 - Education and research
 
-**Status:** Active domain implementation. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, SDR/RF, Creator, Music & Audio, Data/GIS, and Business reference foundations are implemented, tested, CI-validated, and merged. Cloud/DevOps is the current active domain slice.
+**Status:** Completed domain foundation. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, SDR/RF, Creator, Music & Audio, Data/GIS, Business, Cloud/DevOps, and Education and research reference foundations are implemented, tested, CI-validated, and merged. Phase 6 — Hardening is now the active implementation phase.
 
 ## Phase 6 — Hardening
 
@@ -97,6 +97,8 @@
 - accessibility
 - localization
 - release QA
+
+**Status:** Active hardening implementation after completion of Phase 5 domain foundations.
 
 ## Phase 7 — Alpha releases
 
