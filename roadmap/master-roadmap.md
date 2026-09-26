@@ -64,7 +64,7 @@
 - permissions
 - verification
 
-**Status:** Completed reference-runtime foundation. Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, Orchestrator, Permissions, and Verification foundations are implemented, tested, CI-validated, and merged. Phase 5 — Domain Platform is the active implementation phase.
+**Status:** Completed reference-runtime foundation. Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, Orchestrator, Permissions, and Verification foundations are implemented, tested, CI-validated, and merged.
 
 ## Phase 5 — Domain platform
 
@@ -83,7 +83,7 @@
 - Cloud/DevOps
 - Education and research
 
-**Status:** Completed domain foundation. Developer, AI/ML/HPC, Astronomy, Aerospace, Engineering, Motorsport, Electronics, SDR/RF, Creator, Music & Audio, Data/GIS, Business, Cloud/DevOps, and Education and research reference foundations are implemented, tested, CI-validated, and merged. Phase 6 — Hardening is now the active implementation phase.
+**Status:** Completed domain foundation. All listed reference foundations are implemented, tested, CI-validated, and merged.
 
 ## Phase 6 — Hardening
 
@@ -98,7 +98,7 @@
 - localization
 - release QA
 
-**Status:** Active hardening implementation. Security, privacy, and recovery/backup foundations are implemented on the hardening branch; recovery/backup is the current validation slice and remaining Phase 6 work continues under the hardening program.
+**Status:** Active hardening implementation. Security, privacy, recovery/backup, and compatibility foundations are implemented, tested, CI-validated, and merged. Performance is the next active Phase 6 slice; remaining hardening work continues under the program.
 
 ## Phase 7 — Alpha releases
 
