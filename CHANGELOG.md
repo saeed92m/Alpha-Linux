@@ -26,12 +26,14 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Phase 4 Orchestrator foundation with immutable dependency graphs, deterministic topological planning, cycle rejection, and bounded workflow size.
 - Phase 4 Permissions foundation with immutable rules/requests, deterministic policy evaluation, explicit allow/deny decisions, and default-deny behavior.
 - Phase 4 Verification foundation with immutable evidence contracts, deterministic normalization, bounded reports, and explicit pass/fail aggregation.
+- Phase 5 Developer domain foundation with immutable workspace/toolchain contracts, deterministic normalization, compatibility selection, and bounded toolchain planning.
 
 ### Changed
 
 - Completed the Phase 2 reference-runtime baseline and activated Phase 3 — Desktop and Interaction.
 - Completed the Phase 3 desktop and interaction reference-runtime foundation; Phase 4 — AI Platform became the active implementation phase.
 - Phase 4 now has ten merged reference-runtime foundations: Alpha AI Core, AI Execution Runtime, Assistant, Memory, Knowledge Center, Command Bar, Agent Runtime, Orchestrator, Permissions, and Verification.
+- Phase 5 Developer domain foundation is complete; AI/ML/HPC is the next active domain slice.
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 
 ### Notes
