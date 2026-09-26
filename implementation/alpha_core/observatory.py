@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
-from .system_integration import ComponentHealth, HealthAggregator, HealthState, SystemDiscovery
+from .system_integration import ComponentHealth, HealthAggregator, SystemDiscovery
 
 
 @dataclass(frozen=True)
