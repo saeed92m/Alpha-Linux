@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: alpha-os-image-${{ github.ref }}
@@ -126,6 +127,16 @@ jobs:
           archive: false
           compression-level: 0
           if-no-files-found: error
+
+      - name: Publish issue-comment execution evidence
+        if: ${{ always() && github.event_name == 'issue_comment' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
+            -f body="Alpha OS image workflow run \`${{ github.run_id }}\` completed with job status \`${{ job.status }}\`. Trigger: \`${{ github.event.comment.body }}\`. Source commit: \`${{ github.sha }}\`."
 
       - name: Upload Alpha OS evidence
         uses: actions/upload-artifact@v7
