@@ -124,7 +124,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          PACKAGE_RUN_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&status=success&per_page=20" --jq '.workflow_runs[] | select(.workflow_id == 367314749) | .id' | head -n 1)"
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            PACKAGE_RUN_ID="$(gh run list               --workflow 367314749               --event pull_request               --branch "$GITHUB_HEAD_REF"               --limit 20               --json databaseId,status,conclusion               --jq '.[] | select(.status=="completed" and .conclusion=="success") | .databaseId'               | head -n 1)"
+          else
+            PACKAGE_RUN_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&status=success&per_page=20"               --jq '.workflow_runs[] | select(.workflow_id == 367314749) | .id'               | head -n 1)"
+          fi
           test -n "$PACKAGE_RUN_ID"
           ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$PACKAGE_RUN_ID/artifacts" --jq '.artifacts[] | select(.name=="alpha-release-evidence" and .expired==false) | .id' | head -n 1)"
           test -n "$ARTIFACT_ID"
