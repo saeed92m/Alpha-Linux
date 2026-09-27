@@ -98,7 +98,10 @@ echo "Extracting Live filesystem for COSMIC integration"
 rm -rf "${ROOTFS_DIR}" "${LIVE_SQUASHFS}" "${COSMIC_MANIFEST}"
 CASPER_LIST="$(xorriso -indev "${BASE_PATH}" -ls /casper 2>&1)"
 echo "${CASPER_LIST}"
-SQUASHFS_ISO_NAME="$(printf '%s\n' "${CASPER_LIST}" | tr -d "'" | awk '$NF ~ /\.squashfs$/ {print $NF; exit}')"
+SQUASHFS_ISO_NAME="$(printf '%s\n' "${CASPER_LIST}" | tr -d "'" | awk '$NF ~ /\.live\.squashfs$/ {print $NF; exit}')"
+if [[ -z "${SQUASHFS_ISO_NAME}" ]]; then
+  SQUASHFS_ISO_NAME="$(printf '%s\n' "${CASPER_LIST}" | tr -d "'" | awk '$NF == "filesystem.squashfs" {print $NF; exit}')"
+fi
 test -n "${SQUASHFS_ISO_NAME}"
 SQUASHFS_ISO_PATH="/casper/${SQUASHFS_ISO_NAME}"
 test -n "${SQUASHFS_ISO_PATH}"
@@ -162,7 +165,7 @@ build_iso() {
     -indev "${BASE_PATH}" \
     -outdev "${output_path}" \
     -map "${SEED_PATH}" /alpha-release.json \
-    -map "${LIVE_SQUASHFS}" /casper/filesystem.squashfs \
+    -map "${LIVE_SQUASHFS}" "${SQUASHFS_ISO_PATH}" \
     -boot_image any replay \
     -compliance no_emul_toc \
     -padding included
