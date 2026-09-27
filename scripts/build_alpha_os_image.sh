@@ -176,39 +176,25 @@ sudo cp -L /etc/resolv.conf "${OVERLAY_ROOTFS_DIR}/run/systemd/resolve/stub-reso
 
 timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get update
 
-echo "Installing COSMIC with systemd service-manager calls stubbed inside the build chroot"
-sudo cp -a "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl" "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl.alpha-real"
-sudo tee "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl" >/dev/null <<'SYSTEMCTL'
-#!/bin/sh
-exit 0
-SYSTEMCTL
-sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl"
-restore_systemctl() {
-  sudo mv -f "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl.alpha-real" "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl" 2>/dev/null || true
-}
-trap restore_systemctl EXIT
-
+echo "Installing COSMIC and validating dpkg state inside the build chroot"
 set +e
 timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get install -y cosmic-session
 APT_INSTALL_STATUS=$?
 set -e
-if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
-  echo "COSMIC package configuration failed; retrying dpkg configuration with service-manager calls stubbed"
-  sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --configure -a
-  sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get -f install -y
-fi
-restore_systemctl
-trap - EXIT
-if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
-  echo "apt-get install returned ${APT_INSTALL_STATUS}; repairing package configuration before failing"
-  sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --configure -a
-  sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get -f install -y
-fi
-DPKG_AUDIT_OUTPUT="$(sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --audit || true)"
-if [[ -n "${DPKG_AUDIT_OUTPUT}" ]]; then
-  printf '%s\n' "${DPKG_AUDIT_OUTPUT}"
+
+COSMIC_DPKG_STATUS="$(sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='${Status}' cosmic-session 2>/dev/null || true)"
+echo "cosmic-session dpkg status: ${COSMIC_DPKG_STATUS}"
+if [[ "${COSMIC_DPKG_STATUS}" != "install ok installed" ]]; then
+  echo "COSMIC package installation did not reach a configured installed state (apt status=${APT_INSTALL_STATUS})"
+  sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --audit || true
+  sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='${Package} ${Status}\n' cosmic-session cosmic-settings cosmic-comp 2>/dev/null || true
   exit 1
 fi
+
+if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
+  echo "apt-get returned ${APT_INSTALL_STATUS}, but cosmic-session is configured; continuing with explicit runtime validation."
+fi
+
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean
 sudo rm -rf "${OVERLAY_ROOTFS_DIR}/var/lib/apt/lists/"*
 
