@@ -1,0 +1,56 @@
+name: Alpha Release Asset QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release-asset-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-release:
+    name: Verify v0.1.0a1 release reassembly
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download release parts and manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v0.1.0a1
+        run: |
+          set -euo pipefail
+          mkdir -p release-qa
+          gh release download "$RELEASE_TAG" -R saeed92m/Alpha-Linux             --pattern 'alpha-linux-0.1.0a1-alpha-amd64.iso.part-*'             --pattern 'alpha-linux-0.1.0a1-alpha-amd64.iso.parts.sha256'             --pattern 'alpha-linux-0.1.0a1-alpha-amd64.iso.sha256'             --pattern 'alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json'             --dir release-qa
+
+      - name: Verify part checksums
+        working-directory: release-qa
+        run: |
+          set -euo pipefail
+          sha256sum -c alpha-linux-0.1.0a1-alpha-amd64.iso.parts.sha256
+
+      - name: Reassemble and verify complete ISO
+        working-directory: release-qa
+        run: |
+          set -euo pipefail
+          cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso
+          sha256sum -c alpha-linux-0.1.0a1-alpha-amd64.iso.sha256
+          test "$(stat -c '%s' alpha-linux-0.1.0a1-alpha-amd64.iso)" -eq 6481815552
+
+      - name: Validate manifest
+        working-directory: release-qa
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path("alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json").read_text())
+          assert m["release_tag"] == "v0.1.0a1"
+          assert m["source_run_id"] == 36302661734
+          assert m["source_commit"] == "d2643248e5ea3ebea13bd3d54aa7116acb695bbd"
+          assert m["iso_sha256"] == "9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7"
+          assert m["part_count"] == 4
+          print("Release manifest: OK")
+          PY
