@@ -112,9 +112,17 @@ jobs:
       - name: Validate Live filesystem and graphical session prerequisites
         run: |
           set -euo pipefail
-          xorriso -indev dist/alpha-linux-0.1.0a1-alpha-amd64.iso -find / -type f -name 'filesystem.squashfs' -exec cat --help \\; | tee dist/live-filesystem-evidence.txt
+          ISO="dist/alpha-linux-0.1.0a1-alpha-amd64.iso"
+          test -s "$ISO"
+          {
+            echo "== Live filesystem directory listing =="
+            xorriso -indev "$ISO" -ls /casper
+            echo "== Live filesystem path =="
+            xorriso -indev "$ISO" -ls /casper/filesystem.squashfs
+          } | tee dist/live-filesystem-evidence.txt
+          grep -Fq "filesystem.squashfs" dist/live-filesystem-evidence.txt
           test -s dist/live-filesystem-evidence.txt
-          echo "Live image structure detected; graphical runtime remains a separate runtime gate."
+          echo "Live filesystem structure detected; graphical runtime remains a separate runtime gate."
 
 
       - name: Run automated ISO boot smoke test
