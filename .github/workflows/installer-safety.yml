@@ -1,0 +1,81 @@
+name: Alpha Installer Safety
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "implementation/alpha_core/installer_safety.py"
+      - "implementation/alpha_core/installer_fixture.py"
+      - "implementation/tests/test_installer_safety.py"
+      - "implementation/tests/test_installer_fixture.py"
+      - "implementation/installer_safety.md"
+      - ".github/workflows/installer-safety.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "implementation/alpha_core/installer_safety.py"
+      - "implementation/alpha_core/installer_fixture.py"
+      - "implementation/tests/test_installer_safety.py"
+      - "implementation/tests/test_installer_fixture.py"
+      - "implementation/installer_safety.md"
+      - ".github/workflows/installer-safety.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installer-safety-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  disposable-fixture:
+    name: Disposable virtual-disk safety validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install partition fixture tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends gdisk
+
+      - name: Install Alpha package
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+
+      - name: Run installer safety and disposable fixture tests
+        run: |
+          python3 -m pytest             implementation/tests/test_installer_safety.py             implementation/tests/test_installer_fixture.py             -q
+
+      - name: Verify no physical block-device access
+        run: |
+          if grep -R -nE '(/dev/(sd|nvme|vd|mmcblk)|losetup|mount |umount )'             implementation/alpha_core/installer_fixture.py             implementation/tests/test_installer_fixture.py; then
+            echo "Physical block-device or mount access detected."
+            exit 1
+          fi
+
+      - name: Write installer safety evidence
+        run: |
+          mkdir -p dist
+          cat > dist/installer-safety-evidence.json <<'EOF'
+          {
+            "fixture_type": "regular-file-gpt-image",
+            "physical_block_device_access": false,
+            "mount_operations": false,
+            "host_mutation": false,
+            "confirmation_required_for_destructive_intent": true,
+            "bitlocker_alongside_windows": "blocked"
+          }
+          EOF
+
+      - name: Upload installer safety evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-installer-safety-evidence
+          path: dist/installer-safety-evidence.json
+          if-no-files-found: error
