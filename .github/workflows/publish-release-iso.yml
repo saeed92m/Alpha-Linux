@@ -3,12 +3,104 @@ name: Publish Existing Alpha ISO Release Assets
 on:
   push:
     branches: [main]
+    paths:
+      - ".github/workflows/publish-release-iso.yml"
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  actions: read
 
 jobs:
-  smoke:
+
+  publish:
+    name: Publish existing ISO without rebuild
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - run: echo "publisher workflow parser/runner smoke test"
+      - name: Download existing ISO artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id || '36302661734' }}
+        run: |
+          set -euo pipefail
+          rm -rf iso-publish
+          mkdir -p iso-publish
+          echo "Downloading existing artifact from run $SOURCE_RUN_ID"
+          gh run download "$SOURCE_RUN_ID" -n alpha-linux-0.1.0a1-alpha-amd64.iso -D iso-publish
+          ISO="$(find iso-publish -type f -name 'alpha-linux-0.1.0a1-alpha-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          test -s "$ISO"
+          if [ "$ISO" != "iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso" ]; then
+            mv "$ISO" iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso
+          fi
+
+      - name: Verify exact existing ISO
+        env:
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 || '9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7' }}
+        run: |
+          set -euo pipefail
+          ISO="iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso"
+          ACTUAL="$(sha256sum "$ISO" | awk '{print $1}')"
+          echo "$ACTUAL  $(basename "$ISO")" | tee iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso.sha256
+          test "$ACTUAL" = "$EXPECTED_SHA256"
+
+      - name: Split ISO into release-safe parts
+        run: |
+          set -euo pipefail
+          ISO="iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso"
+          split -b 1900M -d -a 2 "$ISO" iso-publish/part-
+          i=1
+          for part in iso-publish/part-*; do
+            mv "$part" "iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso.part-$(printf '%02d' "$i")"
+            i=$((i + 1))
+          done
+          sha256sum iso-publish/*.iso.part-* | tee iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso.parts.sha256
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path("iso-publish")
+          iso=root/"alpha-linux-0.1.0a1-alpha-amd64.iso"
+          parts=sorted(root.glob("*.iso.part-*"))
+          manifest={"artifact":iso.name,"source_run_id":int("${{ inputs.source_run_id || '36302661734' }}"),"release_tag":"${{ inputs.release_tag || 'v0.1.0a1' }}","source_commit":"d2643248e5ea3ebea13bd3d54aa7116acb695bbd","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":1900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso"}
+          (root/"alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json").write_text(json.dumps(manifest,indent=2)+"\n")
+          PY
+          cat > iso-publish/REASSEMBLE-ISO.txt <<'EOF'
+Alpha Linux 0.1.0a1 ISO reassembly
+
+Linux/macOS:
+  cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso
+  sha256sum alpha-linux-0.1.0a1-alpha-amd64.iso
+
+PowerShell:
+  $parts = Get-ChildItem .\alpha-linux-0.1.0a1-alpha-amd64.iso.part-* | Sort-Object Name
+  $out = [IO.File]::OpenWrite(".\alpha-linux-0.1.0a1-alpha-amd64.iso")
+  try { foreach ($p in $parts) { $in = [IO.File]::OpenRead($p.FullName); try { $in.CopyTo($out) } finally { $in.Dispose() } } } finally { $out.Dispose() }
+  Get-FileHash .\alpha-linux-0.1.0a1-alpha-amd64.iso -Algorithm SHA256
+
+Expected complete ISO SHA-256:
+9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7
+EOF
+          rm -f "$ISO"
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || 'v0.1.0a1' }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" >/dev/null
+          gh release upload "$RELEASE_TAG" iso-publish/* --clobber
+
+      - name: Verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort > release-assets.txt
+          grep -Fx 'alpha-linux-0.1.0a1-alpha-amd64.iso.sha256' release-assets.txt
+          grep -Fx 'alpha-linux-0.1.0a1-alpha-amd64.iso.parts.sha256' release-assets.txt
+          grep -Fx 'alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json' release-assets.txt
+          grep -Fx 'REASSEMBLE-ISO.txt' release-assets.txt
+          test "$(grep -c 'alpha-linux-0.1.0a1-alpha-amd64.iso.part-' release-assets.txt)" -ge 2
