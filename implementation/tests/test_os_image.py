@@ -117,3 +117,5 @@ def test_cosmic_live_image_evidence_rejects_missing_runtime(tmp_path: Path):
     with pytest.raises(ValueError, match="missing cosmic.desktop"):
         CosmicLiveImageEvidence().validate_root(tmp_path)
 
+
+# This file is included in the workflow watch paths so any validator fix triggers CI rerun.
