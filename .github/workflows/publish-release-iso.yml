@@ -36,17 +36,16 @@ jobs:
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
         run: |
           set -euo pipefail
-          rm -rf artifact iso-publish
-          mkdir -p artifact iso-publish
-          gh api -H "Accept: application/vnd.github+json" "/repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID/artifacts" --jq '.artifacts[] | select(.name=="alpha-linux-0.1.0a1-alpha-amd64.iso" and .expired==false) | .id' | head -n 1 > artifact_id.txt
-          test -s artifact_id.txt
-          ARTIFACT_ID="$(cat artifact_id.txt)"
-          curl --fail --location --retry 5 --retry-delay 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" --output artifact.zip
-          unzip -q artifact.zip -d artifact
-          ISO="$(find artifact -type f -name 'alpha-linux-0.1.0a1-alpha-amd64.iso' -print -quit)"
+          rm -rf iso-publish
+          mkdir -p iso-publish
+          echo "Downloading existing artifact from run $SOURCE_RUN_ID"
+          gh run download "$SOURCE_RUN_ID" -n alpha-linux-0.1.0a1-alpha-amd64.iso -D iso-publish
+          ISO="$(find iso-publish -type f -name 'alpha-linux-0.1.0a1-alpha-amd64.iso' -print -quit)"
           test -n "$ISO"
           test -s "$ISO"
-          cp "$ISO" iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso
+          if [ "$ISO" != "iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso" ]; then
+            mv "$ISO" iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso
+          fi
 
       - name: Verify exact existing ISO
         env:
