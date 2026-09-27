@@ -89,7 +89,7 @@ build_iso() {
 }
 
 COSMIC_REPOSITORY="https://apt.pop-os.org/release"
-COSMIC_KEY_URL="https://apt.pop-os.org/public.key"
+COSMIC_KEY_URL="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x63C46DF0140D738961429F4E204DD8AEC33A7AFF"
 ROOTFS_DIR="${WORK_DIR}/squashfs-root"
 LIVE_SQUASHFS="${WORK_DIR}/filesystem.squashfs"
 COSMIC_MANIFEST="${OUT_DIR}/alpha-cosmic-package-manifest.txt"
