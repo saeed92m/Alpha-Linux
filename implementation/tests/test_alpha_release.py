@@ -79,10 +79,19 @@ def candidate_kwargs(**overrides):
 def test_release_candidate_binds_package_and_os_evidence():
     result = AlphaReleaseCandidateEvidence.from_manifests(candidate_package(), **candidate_kwargs())
     assert result.ready is True
+    assert result.release_id == "alpha-release-0-1-0a1"
     assert result.tag == "v0.1.0a1"
     assert result.source_commit == "7f649163ba3dada9975afee13ed792cb95ebd9fe"
     assert result.package_ci_run_id == "36277302593"
     assert result.os_ci_run_id == "36277327395"
+    assert result.to_dict()["ready"] is True
+
+
+def test_release_candidate_allows_distinct_track_release_ids():
+    result = AlphaReleaseCandidateEvidence.from_manifests(
+        candidate_package(), **candidate_kwargs(os_release_id="alpha-os-0-1-0a1")
+    )
+    assert result.ready is True
 
 
 def test_release_candidate_rejects_version_mismatch():
