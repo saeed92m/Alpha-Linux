@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ github.event_name != 'issue_comment' || (github.event.issue.number == 166 && startsWith(github.event.comment.body, '/publish-iso')) }}
+    if: github.event_name != 'issue_comment' || github.event.issue.number == 166
     name: Publish existing ISO without rebuild
     runs-on: ubuntu-latest
     timeout-minutes: 45
