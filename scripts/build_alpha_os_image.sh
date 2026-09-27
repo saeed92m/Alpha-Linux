@@ -104,7 +104,8 @@ SQUASHFS_ISO_PATH="/casper/${SQUASHFS_ISO_NAME}"
 test -n "${SQUASHFS_ISO_PATH}"
 echo "Detected Live filesystem payload: ${SQUASHFS_ISO_PATH}"
 xorriso -indev "${BASE_PATH}" -osirrox on -extract "${SQUASHFS_ISO_PATH}" "${WORK_DIR}/filesystem.squashfs"
-unsquashfs -d "${ROOTFS_DIR}" "${WORK_DIR}/filesystem.squashfs"
+sudo unsquashfs -d "${ROOTFS_DIR}" "${WORK_DIR}/filesystem.squashfs"
+sudo chown -R "$(id -u):$(id -g)" "${ROOTFS_DIR}"
 
 echo "Injecting COSMIC repository and packages"
 install -d -m 0755 "${ROOTFS_DIR}/etc/apt/keyrings"
@@ -121,24 +122,24 @@ POLICY
 chmod 0755 "${ROOTFS_DIR}/usr/sbin/policy-rc.d"
 
 cp -L /etc/resolv.conf "${ROOTFS_DIR}/etc/resolv.conf"
-mount --bind /dev "${ROOTFS_DIR}/dev"
-mount --bind /dev/pts "${ROOTFS_DIR}/dev/pts"
+sudo mount --bind /dev "${ROOTFS_DIR}/dev"
+sudo mount --bind /dev/pts "${ROOTFS_DIR}/dev/pts"
 cleanup_chroot() {
-  umount -lf "${ROOTFS_DIR}/dev/pts" || true
-  umount -lf "${ROOTFS_DIR}/dev" || true
+  sudo umount -lf "${ROOTFS_DIR}/dev/pts" || true
+  sudo umount -lf "${ROOTFS_DIR}/dev" || true
 }
 trap cleanup_chroot EXIT
 
-chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get update
-chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get install -y cosmic-session
-chroot "${ROOTFS_DIR}" apt-get clean
+sudo chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get update
+sudo chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get install -y cosmic-session
+sudo chroot "${ROOTFS_DIR}" apt-get clean
 rm -rf "${ROOTFS_DIR}/var/lib/apt/lists/"*
 
 COSMIC_SESSION_FILE="$(find "${ROOTFS_DIR}/usr/share/wayland-sessions" -maxdepth 1 -name 'cosmic.desktop' -print -quit)"
 test -s "${COSMIC_SESSION_FILE}"
 test -x "${ROOTFS_DIR}/usr/bin/start-cosmic"
 
-chroot "${ROOTFS_DIR}" dpkg-query -W -f='\${binary:Package}\\t\${Version}\\n' \
+sudo chroot "${ROOTFS_DIR}" dpkg-query -W -f='\${binary:Package}\\t\${Version}\\n' \
   | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/' \
   | LC_ALL=C sort \
   > "${COSMIC_MANIFEST}"
@@ -150,7 +151,8 @@ printf 'COSMIC launcher: /usr/bin/start-cosmic\\n' >> "${OUT_DIR}/alpha-cosmic-r
 cat "${COSMIC_MANIFEST}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
 
 echo "Repacking customized Live filesystem"
-mksquashfs "${ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -no-xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
+sudo mksquashfs "${ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -no-xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
+sudo chown "$(id -u):$(id -g)" "${LIVE_SQUASHFS}"
 test -s "${LIVE_SQUASHFS}"
 
 build_iso() {
