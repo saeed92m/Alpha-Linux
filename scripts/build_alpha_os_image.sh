@@ -188,8 +188,10 @@ restore_systemctl() {
 }
 trap restore_systemctl EXIT
 
+set +e
 timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get install -y cosmic-session
 APT_INSTALL_STATUS=$?
+set -e
 if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
   echo "COSMIC package configuration failed; retrying dpkg configuration with service-manager calls stubbed"
   sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --configure -a
