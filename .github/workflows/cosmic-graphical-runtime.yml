@@ -38,13 +38,28 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/source
-          ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.expired == false and (.name == "artifact" or (.name | contains("alpha-linux-0.1.0a1-alpha-amd64.iso")))) | .id' | head -n 1)"
-          test -n "$ARTIFACT_ID"
-          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" -o dist/source/artifact.zip
-          unzip -o dist/source/artifact.zip -d dist/source/unpacked >/dev/null
-          ISO="$(find dist/source/unpacked -type f -name 'alpha-linux-0.1.0a1-alpha-amd64.iso' -print -quit)"
-          test -s "$ISO"
-          cp "$ISO" dist/source/alpha-linux-0.1.0a1-alpha-amd64.iso
+          rm -rf dist/source/unpacked
+          mkdir -p dist/source/unpacked
+          ARTIFACT_IDS="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" --paginate --jq '.artifacts[] | select(.expired == false) | .id')"
+          test -n "$ARTIFACT_IDS"
+          FOUND=0
+          while IFS= read -r ARTIFACT_ID; do
+            [ -n "$ARTIFACT_ID" ] || continue
+            rm -rf dist/source/unpacked/*
+            if ! curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" -o dist/source/artifact.zip; then
+              continue
+            fi
+            if ! unzip -oq dist/source/artifact.zip -d dist/source/unpacked; then
+              continue
+            fi
+            ISO="$(find dist/source/unpacked -type f -name 'alpha-linux-0.1.0a1-alpha-amd64.iso' -print -quit || true)"
+            if [ -n "$ISO" ] && [ -s "$ISO" ]; then
+              cp "$ISO" dist/source/alpha-linux-0.1.0a1-alpha-amd64.iso
+              FOUND=1
+              break
+            fi
+          done <<< "$ARTIFACT_IDS"
+          test "$FOUND" -eq 1
 
       - name: Install runtime tooling
         run: |
