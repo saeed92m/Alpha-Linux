@@ -122,16 +122,33 @@ jobs:
       - name: Build unified release-candidate evidence
         env:
           GH_TOKEN: ${{ github.token }}
+          PACKAGE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-            PACKAGE_RUN_ID="$(gh run list               --workflow 367314749               --event pull_request               --branch "$GITHUB_HEAD_REF"               --limit 20               --json databaseId,status,conclusion               --jq '.[] | select(.status=="completed" and .conclusion=="success") | .databaseId'               | head -n 1)"
-          else
-            PACKAGE_RUN_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&status=success&per_page=20"               --jq '.workflow_runs[] | select(.workflow_id == 367314749) | .id'               | head -n 1)"
-          fi
+
+          PACKAGE_RUN_ID=""
+          for attempt in $(seq 1 30); do
+            PACKAGE_RUN_ID="$(gh run list \
+              --workflow 367314749 \
+              --limit 50 \
+              --json databaseId,headSha,status,conclusion \
+              --jq '.[] | select(.headSha == env.PACKAGE_HEAD_SHA and .status=="completed" and .conclusion=="success") | .databaseId' \
+              | head -n 1 || true)"
+            if [[ -n "$PACKAGE_RUN_ID" ]]; then break; fi
+            sleep 10
+          done
           test -n "$PACKAGE_RUN_ID"
-          ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$PACKAGE_RUN_ID/artifacts" --jq '.artifacts[] | select(.name=="alpha-release-evidence" and .expired==false) | .id' | head -n 1)"
+
+          ARTIFACT_ID=""
+          for attempt in $(seq 1 30); do
+            ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$PACKAGE_RUN_ID/artifacts" \
+              --jq '.artifacts[] | select(.name=="alpha-release-evidence" and .expired==false) | .id' \
+              | head -n 1 || true)"
+            if [[ -n "$ARTIFACT_ID" ]]; then break; fi
+            sleep 5
+          done
           test -n "$ARTIFACT_ID"
+
           rm -rf dist/package-evidence
           mkdir -p dist/package-evidence
           curl --fail --location --retry 3 --retry-delay 2 \
@@ -141,6 +158,7 @@ jobs:
             --output dist/package-evidence/release-evidence.zip
           unzip -o dist/package-evidence/release-evidence.zip -d dist/package-evidence >/dev/null
           test -s "$(find dist/package-evidence -name release-evidence.json -print -quit)"
+
           PYTHONPATH="${GITHUB_WORKSPACE}/implementation" python3 - <<'PY'
           import json
           from pathlib import Path
@@ -148,7 +166,6 @@ jobs:
 
           package = json.loads(next(Path("dist/package-evidence").rglob("release-evidence.json")).read_text())
           os_manifest = json.loads(Path("dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json").read_text())
-
           print("PACKAGE_EVIDENCE", json.dumps(package, sort_keys=True))
           print("OS_EVIDENCE", json.dumps(os_manifest, sort_keys=True))
           package_manifest = AlphaReleaseManifest(
@@ -168,21 +185,12 @@ jobs:
               os_source_commit=os_manifest["source_commit"],
               os_ci_run_id=os_manifest["ci_run_id"],
               required_gate_ids=("package-release-evidence", "os-image-evidence", "os-reproducibility"),
-              passing_gate_ids=(
-                  "package-release-evidence",
-                  "os-image-evidence",
-                  "os-reproducibility",
-              ),
+              passing_gate_ids=("package-release-evidence", "os-image-evidence", "os-reproducibility"),
           )
           print("RELEASE_CANDIDATE_GATES", candidate.required_gate_ids, candidate.passing_gate_ids, candidate.failed_gate_ids, candidate.missing_gate_ids, candidate.ready)
-          if not candidate.ready:
-              raise SystemExit("release candidate is not ready")
-          Path("dist/alpha-release-candidate-evidence.json").write_text(
-              json.dumps(candidate.to_dict(), indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
-          )
+          if not candidate.ready: raise SystemExit("release candidate is not ready")
+          Path("dist/alpha-release-candidate-evidence.json").write_text(json.dumps(candidate.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
-
       - name: Write CI summary
         run: |
           echo "## Alpha OS Image" >> "$GITHUB_STEP_SUMMARY"
