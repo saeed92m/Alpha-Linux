@@ -180,7 +180,7 @@ printf 'COSMIC launcher: /usr/bin/start-cosmic\\n' >> "${OUT_DIR}/alpha-cosmic-r
 cat "${COSMIC_MANIFEST}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
 
 echo "Repacking modified Ubuntu Live layer"
-sudo mksquashfs "${LIVE_ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -no-xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
+sudo mksquashfs "${LIVE_ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
 sudo chown "$(id -u):$(id -g)" "${LIVE_SQUASHFS}"
 test -s "${LIVE_SQUASHFS}"
 
