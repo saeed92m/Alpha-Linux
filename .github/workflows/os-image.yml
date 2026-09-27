@@ -105,6 +105,8 @@ jobs:
             exit 1
           fi
           echo "Automated QEMU boot smoke completed without detected fatal boot errors."
+          echo "QEMU boot smoke evidence:"
+          sed -n '1,160p' dist/qemu-boot-smoke.log || true
 
       - name: Verify manifest and embedded provenance
         run: |
