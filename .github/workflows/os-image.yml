@@ -80,15 +80,7 @@ jobs:
       - name: Run automated ISO boot smoke test
         run: |
           set -euo pipefail
-          timeout 75s qemu-system-x86_64 \\
-            -machine accel=tcg \\
-            -m 2048 \\
-            -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso \\
-            -boot d \\
-            -display none \\
-            -serial file:dist/qemu-boot-smoke.log \\
-            -no-reboot \\
-            >/tmp/alpha-qemu.stdout 2>/tmp/alpha-qemu.stderr &
+          timeout 75s qemu-system-x86_64 -machine accel=tcg -m 2048 -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-boot-smoke.log -no-reboot >/tmp/alpha-qemu.stdout 2>/tmp/alpha-qemu.stderr &
           QEMU_PID=$!
           sleep 45
           if kill -0 "$QEMU_PID" 2>/dev/null; then
@@ -96,7 +88,9 @@ jobs:
             wait "$QEMU_PID" || true
             echo "QEMU boot smoke: guest remained running for 45 seconds."
           else
-            wait "$QEMU_PID"
+            QEMU_STATUS=0
+            wait "$QEMU_PID" || QEMU_STATUS=$?
+            echo "QEMU exited before the 45-second liveness window with status $QEMU_STATUS."
           fi
           if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-boot-smoke.log /tmp/alpha-qemu.stderr; then
             echo "Fatal boot error detected."
