@@ -158,6 +158,8 @@ deb http://archive.ubuntu.com/ubuntu resolute-updates main restricted universe m
 deb http://security.ubuntu.com/ubuntu resolute-security main restricted universe multiverse
 deb http://archive.ubuntu.com/ubuntu resolute-backports main restricted universe multiverse
 APT
+printf 'deb [signed-by=/etc/apt/keyrings/pop-os.gpg] %s %s main\n' "${COSMIC_REPOSITORY}" "resolute" \
+  | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d/alpha-cosmic.list" >/dev/null
 
 sudo mount --bind /dev "${OVERLAY_ROOTFS_DIR}/dev"
 sudo mount --bind /dev/pts "${OVERLAY_ROOTFS_DIR}/dev/pts"
