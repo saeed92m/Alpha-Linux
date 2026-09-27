@@ -156,12 +156,16 @@ CONF
           set -euo pipefail
           W=dist/cosmic-graphical-runtime
           mkdir -p "$W/evidence"
+          xorriso -indev "$W/test.iso" -osirrox on -extract /casper/vmlinuz "$W/vmlinuz"
+          xorriso -indev "$W/test.iso" -osirrox on -extract /casper/initrd "$W/initrd"
+          test -s "$W/vmlinuz"
+          test -s "$W/initrd"
           export DISPLAY=:99
           Xvfb :99 -screen 0 1280x800x24 -nolisten tcp >/tmp/xvfb.log 2>&1 &
           XPID=$!
           trap 'kill "$XPID" 2>/dev/null || true' EXIT
           sleep 2
-          timeout 150s qemu-system-x86_64 -machine q35,accel=tcg -cpu max -m 4096 -smp 2 -device virtio-vga -cdrom "$W/test.iso" -boot d -display gtk,gl=off -serial file:"$W/evidence/qemu-serial.log" -no-reboot >/tmp/qemu.stdout 2>/tmp/qemu.stderr &
+          timeout 150s qemu-system-x86_64 -machine q35,accel=tcg -cpu max -m 4096 -smp 2 -device virtio-vga -kernel "$W/vmlinuz" -initrd "$W/initrd" -append "boot=casper console=ttyS0 systemd.journald.forward_to_console=1" -cdrom "$W/test.iso" -display gtk,gl=off -serial file:"$W/evidence/qemu-serial.log" -no-reboot >/tmp/qemu.stdout 2>/tmp/qemu.stderr &
           QPID=$!
           for attempt in $(seq 1 140); do
             grep -q 'COSMIC_GRAPHICAL_RUNTIME=passed' "$W/evidence/qemu-serial.log" 2>/dev/null && break
