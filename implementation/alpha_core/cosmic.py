@@ -43,7 +43,7 @@ class CosmicLiveImageEvidence:
     desktop_file: str = "cosmic.desktop"
     session_launcher: str = "start-cosmic"
 
-    def validate_root(self, root: Path) -> dict[str, str]:
+    def validate_root(self, root: Path) -> dict[str, object]:
         desktop_candidates = (
             root / "usr/share/xsessions" / self.desktop_file,
             root / "usr/share/wayland-sessions" / self.desktop_file,
@@ -75,7 +75,7 @@ class CosmicLiveImageEvidence:
         if missing_packages:
             raise ValueError(f"missing COSMIC packages: {missing_packages}")
 
-        payload = {
+        payload: dict[str, object] = {
             "desktop_file": str(desktop_path),
             "session_launcher": str(launcher_path),
             "required_packages": list(self.package_names),
