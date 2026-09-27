@@ -72,6 +72,40 @@ jobs:
           chmod +x scripts/build_alpha_os_image.sh
           scripts/build_alpha_os_image.sh
 
+      - name: Install QEMU boot-smoke tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends qemu-system-x86
+
+      - name: Run automated ISO boot smoke test
+        run: |
+          set -euo pipefail
+          timeout 75s qemu-system-x86_64 \\
+            -machine accel=tcg \\
+            -m 2048 \\
+            -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso \\
+            -boot d \\
+            -display none \\
+            -serial file:dist/qemu-boot-smoke.log \\
+            -no-reboot \\
+            >/tmp/alpha-qemu.stdout 2>/tmp/alpha-qemu.stderr &
+          QEMU_PID=$!
+          sleep 45
+          if kill -0 "$QEMU_PID" 2>/dev/null; then
+            kill "$QEMU_PID" || true
+            wait "$QEMU_PID" || true
+            echo "QEMU boot smoke: guest remained running for 45 seconds."
+          else
+            wait "$QEMU_PID"
+          fi
+          if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-boot-smoke.log /tmp/alpha-qemu.stderr; then
+            echo "Fatal boot error detected."
+            cat dist/qemu-boot-smoke.log || true
+            cat /tmp/alpha-qemu.stderr || true
+            exit 1
+          fi
+          echo "Automated QEMU boot smoke completed without detected fatal boot errors."
+
       - name: Verify manifest and embedded provenance
         run: |
           python3 - <<'PY'
