@@ -175,7 +175,19 @@ sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/run/systemd/resolve"
 sudo cp -L /etc/resolv.conf "${OVERLAY_ROOTFS_DIR}/run/systemd/resolve/stub-resolv.conf"
 
 timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get update
+set +e
 timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get install -y cosmic-session
+APT_INSTALL_STATUS=$?
+set -e
+if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
+  echo "apt-get install returned ${APT_INSTALL_STATUS}; repairing package configuration before failing"
+  sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --configure -a
+  sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get -f install -y
+fi
+if sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --audit | grep -q .; then
+  sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --audit
+  exit 1
+fi
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean
 sudo rm -rf "${OVERLAY_ROOTFS_DIR}/var/lib/apt/lists/"*
 
