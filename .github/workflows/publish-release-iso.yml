@@ -1,8 +1,8 @@
 name: Publish Existing Alpha ISO Release Assets
 
 on:
-  issue_comment:
-    types: [created]
+  issues:
+    types: [edited]
 
 permissions:
   contents: write
