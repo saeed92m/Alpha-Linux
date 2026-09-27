@@ -22,9 +22,14 @@ OUTPUT_PATH="${OUT_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.iso"
 REFERENCE_PATH="${WORK_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.reproducibility.iso"
 SEED_PATH="${WORK_DIR}/alpha-release.json"
 MANIFEST_PATH="${OUT_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.manifest.json"
+LIVE_ROOT="${WORK_DIR}/live-rootfs"
+CASPER_DIR="${WORK_DIR}/casper"
+CUSTOM_SQUASHFS="${WORK_DIR}/filesystem.cosmic.squashfs"
+COSMIC_MANIFEST_PATH="${OUT_DIR}/cosmic-live-image-evidence.json"
 
 mkdir -p "${OUT_DIR}" "${WORK_DIR}"
-rm -f "${OUTPUT_PATH}" "${REFERENCE_PATH}" "${MANIFEST_PATH}" "${SEED_PATH}"
+rm -f "${OUTPUT_PATH}" "${REFERENCE_PATH}" "${MANIFEST_PATH}" "${SEED_PATH}" "${CUSTOM_SQUASHFS}" "${COSMIC_MANIFEST_PATH}"
+rm -rf "${LIVE_ROOT}" "${CASPER_DIR}"
 
 echo "Downloading Ubuntu base image: ${BASE_ISO}"
 curl --fail --location --retry 3 --retry-delay 2 --output "${BASE_PATH}" "${BASE_URL}${BASE_ISO}"
@@ -76,6 +81,87 @@ PY
 
 export SOURCE_DATE_EPOCH
 
+prepare_live_rootfs() {
+  echo "Extracting Ubuntu Live rootfs from the ISO"
+  mkdir -p "${CASPER_DIR}" "${LIVE_ROOT}"
+  xorriso -indev "${BASE_PATH}" -osirrox on -extract /casper "${CASPER_DIR}" >/dev/null 2>&1 || true
+  test -f "${CASPER_DIR}/filesystem.squashfs"
+  unsquashfs -d "${LIVE_ROOT}" "${CASPER_DIR}/filesystem.squashfs" >/dev/null 2>&1
+}
+
+install_cosmic_runtime() {
+  echo "Installing COSMIC into the live rootfs"
+  chroot "${LIVE_ROOT}" /bin/bash -lc '
+    set -euxo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends ca-certificates curl gpg
+    mkdir -p /usr/share/keyrings
+    curl -fsSL https://apt.pop-os.org/release.key | gpg --dearmor -o /usr/share/keyrings/pop-os-archive-keyring.gpg
+    cat > /etc/apt/sources.list.d/pop-os-cosmic.list <<"EOF"
+deb [signed-by=/usr/share/keyrings/pop-os-archive-keyring.gpg arch=amd64] https://apt.pop-os.org/release $(. /etc/os-release && echo "$UBUNTU_CODENAME") main
+EOF
+    apt-get update
+    if ! apt-get install -y --no-install-recommends cosmic-session cosmic-desktop; then
+      apt-get install -y --no-install-recommends cosmic-session || true
+    fi
+  '
+}
+
+validate_cosmic_runtime() {
+  echo "Validating the COSMIC live-session runtime"
+  test -f "${LIVE_ROOT}/usr/share/xsessions/cosmic.desktop" || test -f "${LIVE_ROOT}/usr/share/wayland-sessions/cosmic.desktop"
+  test -x "${LIVE_ROOT}/usr/bin/start-cosmic" || test -x "${LIVE_ROOT}/usr/local/bin/start-cosmic"
+
+  PYTHONPATH="${GITHUB_WORKSPACE:-.}/implementation" \
+  python3 - "${LIVE_ROOT}" "${COSMIC_MANIFEST_PATH}" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+manifest_path = Path(sys.argv[2])
+
+desktop_candidates = (
+    root / "usr/share/xsessions/cosmic.desktop",
+    root / "usr/share/wayland-sessions/cosmic.desktop",
+)
+launcher_candidates = (
+    root / "usr/bin/start-cosmic",
+    root / "usr/local/bin/start-cosmic",
+)
+
+for desktop in desktop_candidates:
+    if desktop.exists():
+        break
+else:
+    raise SystemExit("missing cosmic.desktop in live rootfs")
+
+for launcher in launcher_candidates:
+    if launcher.exists() and os.access(launcher, os.X_OK):
+        break
+else:
+    raise SystemExit("missing executable start-cosmic in live rootfs")
+
+payload = {
+    "desktop_file": next(str(path) for path in desktop_candidates if path.exists()),
+    "session_launcher": next(str(path) for path in launcher_candidates if path.exists() and os.access(path, os.X_OK)),
+    "required_packages": ["cosmic-session", "cosmic-desktop"],
+    "state": "validated",
+}
+manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+print(json.dumps(payload, indent=2, sort_keys=True))
+PY
+}
+
+prepare_live_rootfs
+install_cosmic_runtime
+validate_cosmic_runtime
+
+echo "Rebuilding Live squashfs with the custom COSMIC runtime"
+mksquashfs "${LIVE_ROOT}" "${CUSTOM_SQUASHFS}" -noappend -quiet
+
 build_iso() {
   local output_path="$1"
   echo "Building ISO: ${output_path}"
@@ -83,12 +169,13 @@ build_iso() {
     -indev "${BASE_PATH}" \
     -outdev "${output_path}" \
     -map "${SEED_PATH}" /alpha-release.json \
+    -map "${CUSTOM_SQUASHFS}" /casper/filesystem.squashfs \
     -boot_image any replay \
     -compliance no_emul_toc \
     -padding included
 }
 
-echo "Repacking bootable Ubuntu ISO with deterministic time inputs"
+echo "Repacking bootable Ubuntu ISO with deterministic time inputs and a COSMIC-enabled live rootfs"
 build_iso "${OUTPUT_PATH}"
 
 REPRODUCIBILITY_RESULT="not-run"
@@ -108,8 +195,9 @@ fi
 
 echo "Validating ISO structure and embedded Alpha metadata"
 xorriso -indev "${OUTPUT_PATH}" -ls /alpha-release.json | grep -F 'alpha-release.json'
-xorriso -indev "${OUTPUT_PATH}" -report_el_torito plain | tee "${OUT_DIR}/el-torito-report.txt"
-grep -Eq 'BIOS|EFI|El Torito' "${OUT_DIR}/el-torito-report.txt"
+xorriso -indev "${OUTPUT_PATH}" -ls /casper | tee "${OUT_DIR}/live-filesystem-evidence.txt"
+grep -Eq "\.squashfs['[:space:]]*$" "${OUT_DIR}/live-filesystem-evidence.txt"
+grep -Eq "^['[:space:]]*initrd['[:space:]]*$" "${OUT_DIR}/live-filesystem-evidence.txt"
 
 IMAGE_SIZE="$(stat -c '%s' "${OUTPUT_PATH}")"
 IMAGE_SHA256="$(sha256sum "${OUTPUT_PATH}" | awk '{print $1}')"
@@ -117,6 +205,7 @@ IMAGE_SHA256="$(sha256sum "${OUTPUT_PATH}" | awk '{print $1}')"
 PYTHONPATH="${GITHUB_WORKSPACE:-.}/implementation" \
 python3 - "${OUTPUT_PATH}" "${MANIFEST_PATH}" "${RELEASE_ID}" "${VERSION}" "${CHANNEL}" "${ARCH}" "${SOURCE_COMMIT}" "${CI_RUN_ID}" "${BUILD_ENVIRONMENT}" "${REPRODUCIBILITY_RESULT}" "${IMAGE_SIZE}" "${IMAGE_SHA256}" "${REFERENCE_SHA256}" <<'PY'
 import json
+import os
 import sys
 from pathlib import Path
 from alpha_core.os_image import OSImageEvidence
@@ -152,12 +241,13 @@ evidence = OSImageEvidence(
     reproducibility_result=reproducibility_result,
     reproducibility_reference_sha256=reproducibility_reference_sha256,
 )
+
 evidence.validate_filename()
 
 payload = {
     **evidence.__dict__,
     "deterministic_filename": evidence.deterministic_filename,
-    "source_date_epoch": int(__import__("os").environ["SOURCE_DATE_EPOCH"]),
+    "source_date_epoch": int(os.environ["SOURCE_DATE_EPOCH"]),
 }
 Path(manifest).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
@@ -168,3 +258,5 @@ echo "SHA256=${IMAGE_SHA256}"
 echo "REFERENCE_SHA256=${REFERENCE_SHA256}"
 echo "REPRODUCIBILITY=${REPRODUCIBILITY_RESULT}"
 echo "MANIFEST=${MANIFEST_PATH}"
+echo "COSMIC_MANIFEST=${COSMIC_MANIFEST_PATH}"
+

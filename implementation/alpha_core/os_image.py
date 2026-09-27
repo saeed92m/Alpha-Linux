@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import os
 from pathlib import Path
 import string
 
@@ -48,20 +49,14 @@ class OSImageEvidence:
             ("artifact_sha256", self.artifact_sha256),
             ("reproducibility_reference_sha256", self.reproducibility_reference_sha256),
         ):
-            if (
-                len(digest) != 64
-                or any(character not in string.hexdigits for character in digest)
-            ):
+            if len(digest) != 64 or any(character not in string.hexdigits for character in digest):
                 raise ValueError(f"{name} must be a SHA-256 hex digest")
         if self.reproducibility_result not in {"not-run", "passed", "failed"}:
             raise ValueError("reproducibility_result must be not-run, passed, or failed")
 
     @property
     def deterministic_filename(self) -> str:
-        return (
-            f"alpha-linux-{self.version}-{self.channel}-"
-            f"{self.architecture}.{self.artifact_format}"
-        )
+        return f"alpha-linux-{self.version}-{self.channel}-{self.architecture}.{self.artifact_format}"
 
     def validate_filename(self) -> None:
         if self.artifact_filename != self.deterministic_filename:
@@ -100,3 +95,51 @@ class OSImageEvidence:
             reproducibility_result=reproducibility_result,
             reproducibility_reference_sha256=reproducibility_reference_sha256,
         )
+
+
+@dataclass(frozen=True)
+class CosmicLiveImageEvidence:
+    package_names: tuple[str, ...] = ("cosmic-session", "cosmic-desktop")
+    desktop_file: str = "cosmic.desktop"
+    session_launcher: str = "start-cosmic"
+
+    def validate_root(self, root: Path) -> dict[str, str]:
+        desktop_candidates = (
+            root / "usr/share/xsessions" / self.desktop_file,
+            root / "usr/share/wayland-sessions" / self.desktop_file,
+        )
+        launcher_candidates = (
+            root / "usr/bin" / self.session_launcher,
+            root / "usr/local/bin" / self.session_launcher,
+        )
+
+        desktop_path = next((path for path in desktop_candidates if path.exists()), None)
+        if desktop_path is None:
+            raise ValueError("missing cosmic.desktop in live rootfs")
+
+        launcher_path = next(
+            (path for path in launcher_candidates if path.exists() and os.access(path, os.X_OK)),
+            None,
+        )
+        if launcher_path is None:
+            raise ValueError("missing executable start-cosmic in live rootfs")
+
+        status_path = root / "var/lib/dpkg/status"
+        if not status_path.exists():
+            raise ValueError("dpkg status file is missing; live rootfs is incomplete")
+
+        status_text = status_path.read_text(encoding="utf-8", errors="ignore")
+        missing_packages = [
+            package for package in self.package_names if f"Package: {package}" not in status_text
+        ]
+        if missing_packages:
+            raise ValueError(f"missing COSMIC packages: {missing_packages}")
+
+        payload = {
+            "desktop_file": str(desktop_path),
+            "session_launcher": str(launcher_path),
+            "required_packages": list(self.package_names),
+            "state": "validated",
+        }
+        return payload
+

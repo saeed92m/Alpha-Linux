@@ -3,6 +3,7 @@ import hashlib
 
 import pytest
 
+from alpha_core.cosmic import CosmicLiveImageEvidence
 from alpha_core.os_image import OSImageEvidence
 
 
@@ -92,3 +93,27 @@ def test_invalid_artifact_format_rejected():
 def test_invalid_reproducibility_result_rejected():
     with pytest.raises(ValueError, match="reproducibility_result"):
         make_evidence(reproducibility_result="unknown")
+
+
+def test_cosmic_live_image_evidence_accepts_valid_runtime(tmp_path: Path):
+    desktop_dir = tmp_path / "usr/share/xsessions"
+    desktop_dir.mkdir(parents=True)
+    (desktop_dir / "cosmic.desktop").write_text("[Desktop Entry]\nExec=start-cosmic\n", encoding="utf-8")
+    launcher_dir = tmp_path / "usr/bin"
+    launcher_dir.mkdir(parents=True)
+    launcher = launcher_dir / "start-cosmic"
+    launcher.write_text("#!/bin/sh\n", encoding="utf-8")
+    launcher.chmod(0o755)
+    status = tmp_path / "var/lib/dpkg/status"
+    status.parent.mkdir(parents=True)
+    status.write_text("Package: cosmic-session\n\nPackage: cosmic-desktop\n", encoding="utf-8")
+
+    payload = CosmicLiveImageEvidence().validate_root(tmp_path)
+    assert payload["state"] == "validated"
+    assert payload["required_packages"] == ["cosmic-session", "cosmic-desktop"]
+
+
+def test_cosmic_live_image_evidence_rejects_missing_runtime(tmp_path: Path):
+    with pytest.raises(ValueError, match="missing cosmic.desktop"):
+        CosmicLiveImageEvidence().validate_root(tmp_path)
+
