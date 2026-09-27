@@ -150,12 +150,12 @@ jobs:
             echo "Live runtime QEMU exited before the 75-second window with status $QEMU_STATUS." | tee -a dist/live-runtime-evidence.txt
           fi
           test -s dist/live-runtime-boot.log
-          if grep -Eqi 'panic|kernel panic|fatal' dist/live-runtime-boot.log /tmp/alpha-live-runtime.stderr; then
+          if grep -Eqi 'Kernel panic - not syncing|kernel panic|(^|[^[:alnum:]_-])panic:|(^|[^[:alnum:]_-])Oops:|(^|[^[:alnum:]_-])BUG:|Call Trace:' dist/live-runtime-boot.log /tmp/alpha-live-runtime.stderr; then
             cat dist/live-runtime-boot.log || true
             cat /tmp/alpha-live-runtime.stderr || true
             exit 1
           fi
-          grep -Eqi 'casper|live|mount|systemd' dist/live-runtime-boot.log
+          grep -Eqi 'Begin:.*(casper|mounting root)|boot=casper|casper-[a-z-]+|Adding live session user|overlayfs' dist/live-runtime-boot.log
           echo "Live kernel/initramfs runtime reached the expected boot log surface." | tee -a dist/live-runtime-evidence.txt
 
       - name: Run automated ISO boot smoke test
