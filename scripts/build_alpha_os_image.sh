@@ -112,7 +112,7 @@ sudo chown -R "$(id -u):$(id -g)" "${ROOTFS_DIR}"
 
 echo "Injecting COSMIC repository and packages"
 install -d -m 0755 "${ROOTFS_DIR}/etc/apt/keyrings"
-curl --fail --location --retry 3 --retry-delay 2 "${COSMIC_KEY_URL}" \
+curl --fail --location --retry 3 --retry-delay 2 --max-time 60 "${COSMIC_KEY_URL}" \
   | gpg --dearmor \
   > "${ROOTFS_DIR}/etc/apt/keyrings/pop-os.gpg"
 printf 'deb [signed-by=/etc/apt/keyrings/pop-os.gpg] %s %s main\\n' "${COSMIC_REPOSITORY}" "resolute" \
@@ -133,8 +133,8 @@ cleanup_chroot() {
 }
 trap cleanup_chroot EXIT
 
-sudo chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get update
-sudo chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get install -y cosmic-session
+timeout 20m sudo chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get update
+timeout 20m sudo chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get install -y cosmic-session
 sudo chroot "${ROOTFS_DIR}" apt-get clean
 rm -rf "${ROOTFS_DIR}/var/lib/apt/lists/"*
 
