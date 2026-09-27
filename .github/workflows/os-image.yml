@@ -98,12 +98,11 @@ jobs:
         run: |
           set -euo pipefail
           test -f /usr/share/OVMF/OVMF_CODE.fd
-          test -f /usr/share/OVMF/OVMF_VARS.fd
-          cp /usr/share/OVMF/OVMF_VARS.fd /tmp/OVMF_VARS.fd
-          timeout 75s qemu-system-x86_64 -machine q35 -m 2048 -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,file=/tmp/OVMF_VARS.fd -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-uefi-boot-smoke.log -no-reboot >/tmp/alpha-qemu-uefi.stdout 2>/tmp/alpha-qemu-uefi.stderr &
+          timeout 75s qemu-system-x86_64 -machine q35 -m 2048 -bios /usr/share/OVMF/OVMF_CODE.fd -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-uefi-boot-smoke.log -no-reboot >/tmp/alpha-qemu-uefi.stdout 2>/tmp/alpha-qemu-uefi.stderr &
           QEMU_PID=$!
           sleep 45
           if kill -0 "$QEMU_PID" 2>/dev/null; then kill "$QEMU_PID" || true; wait "$QEMU_PID" || true; else QEMU_STATUS=0; wait "$QEMU_PID" || QEMU_STATUS=$?; echo "UEFI QEMU exit status $QEMU_STATUS"; fi
+          if [[ ! -f dist/qemu-uefi-boot-smoke.log ]]; then cat /tmp/alpha-qemu-uefi.stderr || true; exit 1; fi
           if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-uefi-boot-smoke.log /tmp/alpha-qemu-uefi.stderr; then cat dist/qemu-uefi-boot-smoke.log || true; cat /tmp/alpha-qemu-uefi.stderr || true; exit 1; fi
           echo "UEFI boot smoke completed without detected fatal boot errors."
 
