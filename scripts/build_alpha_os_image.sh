@@ -286,7 +286,7 @@ sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/graphical.target.wants"
 sudo tee "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service" >/dev/null <<'UNIT'
 [Unit]
 Description=Alpha Linux COSMIC graphical runtime validation
-After=graphical.target gdm3.service
+After=gdm3.service
 Wants=gdm3.service
 ConditionPathExists=/usr/bin/start-cosmic
 [Service]
