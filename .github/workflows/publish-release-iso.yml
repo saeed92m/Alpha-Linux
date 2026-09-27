@@ -79,3 +79,25 @@ Expected complete ISO SHA-256:
 9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7
 EOF
           rm -f "$ISO"
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: "v0.1.0a1"
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" -R saeed92m/Alpha-Linux >/dev/null
+          gh release upload "$RELEASE_TAG" -R saeed92m/Alpha-Linux iso-publish/* --clobber
+
+      - name: Verify release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: "v0.1.0a1"
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" -R saeed92m/Alpha-Linux --json assets --jq '.assets[].name' | sort > release-assets.txt
+          grep -Fx 'alpha-linux-0.1.0a1-alpha-amd64.iso.sha256' release-assets.txt
+          grep -Fx 'alpha-linux-0.1.0a1-alpha-amd64.iso.parts.sha256' release-assets.txt
+          grep -Fx 'alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json' release-assets.txt
+          grep -Fx 'REASSEMBLE-ISO.txt' release-assets.txt
+          test "$(grep -c 'alpha-linux-0.1.0a1-alpha-amd64.iso.part-' release-assets.txt)" -ge 2
