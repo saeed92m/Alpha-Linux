@@ -167,6 +167,10 @@ sudo mount -t proc proc "${OVERLAY_ROOTFS_DIR}/proc"
 sudo mount -t sysfs sysfs "${OVERLAY_ROOTFS_DIR}/sys"
 sudo mount -t tmpfs tmpfs "${OVERLAY_ROOTFS_DIR}/run"
 sudo mount -t tmpfs tmpfs "${OVERLAY_ROOTFS_DIR}/tmp"
+echo "Preparing display-manager handoff for COSMIC"
+if [[ -L "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service" ]]; then
+  sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
+fi
 sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/run/systemd/resolve"
 sudo cp -L /etc/resolv.conf "${OVERLAY_ROOTFS_DIR}/run/systemd/resolve/stub-resolv.conf"
 
