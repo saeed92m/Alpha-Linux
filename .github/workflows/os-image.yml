@@ -178,12 +178,12 @@ jobs:
           test -s "$LIVE_DIR/vmlinuz"
           test -s "$LIVE_DIR/initrd"
           rm -f dist/cosmic-graphical-runtime-boot.log /tmp/alpha-cosmic-graphical.stdout /tmp/alpha-cosmic-graphical.stderr
-          timeout 210s qemu-system-x86_64 \
+          timeout 330s qemu-system-x86_64 \
             -machine q35,accel=tcg \
             -m 4096 \
             -kernel "$LIVE_DIR/vmlinuz" \
             -initrd "$LIVE_DIR/initrd" \
-            -append "boot=casper console=ttyS0 systemd.show_status=true" \
+            -append "boot=casper console=ttyS0 systemd.show_status=true cloud-init=disabled" \
             -cdrom "$ISO" \
             -vga virtio \
             -display none \
@@ -191,7 +191,7 @@ jobs:
             -no-reboot \
             >/tmp/alpha-cosmic-graphical.stdout 2>/tmp/alpha-cosmic-graphical.stderr &
           QEMU_PID=$!
-          for _ in $(seq 1 180); do
+          for _ in $(seq 1 300); do
             if ! kill -0 "$QEMU_PID" 2>/dev/null; then break; fi
             sleep 1
           done
