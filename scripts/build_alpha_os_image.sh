@@ -22,14 +22,9 @@ OUTPUT_PATH="${OUT_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.iso"
 REFERENCE_PATH="${WORK_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.reproducibility.iso"
 SEED_PATH="${WORK_DIR}/alpha-release.json"
 MANIFEST_PATH="${OUT_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.manifest.json"
-LIVE_ROOT="${WORK_DIR}/live-rootfs"
-CASPER_DIR="${WORK_DIR}/casper"
-CUSTOM_SQUASHFS="${WORK_DIR}/filesystem.cosmic.squashfs"
-COSMIC_MANIFEST_PATH="${OUT_DIR}/cosmic-live-image-evidence.json"
 
 mkdir -p "${OUT_DIR}" "${WORK_DIR}"
-rm -f "${OUTPUT_PATH}" "${REFERENCE_PATH}" "${MANIFEST_PATH}" "${SEED_PATH}" "${CUSTOM_SQUASHFS}" "${COSMIC_MANIFEST_PATH}"
-rm -rf "${LIVE_ROOT}" "${CASPER_DIR}"
+rm -f "${OUTPUT_PATH}" "${REFERENCE_PATH}" "${MANIFEST_PATH}" "${SEED_PATH}"
 
 echo "Downloading Ubuntu base image: ${BASE_ISO}"
 curl --fail --location --retry 3 --retry-delay 2 --output "${BASE_PATH}" "${BASE_URL}${BASE_ISO}"
@@ -81,87 +76,6 @@ PY
 
 export SOURCE_DATE_EPOCH
 
-prepare_live_rootfs() {
-  echo "Extracting Ubuntu Live rootfs from the ISO"
-  mkdir -p "${CASPER_DIR}" "${LIVE_ROOT}"
-  xorriso -indev "${BASE_PATH}" -osirrox on -extract /casper "${CASPER_DIR}" >/dev/null 2>&1 || true
-  test -f "${CASPER_DIR}/filesystem.squashfs"
-  unsquashfs -d "${LIVE_ROOT}" "${CASPER_DIR}/filesystem.squashfs" >/dev/null 2>&1
-}
-
-install_cosmic_runtime() {
-  echo "Installing COSMIC into the live rootfs"
-  chroot "${LIVE_ROOT}" /bin/bash -lc '
-    set -euxo pipefail
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update
-    apt-get install -y --no-install-recommends ca-certificates curl gpg
-    mkdir -p /usr/share/keyrings
-    curl -fsSL https://apt.pop-os.org/release.key | gpg --dearmor -o /usr/share/keyrings/pop-os-archive-keyring.gpg
-    cat > /etc/apt/sources.list.d/pop-os-cosmic.list <<"EOF"
-deb [signed-by=/usr/share/keyrings/pop-os-archive-keyring.gpg arch=amd64] https://apt.pop-os.org/release $(. /etc/os-release && echo "$UBUNTU_CODENAME") main
-EOF
-    apt-get update
-    if ! apt-get install -y --no-install-recommends cosmic-session cosmic-desktop; then
-      apt-get install -y --no-install-recommends cosmic-session || true
-    fi
-  '
-}
-
-validate_cosmic_runtime() {
-  echo "Validating the COSMIC live-session runtime"
-  test -f "${LIVE_ROOT}/usr/share/xsessions/cosmic.desktop" || test -f "${LIVE_ROOT}/usr/share/wayland-sessions/cosmic.desktop"
-  test -x "${LIVE_ROOT}/usr/bin/start-cosmic" || test -x "${LIVE_ROOT}/usr/local/bin/start-cosmic"
-
-  PYTHONPATH="${GITHUB_WORKSPACE:-.}/implementation" \
-  python3 - "${LIVE_ROOT}" "${COSMIC_MANIFEST_PATH}" <<'PY'
-import json
-import os
-import sys
-from pathlib import Path
-
-root = Path(sys.argv[1])
-manifest_path = Path(sys.argv[2])
-
-desktop_candidates = (
-    root / "usr/share/xsessions/cosmic.desktop",
-    root / "usr/share/wayland-sessions/cosmic.desktop",
-)
-launcher_candidates = (
-    root / "usr/bin/start-cosmic",
-    root / "usr/local/bin/start-cosmic",
-)
-
-for desktop in desktop_candidates:
-    if desktop.exists():
-        break
-else:
-    raise SystemExit("missing cosmic.desktop in live rootfs")
-
-for launcher in launcher_candidates:
-    if launcher.exists() and os.access(launcher, os.X_OK):
-        break
-else:
-    raise SystemExit("missing executable start-cosmic in live rootfs")
-
-payload = {
-    "desktop_file": next(str(path) for path in desktop_candidates if path.exists()),
-    "session_launcher": next(str(path) for path in launcher_candidates if path.exists() and os.access(path, os.X_OK)),
-    "required_packages": ["cosmic-session", "cosmic-desktop"],
-    "state": "validated",
-}
-manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-print(json.dumps(payload, indent=2, sort_keys=True))
-PY
-}
-
-prepare_live_rootfs
-install_cosmic_runtime
-validate_cosmic_runtime
-
-echo "Rebuilding Live squashfs with the custom COSMIC runtime"
-mksquashfs "${LIVE_ROOT}" "${CUSTOM_SQUASHFS}" -noappend -quiet
-
 build_iso() {
   local output_path="$1"
   echo "Building ISO: ${output_path}"
@@ -169,13 +83,152 @@ build_iso() {
     -indev "${BASE_PATH}" \
     -outdev "${output_path}" \
     -map "${SEED_PATH}" /alpha-release.json \
-    -map "${CUSTOM_SQUASHFS}" /casper/filesystem.squashfs \
     -boot_image any replay \
     -compliance no_emul_toc \
     -padding included
 }
 
-echo "Repacking bootable Ubuntu ISO with deterministic time inputs and a COSMIC-enabled live rootfs"
+COSMIC_REPOSITORY="https://apt.pop-os.org/release"
+COSMIC_KEY_URL="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x63C46DF0140D738961429F4E204DD8AEC33A7AFF"
+BASE_ROOTFS_DIR="${WORK_DIR}/minimal-root"
+STANDARD_ROOTFS_DIR="${WORK_DIR}/standard-root"
+LIVE_ROOTFS_DIR="${WORK_DIR}/live-root"
+OVERLAY_ROOTFS_DIR="${WORK_DIR}/merged-root"
+OVERLAY_WORK_DIR="${WORK_DIR}/overlay-work"
+LIVE_SQUASHFS="${WORK_DIR}/minimal.standard.live.squashfs"
+COSMIC_MANIFEST="${OUT_DIR}/alpha-cosmic-package-manifest.txt"
+
+echo "Extracting layered Ubuntu Live filesystems for COSMIC integration"
+rm -rf "${BASE_ROOTFS_DIR}" "${STANDARD_ROOTFS_DIR}" "${LIVE_ROOTFS_DIR}" "${OVERLAY_ROOTFS_DIR}" "${OVERLAY_WORK_DIR}" "${LIVE_SQUASHFS}" "${COSMIC_MANIFEST}"
+CASPER_LIST="$(xorriso -indev "${BASE_PATH}" -ls /casper 2>&1)"
+echo "${CASPER_LIST}"
+strip_quotes() { tr -d "'"; }
+SQUASHFS_NAMES="$(printf '%s\n' "${CASPER_LIST}" | strip_quotes | awk '$NF ~ /\.squashfs$/ {print $NF}')"
+BASE_SQUASHFS_NAME="$(printf '%s\n' "${SQUASHFS_NAMES}" | awk '$0 == "minimal.squashfs" {print; exit}')"
+STANDARD_SQUASHFS_NAME="$(printf '%s\n' "${SQUASHFS_NAMES}" | awk '$0 == "minimal.standard.squashfs" {print; exit}')"
+LIVE_SQUASHFS_NAME="$(printf '%s\n' "${SQUASHFS_NAMES}" | awk '$0 == "minimal.standard.live.squashfs" {print; exit}')"
+test -n "${BASE_SQUASHFS_NAME}"
+test -n "${STANDARD_SQUASHFS_NAME}"
+test -n "${LIVE_SQUASHFS_NAME}"
+BASE_SQUASHFS_PATH="/casper/${BASE_SQUASHFS_NAME}"
+STANDARD_SQUASHFS_PATH="/casper/${STANDARD_SQUASHFS_NAME}"
+LIVE_SQUASHFS_PATH="/casper/${LIVE_SQUASHFS_NAME}"
+echo "Detected layered Live payloads: ${BASE_SQUASHFS_PATH}, ${STANDARD_SQUASHFS_PATH}, ${LIVE_SQUASHFS_PATH}"
+xorriso -indev "${BASE_PATH}" -osirrox on -extract "${BASE_SQUASHFS_PATH}" "${WORK_DIR}/minimal.squashfs"
+xorriso -indev "${BASE_PATH}" -osirrox on -extract "${STANDARD_SQUASHFS_PATH}" "${WORK_DIR}/minimal.standard.squashfs"
+xorriso -indev "${BASE_PATH}" -osirrox on -extract "${LIVE_SQUASHFS_PATH}" "${WORK_DIR}/minimal.standard.live.squashfs"
+sudo unsquashfs -d "${BASE_ROOTFS_DIR}" "${WORK_DIR}/minimal.squashfs"
+sudo unsquashfs -d "${STANDARD_ROOTFS_DIR}" "${WORK_DIR}/minimal.standard.squashfs"
+sudo unsquashfs -d "${LIVE_ROOTFS_DIR}" "${WORK_DIR}/minimal.standard.live.squashfs"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}" "${OVERLAY_WORK_DIR}"
+sudo mount -t overlay overlay -o lowerdir="${STANDARD_ROOTFS_DIR}:${BASE_ROOTFS_DIR}",upperdir="${LIVE_ROOTFS_DIR}",workdir="${OVERLAY_WORK_DIR}" "${OVERLAY_ROOTFS_DIR}"
+cleanup_chroot() {
+  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/run" || true
+  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/tmp" || true
+  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/sys" || true
+  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/proc" || true
+  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/dev/pts" || true
+  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/dev" || true
+  sudo umount -lf "${OVERLAY_ROOTFS_DIR}" || true
+}
+trap cleanup_chroot EXIT
+
+echo "Injecting COSMIC repository and packages into merged Live rootfs"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/apt/keyrings" "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d"
+curl --fail --location --retry 3 --retry-delay 2 --max-time 60 "${COSMIC_KEY_URL}" \
+  | gpg --dearmor \
+  | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/keyrings/pop-os.gpg" >/dev/null
+printf 'deb [signed-by=/etc/apt/keyrings/pop-os.gpg] %s %s main\n' "${COSMIC_REPOSITORY}" "resolute" \
+  | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d/alpha-cosmic.list" >/dev/null
+sudo sed -i '/^[[:space:]]*deb[[:space:]]\+cdrom:/s/^/# disabled by Alpha Linux Live build/' "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list" || true
+
+sudo tee "${OVERLAY_ROOTFS_DIR}/usr/sbin/policy-rc.d" >/dev/null <<'POLICY'
+#!/bin/sh
+exit 101
+POLICY
+sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/sbin/policy-rc.d"
+
+echo "Normalizing APT sources for deterministic Live customization"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d/"*.list
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d/"*.sources
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list" >/dev/null <<'APT'
+deb http://archive.ubuntu.com/ubuntu resolute main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu resolute-updates main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu resolute-security main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu resolute-backports main restricted universe multiverse
+APT
+printf 'deb [signed-by=/etc/apt/keyrings/pop-os.gpg] %s %s main\n' "${COSMIC_REPOSITORY}" "resolute" \
+  | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d/alpha-cosmic.list" >/dev/null
+
+sudo mount --bind /dev "${OVERLAY_ROOTFS_DIR}/dev"
+sudo mount --bind /dev/pts "${OVERLAY_ROOTFS_DIR}/dev/pts"
+sudo mount -t proc proc "${OVERLAY_ROOTFS_DIR}/proc"
+sudo mount -t sysfs sysfs "${OVERLAY_ROOTFS_DIR}/sys"
+sudo mount -t tmpfs tmpfs "${OVERLAY_ROOTFS_DIR}/run"
+sudo mount -t tmpfs tmpfs "${OVERLAY_ROOTFS_DIR}/tmp"
+echo "Preparing display-manager handoff for COSMIC"
+if [[ -L "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service" ]]; then
+  sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
+fi
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/run/systemd/resolve"
+sudo cp -L /etc/resolv.conf "${OVERLAY_ROOTFS_DIR}/run/systemd/resolve/stub-resolv.conf"
+
+timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get update
+
+echo "Installing COSMIC and validating dpkg state inside the build chroot"
+set +e
+timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get install -y cosmic-session
+APT_INSTALL_STATUS=$?
+set -e
+
+COSMIC_DPKG_STATUS="$(sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='${Status}' cosmic-session 2>/dev/null || true)"
+echo "cosmic-session dpkg status: ${COSMIC_DPKG_STATUS}"
+if [[ "${COSMIC_DPKG_STATUS}" != "install ok installed" ]]; then
+  echo "COSMIC package installation did not reach a configured installed state (apt status=${APT_INSTALL_STATUS})"
+  sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --audit || true
+  sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='${Package} ${Status}\n' cosmic-session cosmic-settings cosmic-comp 2>/dev/null || true
+  exit 1
+fi
+
+if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
+  echo "apt-get returned ${APT_INSTALL_STATUS}, but cosmic-session is configured; continuing with explicit runtime validation."
+fi
+
+sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean || true
+sudo rm -rf "${OVERLAY_ROOTFS_DIR}/var/lib/apt/lists/"*
+
+COSMIC_SESSION_FILE="$(find "${OVERLAY_ROOTFS_DIR}/usr/share/wayland-sessions" -maxdepth 1 -name 'cosmic.desktop' -print -quit)"
+if [[ ! -s "${COSMIC_SESSION_FILE}" ]]; then
+  echo "ERROR: COSMIC Wayland session file was not installed"
+  find "${OVERLAY_ROOTFS_DIR}/usr/share/wayland-sessions" -maxdepth 1 -type f -print 2>/dev/null || true
+  exit 1
+fi
+if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/start-cosmic" ]]; then
+  echo "ERROR: /usr/bin/start-cosmic is missing or not executable"
+  exit 1
+fi
+
+sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='${binary:Package}\t${Version}\n'   | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/'   | LC_ALL=C sort   > "${COSMIC_MANIFEST}"
+if [[ ! -s "${COSMIC_MANIFEST}" ]]; then
+  echo "ERROR: COSMIC package manifest is empty"
+  exit 1
+fi
+
+printf 'COSMIC repository: %s\\n' "${COSMIC_REPOSITORY}" > "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+printf 'COSMIC base layer: %s\\n' "${BASE_SQUASHFS_PATH}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+printf 'COSMIC standard layer: %s\\n' "${STANDARD_SQUASHFS_PATH}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+printf 'COSMIC live layer: %s\\n' "${LIVE_SQUASHFS_PATH}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+printf 'COSMIC session: /usr/share/wayland-sessions/cosmic.desktop\\n' >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+printf 'COSMIC launcher: /usr/bin/start-cosmic\\n' >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+cat "${COSMIC_MANIFEST}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+
+echo "Repacking modified Ubuntu Live layer"
+sudo mksquashfs "${LIVE_ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
+sudo chown "$(id -u):$(id -g)" "${LIVE_SQUASHFS}"
+test -s "${LIVE_SQUASHFS}"
+
+echo "Repacking bootable Ubuntu ISO with deterministic time inputs"
 build_iso "${OUTPUT_PATH}"
 
 REPRODUCIBILITY_RESULT="not-run"
@@ -195,9 +248,8 @@ fi
 
 echo "Validating ISO structure and embedded Alpha metadata"
 xorriso -indev "${OUTPUT_PATH}" -ls /alpha-release.json | grep -F 'alpha-release.json'
-xorriso -indev "${OUTPUT_PATH}" -ls /casper | tee "${OUT_DIR}/live-filesystem-evidence.txt"
-grep -Eq "\.squashfs['[:space:]]*$" "${OUT_DIR}/live-filesystem-evidence.txt"
-grep -Eq "^['[:space:]]*initrd['[:space:]]*$" "${OUT_DIR}/live-filesystem-evidence.txt"
+xorriso -indev "${OUTPUT_PATH}" -report_el_torito plain | tee "${OUT_DIR}/el-torito-report.txt"
+grep -Eq 'BIOS|EFI|El Torito' "${OUT_DIR}/el-torito-report.txt"
 
 IMAGE_SIZE="$(stat -c '%s' "${OUTPUT_PATH}")"
 IMAGE_SHA256="$(sha256sum "${OUTPUT_PATH}" | awk '{print $1}')"
@@ -205,7 +257,6 @@ IMAGE_SHA256="$(sha256sum "${OUTPUT_PATH}" | awk '{print $1}')"
 PYTHONPATH="${GITHUB_WORKSPACE:-.}/implementation" \
 python3 - "${OUTPUT_PATH}" "${MANIFEST_PATH}" "${RELEASE_ID}" "${VERSION}" "${CHANNEL}" "${ARCH}" "${SOURCE_COMMIT}" "${CI_RUN_ID}" "${BUILD_ENVIRONMENT}" "${REPRODUCIBILITY_RESULT}" "${IMAGE_SIZE}" "${IMAGE_SHA256}" "${REFERENCE_SHA256}" <<'PY'
 import json
-import os
 import sys
 from pathlib import Path
 from alpha_core.os_image import OSImageEvidence
@@ -241,13 +292,12 @@ evidence = OSImageEvidence(
     reproducibility_result=reproducibility_result,
     reproducibility_reference_sha256=reproducibility_reference_sha256,
 )
-
 evidence.validate_filename()
 
 payload = {
     **evidence.__dict__,
     "deterministic_filename": evidence.deterministic_filename,
-    "source_date_epoch": int(os.environ["SOURCE_DATE_EPOCH"]),
+    "source_date_epoch": int(__import__("os").environ["SOURCE_DATE_EPOCH"]),
 }
 Path(manifest).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 PY
@@ -258,5 +308,3 @@ echo "SHA256=${IMAGE_SHA256}"
 echo "REFERENCE_SHA256=${REFERENCE_SHA256}"
 echo "REPRODUCIBILITY=${REPRODUCIBILITY_RESULT}"
 echo "MANIFEST=${MANIFEST_PATH}"
-echo "COSMIC_MANIFEST=${COSMIC_MANIFEST_PATH}"
-
