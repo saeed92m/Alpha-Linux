@@ -75,3 +75,37 @@ Record architectural and product decisions so the project remains understandable
 **Decision:** Implementation begins only after the specification and architecture baseline are reviewed and frozen.
 
 **Status:** Accepted
+
+## D-011 — Single ISO with dual firmware boot targets
+
+**Decision:** The preferred Alpha Linux release model is one bootable ISO carrying both UEFI and Legacy BIOS boot paths where supported by the selected Ubuntu base-image/tooling stack.
+
+**Context:** The product must support Live USB use and installation across modern UEFI systems and compatible legacy BIOS systems without forcing users to download separate firmware-specific images.
+
+**Trade-offs:** Dual-path media increases boot-validation scope and compatibility testing. Some firmware/media combinations may remain unsupported and must be documented rather than assumed.
+
+**Status:** Accepted; Phase 7 validation required.
+
+## D-012 — GPT/MBR installation compatibility
+
+**Decision:** Alpha Linux targets GPT installation for UEFI systems and MBR installation for Legacy BIOS systems. Additional combinations are allowed only when validated.
+
+**Context:** Firmware mode and target partition table are distinct concerns and must be detected before installation.
+
+**Status:** Accepted; Phase 7 validation required.
+
+## D-013 — Live environment as a first-class product surface
+
+**Decision:** The Live USB environment is a product surface with graphical Alpha/COSMIC experience, diagnostics, recovery entry points and graphical installer access.
+
+**Context:** Users must be able to evaluate and repair the system without installing it first.
+
+**Status:** Accepted; implementation and runtime validation required.
+
+## D-014 — Installer safety and transaction boundary
+
+**Decision:** The graphical installer must remain separated from privileged storage mutation. Storage discovery, safety planning, explicit confirmation, transactional execution, verification and rollback/recovery form distinct boundaries.
+
+**Context:** Installer correctness and user safety require testable separation between intent/UI and disk mutation.
+
+**Status:** Accepted; disposable transaction evidence exists; physical adapter remains future work.
