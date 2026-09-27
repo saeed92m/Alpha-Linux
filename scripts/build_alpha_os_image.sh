@@ -148,12 +148,16 @@ exit 101
 POLICY
 sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/sbin/policy-rc.d"
 
-echo "Removing ISO-local APT media sources from build root"
-while IFS= read -r -d '' source_file; do
-  if sudo grep -Eqi 'file:/cdrom|cdrom:' "${source_file}"; then
-    sudo rm -f "${source_file}"
-  fi
-done < <(sudo find "${OVERLAY_ROOTFS_DIR}/etc/apt" -type f -print0)
+echo "Normalizing APT sources for deterministic Live customization"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d/"*.list
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d/"*.sources
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list" >/dev/null <<'APT'
+deb http://archive.ubuntu.com/ubuntu resolute main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu resolute-updates main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu resolute-security main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu resolute-backports main restricted universe multiverse
+APT
 
 sudo mount --bind /dev "${OVERLAY_ROOTFS_DIR}/dev"
 sudo mount --bind /dev/pts "${OVERLAY_ROOTFS_DIR}/dev/pts"
