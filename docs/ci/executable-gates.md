@@ -2,7 +2,7 @@
 
 **Status:** Phase 0 normative gate contract
 
-The following gate IDs are the minimum machine-oriented contract for the future CI implementation.
+The following gate IDs are the minimum machine-oriented contract for the CI implementation.
 
 | Gate ID | Stage | Required outcome | Blocks |
 |---|---|---|---|
@@ -19,6 +19,25 @@ The following gate IDs are the minimum machine-oriented contract for the future 
 | CI-ISO-001 | ISO | boot/live/install validation passes for release candidate | stable release |
 | CI-REL-001 | Release | provenance, signatures, notes and compatibility records are complete | stable release |
 
+## Current executable ISO evidence
+
+The OS-image workflow now includes an automated QEMU boot-smoke check after ISO creation. This is supporting evidence for CI-ISO-001, not completion of the full gate.
+
+The boot-smoke check:
+- boots the generated amd64 ISO with QEMU;
+- keeps the guest running for a bounded liveness interval;
+- captures serial/stderr evidence;
+- fails when fatal/kernel-panic signatures are detected.
+
+The following remain separate validation requirements before CI-ISO-001 can be considered fully satisfied for a release candidate:
+- UEFI boot validation on target physical hardware;
+- live-session functional validation;
+- network, graphics, audio and input validation;
+- actual installation;
+- supported dual-boot scenarios;
+- recovery path;
+- checksum/signature verification at the installation boundary.
+
 ## Gate execution policy
 
 1. A gate must have deterministic pass/fail criteria.
@@ -28,6 +47,6 @@ The following gate IDs are the minimum machine-oriented contract for the future 
 5. Gate results identify source commit, artifact/version, environment and timestamp.
 6. Gate definitions are versioned with the project.
 
-## Future implementation mapping
+## Implementation mapping
 
-CI configuration shall map each gate ID to concrete jobs/steps. The mapping becomes part of release evidence and must not silently rename or remove a gate.
+CI configuration maps each gate ID to concrete jobs/steps. The mapping becomes part of release evidence and must not silently rename or remove a gate.
