@@ -1,8 +1,7 @@
 name: Publish Existing Alpha ISO Release Assets
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -80,6 +79,8 @@ jobs:
           EOF
           rm -f "$ISO"
 
+      # This workflow is intentionally manual: the v0.1.0a1 source artifact is immutable and
+      # must never be republished on every future main push.
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
