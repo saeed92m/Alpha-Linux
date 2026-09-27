@@ -175,10 +175,28 @@ sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/run/systemd/resolve"
 sudo cp -L /etc/resolv.conf "${OVERLAY_ROOTFS_DIR}/run/systemd/resolve/stub-resolv.conf"
 
 timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get update
-set +e
+
+echo "Installing COSMIC with systemd service-manager calls stubbed inside the build chroot"
+sudo cp -a "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl" "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl.alpha-real"
+sudo tee "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl" >/dev/null <<'SYSTEMCTL'
+#!/bin/sh
+exit 0
+SYSTEMCTL
+sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl"
+restore_systemctl() {
+  sudo mv -f "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl.alpha-real" "${OVERLAY_ROOTFS_DIR}/usr/bin/systemctl" 2>/dev/null || true
+}
+trap restore_systemctl EXIT
+
 timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get install -y cosmic-session
 APT_INSTALL_STATUS=$?
-set -e
+if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
+  echo "COSMIC package configuration failed; retrying dpkg configuration with service-manager calls stubbed"
+  sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --configure -a
+  sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get -f install -y
+fi
+restore_systemctl
+trap - EXIT
 if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
   echo "apt-get install returned ${APT_INSTALL_STATUS}; repairing package configuration before failing"
   sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --configure -a
