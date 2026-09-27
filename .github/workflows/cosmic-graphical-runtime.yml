@@ -1,0 +1,182 @@
+name: Alpha COSMIC Graphical Runtime
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/cosmic-graphical-runtime.yml"
+  workflow_run:
+    workflows: [Alpha OS Image]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  graphical-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select successful Alpha OS Image run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --workflow os-image.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+
+      - name: Download Alpha OS ISO
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/source
+          ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.expired == false and (.name | contains("alpha-linux-0.1.0a1-alpha-amd64-iso"))) | .id' | head -n 1)"
+          test -n "$ARTIFACT_ID"
+          curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" -o dist/source/artifact.zip
+          unzip -o dist/source/artifact.zip -d dist/source/unpacked >/dev/null
+          ISO="$(find dist/source/unpacked -type f -name 'alpha-linux-0.1.0a1-alpha-amd64.iso' -print -quit)"
+          test -s "$ISO"
+          cp "$ISO" dist/source/alpha-linux-0.1.0a1-alpha-amd64.iso
+
+      - name: Install runtime tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends xorriso squashfs-tools qemu-system-x86 xvfb
+
+      - name: Prepare disposable COSMIC session test ISO
+        run: |
+          set -euo pipefail
+          ISO=dist/source/alpha-linux-0.1.0a1-alpha-amd64.iso
+          W=dist/cosmic-graphical-runtime
+          mkdir -p "$W"
+          LIST="$(xorriso -indev "$ISO" -ls /casper 2>&1)"
+          NAME="$(printf '%s\n' "$LIST" | tr -d "'" | awk '$NF == "minimal.standard.live.squashfs" {print $NF; exit}')"
+          test -n "$NAME"
+          xorriso -indev "$ISO" -osirrox on -extract "/casper/$NAME" "$W/original.squashfs"
+          sudo unsquashfs -d "$W/rootfs" "$W/original.squashfs"
+          sudo mkdir -p "$W/rootfs/dev/pts" "$W/rootfs/proc" "$W/rootfs/sys" "$W/rootfs/run"
+          sudo mount --bind /dev "$W/rootfs/dev"
+          sudo mount --bind /dev/pts "$W/rootfs/dev/pts"
+          sudo mount -t proc proc "$W/rootfs/proc"
+          sudo mount -t sysfs sysfs "$W/rootfs/sys"
+          sudo mount -t tmpfs tmpfs "$W/rootfs/run"
+          trap 'sudo umount -lf "$W/rootfs/run" || true; sudo umount -lf "$W/rootfs/sys" || true; sudo umount -lf "$W/rootfs/proc" || true; sudo umount -lf "$W/rootfs/dev/pts" || true; sudo umount -lf "$W/rootfs/dev" || true' EXIT
+          sudo cp -L /etc/resolv.conf "$W/rootfs/etc/resolv.conf"
+          sudo env DEBIAN_FRONTEND=noninteractive chroot "$W/rootfs" apt-get update
+          sudo env DEBIAN_FRONTEND=noninteractive chroot "$W/rootfs" apt-get install -y greetd
+          sudo chroot "$W/rootfs" useradd --create-home --shell /bin/bash alpha-runtime || true
+          sudo chroot "$W/rootfs" usermod -aG video,render,input alpha-runtime || true
+
+          sudo mkdir -p "$W/rootfs/etc/greetd"
+          sudo tee "$W/rootfs/etc/greetd/alpha-runtime.toml" >/dev/null <<'TOML'
+[terminal]
+vt = "1"
+[general]
+source_profile = true
+[default_session]
+command = "/bin/true"
+user = "alpha-runtime"
+[initial_session]
+command = "start-cosmic"
+user = "alpha-runtime"
+TOML
+
+          sudo tee "$W/rootfs/usr/local/bin/alpha-cosmic-runtime-probe" >/dev/null <<'PROBE'
+#!/bin/sh
+set -eu
+OUT=/run/alpha-cosmic-runtime-evidence
+UID_VALUE="$(id -u alpha-runtime)"
+for attempt in $(seq 1 75); do
+  PID="$(pgrep -u alpha-runtime -x cosmic-comp | head -n 1 || true)"
+  if [ -n "$PID" ]; then
+    SOCKET="$(find "/run/user/$UID_VALUE" -maxdepth 1 -type s -name 'wayland-*' -print -quit 2>/dev/null || true)"
+    TYPE="$(tr '\0' '\n' < "/proc/$PID/environ" 2>/dev/null | sed -n 's/^XDG_SESSION_TYPE=//p' | head -n 1 || true)"
+    [ -n "$SOCKET" ] || SOCKET=missing
+    [ -n "$TYPE" ] || TYPE=unknown
+    echo "COSMIC_GRAPHICAL_RUNTIME=passed" > "$OUT"
+    echo "cosmic_comp_pid=$PID" >> "$OUT"
+    echo "wayland_socket=$SOCKET" >> "$OUT"
+    echo "xdg_session_type=$TYPE" >> "$OUT"
+    cat "$OUT"
+    [ "$SOCKET" != missing ] && [ "$TYPE" = wayland ] && exit 0
+  fi
+  sleep 2
+done
+echo "COSMIC_GRAPHICAL_RUNTIME=failed" > "$OUT"
+echo "cosmic-comp or Wayland session surface did not become observable" >> "$OUT"
+cat "$OUT"
+exit 1
+PROBE
+          sudo chmod 0755 "$W/rootfs/usr/local/bin/alpha-cosmic-runtime-probe"
+
+          sudo tee "$W/rootfs/etc/systemd/system/alpha-cosmic-runtime-probe.service" >/dev/null <<'UNIT'
+[Unit]
+Description=Alpha COSMIC graphical runtime evidence probe
+After=greetd.service graphical.target
+Wants=greetd.service
+ConditionPathExists=/usr/bin/cosmic-comp
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/alpha-cosmic-runtime-probe
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=160
+[Install]
+WantedBy=graphical.target
+UNIT
+          sudo mkdir -p "$W/rootfs/etc/systemd/system/graphical.target.wants" "$W/rootfs/etc/systemd/system/greetd.service.d"
+          sudo ln -sf /etc/systemd/system/alpha-cosmic-runtime-probe.service "$W/rootfs/etc/systemd/system/graphical.target.wants/alpha-cosmic-runtime-probe.service"
+          sudo ln -sf /lib/systemd/system/greetd.service "$W/rootfs/etc/systemd/system/display-manager.service"
+          sudo tee "$W/rootfs/etc/systemd/system/greetd.service.d/alpha-runtime.conf" >/dev/null <<'CONF'
+[Service]
+ExecStart=
+ExecStart=/usr/sbin/greetd --config /etc/greetd/alpha-runtime.toml
+CONF
+          sudo rm -rf "$W/rootfs/var/lib/apt/lists/"*
+          sudo mksquashfs "$W/rootfs" "$W/test.squashfs" -comp xz -noappend -all-root -xattrs
+          sudo chown "$(id -u):$(id -g)" "$W/test.squashfs"
+          xorriso -indev "$ISO" -outdev "$W/test.iso" -map "$W/test.squashfs" "/casper/$NAME" -boot_image any replay -compliance no_emul_toc -padding included
+          test -s "$W/test.iso"
+
+      - name: Run executable COSMIC graphical runtime
+        run: |
+          set -euo pipefail
+          W=dist/cosmic-graphical-runtime
+          mkdir -p "$W/evidence"
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1280x800x24 -nolisten tcp >/tmp/xvfb.log 2>&1 &
+          XPID=$!
+          trap 'kill "$XPID" 2>/dev/null || true' EXIT
+          sleep 2
+          timeout 150s qemu-system-x86_64 -machine q35,accel=tcg -cpu max -m 4096 -smp 2 -device virtio-vga -cdrom "$W/test.iso" -boot d -display gtk,gl=off -serial file:"$W/evidence/qemu-serial.log" -no-reboot >/tmp/qemu.stdout 2>/tmp/qemu.stderr &
+          QPID=$!
+          for attempt in $(seq 1 140); do
+            grep -q 'COSMIC_GRAPHICAL_RUNTIME=passed' "$W/evidence/qemu-serial.log" 2>/dev/null && break
+            kill -0 "$QPID" 2>/dev/null || break
+            sleep 1
+          done
+          STATUS=0
+          kill -0 "$QPID" 2>/dev/null && { kill "$QPID" || true; wait "$QPID" || STATUS=$?; } || { wait "$QPID" || STATUS=$?; }
+          cat "$W/evidence/qemu-serial.log" || true
+          cat /tmp/qemu.stderr || true
+          grep -q 'COSMIC_GRAPHICAL_RUNTIME=passed' "$W/evidence/qemu-serial.log"
+          if grep -Eqi 'Kernel panic - not syncing|kernel panic|(^|[^[:alnum:]_-])Oops:|(^|[^[:alnum:]_-])BUG:' "$W/evidence/qemu-serial.log" /tmp/qemu.stderr; then exit 1; fi
+          echo "QEMU exit status: $STATUS"
+          echo "COSMIC graphical runtime gate passed."
+
+      - name: Upload graphical runtime evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-cosmic-graphical-runtime-evidence
+          path: |
+            dist/cosmic-graphical-runtime/evidence/qemu-serial.log
+            /tmp/qemu.stderr
+          if-no-files-found: error
