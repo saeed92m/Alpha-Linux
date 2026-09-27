@@ -209,7 +209,7 @@ if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/start-cosmic" ]]; then
   exit 1
 fi
 
-if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/greetd" ]]; then
+if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/sbin/greetd" ]]; then
   echo "ERROR: greetd is required for the executable COSMIC graphical-session gate"
   exit 1
 fi
