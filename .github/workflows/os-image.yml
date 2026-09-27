@@ -109,6 +109,18 @@ jobs:
           if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-uefi-boot-smoke.log /tmp/alpha-qemu-uefi.stderr; then cat dist/qemu-uefi-boot-smoke.log || true; cat /tmp/alpha-qemu-uefi.stderr || true; exit 1; fi
           echo "UEFI boot smoke completed without detected fatal boot errors."
 
+      - name: Validate Live filesystem structure prerequisites
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.1.0a1-alpha-amd64.iso"
+          test -s "$ISO"
+          xorriso -indev "$ISO" -ls /casper | tee dist/live-filesystem-evidence.txt
+          grep -Eq "\.squashfs['[:space:]]*$" dist/live-filesystem-evidence.txt
+          grep -Eq "^['[:space:]]*initrd['[:space:]]*$" dist/live-filesystem-evidence.txt
+          test -s dist/live-filesystem-evidence.txt
+          echo "Live filesystem payload and initrd structure detected; live-session and graphical-runtime validation remain separate gates."
+
+
       - name: Run automated ISO boot smoke test
         run: |
           set -euo pipefail
@@ -296,4 +308,5 @@ jobs:
             dist/qemu-uefi-boot-smoke.log
             dist/qemu-legacy-boot-smoke.log
             dist/el-torito-boot-matrix.txt
+            dist/live-filesystem-evidence.txt
           if-no-files-found: error
