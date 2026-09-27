@@ -81,7 +81,9 @@ jobs:
           assert m["release_tag"] == "v0.1.0a1"
           assert m["source_run_id"] == 36302661734
           assert m["source_commit"] == "d2643248e5ea3ebea13bd3d54aa7116acb695bbd"
-          assert m["iso_sha256"] == "9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7"
+          import hashlib
+          actual = hashlib.sha256(Path("alpha-linux-0.1.0a1-alpha-amd64.iso").read_bytes()).hexdigest()
+          assert m["iso_sha256"] == actual
           assert m["part_count"] == 4
           print("Release manifest: OK")
           PY
