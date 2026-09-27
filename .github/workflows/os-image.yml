@@ -121,6 +121,43 @@ jobs:
           echo "Live filesystem payload and initrd structure detected; live-session and graphical-runtime validation remain separate gates."
 
 
+      - name: Run automated Live kernel/initramfs runtime validation
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.1.0a1-alpha-amd64.iso"
+          LIVE_DIR="dist/live-runtime"
+          mkdir -p "$LIVE_DIR"
+          xorriso -indev "$ISO" -osirrox on -extract /casper/vmlinuz "$LIVE_DIR/vmlinuz"
+          xorriso -indev "$ISO" -osirrox on -extract /casper/initrd "$LIVE_DIR/initrd"
+          test -s "$LIVE_DIR/vmlinuz"
+          test -s "$LIVE_DIR/initrd"
+          {
+            echo "== Extracted Live boot payload =="
+            stat -c 'vmlinuz size=%s bytes' "$LIVE_DIR/vmlinuz"
+            stat -c 'initrd size=%s bytes' "$LIVE_DIR/initrd"
+            echo "== QEMU Live runtime boot =="
+          } | tee dist/live-runtime-evidence.txt
+          timeout 105s qemu-system-x86_64             -machine q35,accel=tcg             -m 2048             -kernel "$LIVE_DIR/vmlinuz"             -initrd "$LIVE_DIR/initrd"             -append "boot=casper console=ttyS0"             -cdrom "$ISO"             -display none             -serial file:dist/live-runtime-boot.log             -no-reboot             >/tmp/alpha-live-runtime.stdout 2>/tmp/alpha-live-runtime.stderr &
+          QEMU_PID=$!
+          sleep 75
+          if kill -0 "$QEMU_PID" 2>/dev/null; then
+            kill "$QEMU_PID" || true
+            wait "$QEMU_PID" || true
+            echo "Live runtime QEMU remained alive for 75 seconds." | tee -a dist/live-runtime-evidence.txt
+          else
+            QEMU_STATUS=0
+            wait "$QEMU_PID" || QEMU_STATUS=$?
+            echo "Live runtime QEMU exited before the 75-second window with status $QEMU_STATUS." | tee -a dist/live-runtime-evidence.txt
+          fi
+          test -s dist/live-runtime-boot.log
+          if grep -Eqi 'Kernel panic - not syncing|kernel panic|(^|[^[:alnum:]_-])panic:|(^|[^[:alnum:]_-])Oops:|(^|[^[:alnum:]_-])BUG:|Call Trace:' dist/live-runtime-boot.log /tmp/alpha-live-runtime.stderr; then
+            cat dist/live-runtime-boot.log || true
+            cat /tmp/alpha-live-runtime.stderr || true
+            exit 1
+          fi
+          grep -Eqi 'Begin:.*(casper|mounting root)|boot=casper|casper-[a-z-]+|Adding live session user|overlayfs' dist/live-runtime-boot.log
+          echo "Live kernel/initramfs runtime reached the expected boot log surface." | tee -a dist/live-runtime-evidence.txt
+
       - name: Run automated ISO boot smoke test
         run: |
           set -euo pipefail
@@ -309,4 +346,6 @@ jobs:
             dist/qemu-legacy-boot-smoke.log
             dist/el-torito-boot-matrix.txt
             dist/live-filesystem-evidence.txt
+            dist/live-runtime-evidence.txt
+            dist/live-runtime-boot.log
           if-no-files-found: error
