@@ -63,21 +63,21 @@ jobs:
           (root/"alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json").write_text(json.dumps(manifest,indent=2)+"\n")
           PY
           cat > iso-publish/REASSEMBLE-ISO.txt <<'EOF'
-Alpha Linux 0.1.0a1 ISO reassembly
-
-Linux/macOS:
-  cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso
-  sha256sum alpha-linux-0.1.0a1-alpha-amd64.iso
-
-PowerShell:
-  $parts = Get-ChildItem .\alpha-linux-0.1.0a1-alpha-amd64.iso.part-* | Sort-Object Name
-  $out = [IO.File]::OpenWrite(".\alpha-linux-0.1.0a1-alpha-amd64.iso")
-  try { foreach ($p in $parts) { $in = [IO.File]::OpenRead($p.FullName); try { $in.CopyTo($out) } finally { $in.Dispose() } } } finally { $out.Dispose() }
-  Get-FileHash .\alpha-linux-0.1.0a1-alpha-amd64.iso -Algorithm SHA256
-
-Expected complete ISO SHA-256:
-9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7
-EOF
+          Alpha Linux 0.1.0a1 ISO reassembly
+          
+          Linux/macOS:
+            cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso
+            sha256sum alpha-linux-0.1.0a1-alpha-amd64.iso
+          
+          PowerShell:
+            $parts = Get-ChildItem .\alpha-linux-0.1.0a1-alpha-amd64.iso.part-* | Sort-Object Name
+            $out = [IO.File]::OpenWrite(".\alpha-linux-0.1.0a1-alpha-amd64.iso")
+            try { foreach ($p in $parts) { $in = [IO.File]::OpenRead($p.FullName); try { $in.CopyTo($out) } finally { $in.Dispose() } } } finally { $out.Dispose() }
+            Get-FileHash .\alpha-linux-0.1.0a1-alpha-amd64.iso -Algorithm SHA256
+          
+          Expected complete ISO SHA-256:
+          9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7
+          EOF
           rm -f "$ISO"
 
       - name: Upload release assets
