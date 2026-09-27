@@ -305,4 +305,5 @@ jobs:
             dist/qemu-uefi-boot-smoke.log
             dist/qemu-legacy-boot-smoke.log
             dist/el-torito-boot-matrix.txt
+            dist/live-filesystem-evidence.txt
           if-no-files-found: error
