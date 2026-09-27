@@ -1,5 +1,3 @@
-import pytest
-
 from alpha_core.installer_safety import (
     InstallerIntent,
     SafetyLevel,
