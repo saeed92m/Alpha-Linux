@@ -147,6 +147,13 @@ exit 101
 POLICY
 sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/sbin/policy-rc.d"
 
+echo "Removing ISO-local APT media sources from build root"
+while IFS= read -r -d '' source_file; do
+  if sudo grep -Eqi 'file:/cdrom|cdrom:' "${source_file}"; then
+    sudo rm -f "${source_file}"
+  fi
+done < <(sudo find "${OVERLAY_ROOTFS_DIR}/etc/apt" -type f -print0)
+
 sudo mount --bind /dev "${OVERLAY_ROOTFS_DIR}/dev"
 sudo mount --bind /dev/pts "${OVERLAY_ROOTFS_DIR}/dev/pts"
 sudo mount -t proc proc "${OVERLAY_ROOTFS_DIR}/proc"
