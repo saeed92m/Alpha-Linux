@@ -51,7 +51,7 @@ jobs:
             "parts": [{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],
             "reassembly":"cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso"
           }
-          Path("alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json").write_text(json.dumps(m,indent=2)+"\\n")
+          Path("alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json").write_text(json.dumps(m,indent=2)+"\n")
           PY
           gh release upload "$RELEASE_TAG" -R saeed92m/Alpha-Linux alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json --clobber
 
