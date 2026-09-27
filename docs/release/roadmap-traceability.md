@@ -58,3 +58,15 @@ This loop is cumulative rather than strictly linear: later evidence can trigger 
 A roadmap item is considered implemented only when the repository contains the corresponding implementation or executable contract, automated/manual validation evidence appropriate to the item, and traceability to the applicable requirement or release gate.
 
 Dates are not treated as completion evidence; artifact and validation evidence are.
+
+## Phase 7 boot/live/installer traceability
+
+| Area | Requirement / architecture | Current evidence | Remaining gate |
+|---|---|---|---|
+| Boot | `docs/requirements/boot-live-installer-requirements.md`, BOOT-001..005 | ISO boot metadata preserved; QEMU pre-install boot smoke verified | UEFI/BIOS matrix validation, Rufus validation, Secure Boot |
+| Live | LIVE-001..005 | ISO artifact exists; Live runtime not yet claimed | COSMIC Live startup, diagnostics, installer launch, recovery validation |
+| Installer safety | INST-001..005 | Safety model + disposable transaction evidence | Full installation transaction, failure injection, rollback, physical adapter |
+| Post-install | INST-006 | Not yet claimed | Filesystem, boot configuration and health verification after installation |
+| Physical installation | Phase 7D | Not yet claimed | UEFI/Legacy hardware, Windows coexistence, recovery and Secure Boot |
+
+The boot/media architecture intentionally separates ISO firmware boot paths from target-disk partition-table selection. GPT/UEFI and MBR/Legacy are target installation modes; no unsupported firmware/media combination is claimed without evidence.

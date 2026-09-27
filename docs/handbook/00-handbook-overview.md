@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Master Handbook is the learning and operational guide for understanding Alpha Linux from first principles through distribution engineering, AI integration, implementation, testing and maintenance.
+The Master Handbook is the learning and operational guide for understanding Alpha Linux from first principles through distribution engineering, AI integration, implementation, testing, release engineering and maintenance.
 
 It is deliberately separate from the normative specification.
 
@@ -15,12 +15,14 @@ It is deliberately separate from the normative specification.
 5. Hardware, drivers, networking and security
 6. Desktop Linux and COSMIC
 7. Distribution engineering
-8. Alpha architecture
-9. AI, LLMs, memory and agents
-10. Alpha implementation
-11. Testing and QA
-12. Release engineering
-13. Maintenance and evolution
+8. Bootable media and Live environments
+9. Installation, partitioning, boot configuration and recovery
+10. Alpha architecture
+11. AI, LLMs, memory and agents
+12. Alpha implementation
+13. Testing and QA
+14. Release engineering
+15. Maintenance and evolution
 
 ## Chapter method
 
@@ -59,8 +61,10 @@ Testing demonstrates that the system satisfies its requirements.
 
 ## Current phase
 
-The project is currently in **Phase 2 — System Integration and Core Runtime**.
+The project is currently in **Phase 7 — Alpha releases**.
 
-The implementation baseline now includes executable Alpha Core and system-integration reference surfaces. CI/CD provides runtime evidence for validation, packaging, reproducibility, security, SBOM generation and compatibility across supported Python versions.
+The verified baseline includes executable Alpha Core and reference-runtime foundations, deterministic package/OS-image evidence, the `v0.1.0a1` release, QEMU pre-install boot-smoke evidence, installer safety planning and executable disposable transaction validation.
+
+The next release-scoped work extends this baseline into boot compatibility, Live environment validation, graphical installer architecture, transaction/recovery evidence and physical installation gates.
 
 The Handbook remains educational and must not be treated as a substitute for normative requirements or architecture decisions.
