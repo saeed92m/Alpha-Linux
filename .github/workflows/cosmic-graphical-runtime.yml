@@ -1,6 +1,10 @@
 name: Alpha COSMIC Graphical Runtime
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/cosmic-graphical-runtime.yml"
   workflow_run:
     workflows: [Alpha OS Image]
     types: [completed]
