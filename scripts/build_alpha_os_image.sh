@@ -96,7 +96,12 @@ COSMIC_MANIFEST="${OUT_DIR}/alpha-cosmic-package-manifest.txt"
 
 echo "Extracting Live filesystem for COSMIC integration"
 rm -rf "${ROOTFS_DIR}" "${LIVE_SQUASHFS}" "${COSMIC_MANIFEST}"
-xorriso -indev "${BASE_PATH}" -osirrox on -extract /casper/filesystem.squashfs "${WORK_DIR}/filesystem.squashfs"
+SQUASHFS_ISO_PATH="$(xorriso -indev "${BASE_PATH}" -find / -name 'filesystem.squashfs' -print \
+  | sed -n "s#^.*\\(/[^[:space:]]*/filesystem\\.squashfs\\).*$#\\1#p" \
+  | head -n 1)"
+test -n "${SQUASHFS_ISO_PATH}"
+echo "Detected Live filesystem payload: ${SQUASHFS_ISO_PATH}"
+xorriso -indev "${BASE_PATH}" -osirrox on -extract "${SQUASHFS_ISO_PATH}" "${WORK_DIR}/filesystem.squashfs"
 unsquashfs -d "${ROOTFS_DIR}" "${WORK_DIR}/filesystem.squashfs"
 
 echo "Injecting COSMIC repository and packages"
