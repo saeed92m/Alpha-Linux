@@ -138,7 +138,7 @@ sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/apt/keyrings" "${OVERLAY_ROOTFS_DIR}/et
 curl --fail --location --retry 3 --retry-delay 2 --max-time 60 "${COSMIC_KEY_URL}" \
   | gpg --dearmor \
   | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/keyrings/pop-os.gpg" >/dev/null
-printf 'deb [signed-by=/etc/apt/keyrings/pop-os.gpg] %s %s main\\n' "${COSMIC_REPOSITORY}" "resolute" \
+printf 'deb [signed-by=/etc/apt/keyrings/pop-os.gpg] %s %s main\n' "${COSMIC_REPOSITORY}" "resolute" \
   | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d/alpha-cosmic.list" >/dev/null
 
 sudo tee "${OVERLAY_ROOTFS_DIR}/usr/sbin/policy-rc.d" >/dev/null <<'POLICY'
@@ -172,7 +172,7 @@ COSMIC_SESSION_FILE="$(find "${OVERLAY_ROOTFS_DIR}/usr/share/wayland-sessions" -
 test -s "${COSMIC_SESSION_FILE}"
 test -x "${OVERLAY_ROOTFS_DIR}/usr/bin/start-cosmic"
 
-sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='\${binary:Package}\\t\${Version}\\n' \
+sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='\${binary:Package}\t\${Version}\n' \
   | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/' \
   | LC_ALL=C sort \
   > "${COSMIC_MANIFEST}"
