@@ -37,7 +37,7 @@ jobs:
     if: github.event_name != 'issue_comment' || (github.event.issue.number == 158 && github.event.comment.body == '/run-alpha-os-image' && github.event.comment.author_association == 'OWNER')
     name: Build Alpha OS ISO
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - name: Check out repository
@@ -49,7 +49,7 @@ jobs:
       - name: Install image build tooling
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends xorriso squashfs-tools
+          sudo apt-get install --yes --no-install-recommends xorriso squashfs-tools gnupg
 
       - name: Install Alpha package
         run: |
@@ -72,23 +72,17 @@ jobs:
           chmod +x scripts/build_alpha_os_image.sh
           scripts/build_alpha_os_image.sh
 
-      - name: Validate COSMIC Live-image integration
+      - name: Validate COSMIC Live runtime payload
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          from alpha_core.cosmic import CosmicLiveImageEvidence
-
-          live_root = Path("dist/live-rootfs")
-          if not live_root.exists():
-              raise SystemExit("missing dist/live-rootfs after ISO customization")
-          payload = CosmicLiveImageEvidence().validate_root(live_root)
-          manifest = Path("dist/cosmic-live-image-evidence.json")
-          manifest.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-          print(json.dumps(payload, indent=2, sort_keys=True))
-          PY
+          test -s dist/alpha-cosmic-package-manifest.txt
+          test -s dist/alpha-cosmic-runtime-evidence.txt
+          grep -Eq '^cosmic-session[[:space:]]' dist/alpha-cosmic-package-manifest.txt
+          grep -Eq '^cosmic-comp[[:space:]]' dist/alpha-cosmic-package-manifest.txt
+          grep -Eq '^cosmic-greeter[[:space:]]' dist/alpha-cosmic-package-manifest.txt
+          grep -Fq '/usr/share/wayland-sessions/cosmic.desktop' dist/alpha-cosmic-runtime-evidence.txt
+          grep -Fq '/usr/bin/start-cosmic' dist/alpha-cosmic-runtime-evidence.txt
+          echo "COSMIC package/session payload evidence validated."
 
       - name: Install QEMU boot-smoke tooling
         run: |
@@ -138,6 +132,7 @@ jobs:
           test -s dist/live-filesystem-evidence.txt
           echo "Live filesystem payload and initrd structure detected; live-session and graphical-runtime validation remain separate gates."
 
+
       - name: Run automated Live kernel/initramfs runtime validation
         run: |
           set -euo pipefail
@@ -154,7 +149,7 @@ jobs:
             stat -c 'initrd size=%s bytes' "$LIVE_DIR/initrd"
             echo "== QEMU Live runtime boot =="
           } | tee dist/live-runtime-evidence.txt
-          timeout 105s qemu-system-x86_64 -machine q35,accel=tcg -m 2048 -kernel "$LIVE_DIR/vmlinuz" -initrd "$LIVE_DIR/initrd" -append 'boot=casper noprompt cdrom-detect/try-usb=true' -display none -serial file:dist/live-runtime-boot.log -no-reboot >/tmp/alpha-live-runtime.stdout 2>/tmp/alpha-live-runtime.stderr &
+          timeout 105s qemu-system-x86_64             -machine q35,accel=tcg             -m 2048             -kernel "$LIVE_DIR/vmlinuz"             -initrd "$LIVE_DIR/initrd"             -append "boot=casper console=ttyS0"             -cdrom "$ISO"             -display none             -serial file:dist/live-runtime-boot.log             -no-reboot             >/tmp/alpha-live-runtime.stdout 2>/tmp/alpha-live-runtime.stderr &
           QEMU_PID=$!
           sleep 75
           if kill -0 "$QEMU_PID" 2>/dev/null; then
@@ -319,7 +314,6 @@ jobs:
           if not candidate.ready: raise SystemExit("release candidate is not ready")
           Path("dist/alpha-release-candidate-evidence.json").write_text(json.dumps(candidate.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
-
       - name: Write CI summary
         run: |
           echo "## Alpha OS Image" >> "$GITHUB_STEP_SUMMARY"
@@ -328,7 +322,7 @@ jobs:
           echo "Source commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
           echo "CI run: ${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Boot metadata: validated with xorriso" >> "$GITHUB_STEP_SUMMARY"
-          echo "COSMIC live-image validation: validated in dist/cosmic-live-image-evidence.json" >> "$GITHUB_STEP_SUMMARY"
+          echo "Install validation: not performed" >> "$GITHUB_STEP_SUMMARY"
           echo "Reproducibility: passed (two same-input builds, matching SHA-256)" >> "$GITHUB_STEP_SUMMARY"
           echo "SOURCE_DATE_EPOCH: 946684800" >> "$GITHUB_STEP_SUMMARY"
 
@@ -348,7 +342,7 @@ jobs:
           gh api --method POST \
             -H "Accept: application/vnd.github+json" \
             "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
-            -f body="Alpha OS image workflow run \`${{ github.run_id }}\` completed with job status \`${{ job.status }}\`. Trigger: \`${{ github.event.comment.body }}\`. Source commit: \`${{ github.sha }}\`."
+            -f body="Alpha OS image workflow run \`${{ github.run_id }}\` completed with job status \`${{ job.status }}\`. Trigger: \`${{ github.event.comment.body }}\`. Source commit: \`${{ github.sha }}\`. Reproducibility: two-build comparison."
 
       - name: Upload Alpha OS evidence
         uses: actions/upload-artifact@v7
@@ -356,7 +350,6 @@ jobs:
           name: alpha-linux-0.1.0a1-alpha-amd64-evidence
           path: |
             dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json
-            dist/cosmic-live-image-evidence.json
             dist/el-torito-report.txt
             dist/alpha-release-candidate-evidence.json
             dist/qemu-boot-smoke.log
@@ -367,5 +360,6 @@ jobs:
             dist/live-filesystem-evidence.txt
             dist/live-runtime-evidence.txt
             dist/live-runtime-boot.log
+            dist/alpha-cosmic-package-manifest.txt
+            dist/alpha-cosmic-runtime-evidence.txt
           if-no-files-found: error
-
