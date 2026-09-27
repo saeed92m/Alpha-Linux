@@ -170,6 +170,50 @@ jobs:
           grep -Eqi 'Begin:.*(casper|mounting root)|boot=casper|casper-[a-z-]+|Adding live session user|overlayfs' dist/live-runtime-boot.log
           echo "Live kernel/initramfs runtime reached the expected boot log surface." | tee -a dist/live-runtime-evidence.txt
 
+      - name: Run automated COSMIC graphical session runtime validation
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.1.0a1-alpha-amd64.iso"
+          LIVE_DIR="dist/live-runtime"
+          test -s "$LIVE_DIR/vmlinuz"
+          test -s "$LIVE_DIR/initrd"
+          rm -f dist/cosmic-graphical-runtime-boot.log /tmp/alpha-cosmic-graphical.stdout /tmp/alpha-cosmic-graphical.stderr
+          timeout 210s qemu-system-x86_64 \
+            -machine q35,accel=tcg \
+            -m 4096 \
+            -kernel "$LIVE_DIR/vmlinuz" \
+            -initrd "$LIVE_DIR/initrd" \
+            -append "boot=casper console=ttyS0 systemd.show_status=true" \
+            -cdrom "$ISO" \
+            -vga virtio \
+            -display none \
+            -serial file:dist/cosmic-graphical-runtime-boot.log \
+            -no-reboot \
+            >/tmp/alpha-cosmic-graphical.stdout 2>/tmp/alpha-cosmic-graphical.stderr &
+          QEMU_PID=$!
+          for _ in $(seq 1 180); do
+            if ! kill -0 "$QEMU_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$QEMU_PID" 2>/dev/null; then
+            kill "$QEMU_PID" || true
+            wait "$QEMU_PID" || true
+          else
+            QEMU_STATUS=0
+            wait "$QEMU_PID" || QEMU_STATUS=$?
+            echo "COSMIC graphical QEMU exit status: $QEMU_STATUS"
+          fi
+          test -s dist/cosmic-graphical-runtime-boot.log
+          cat dist/cosmic-graphical-runtime-boot.log
+          cat /tmp/alpha-cosmic-graphical.stderr || true
+          if grep -Fq "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS" dist/cosmic-graphical-runtime-boot.log; then
+            echo "COSMIC graphical session runtime validation: PASS"
+          else
+            echo "COSMIC graphical session runtime validation: FAIL"
+            echo "Expected explicit graphical-session PASS marker was not observed."
+            exit 1
+          fi
+
       - name: Run automated ISO boot smoke test
         run: |
           set -euo pipefail
@@ -361,4 +405,5 @@ jobs:
             dist/live-runtime-boot.log
             dist/alpha-cosmic-package-manifest.txt
             dist/alpha-cosmic-runtime-evidence.txt
+            dist/cosmic-graphical-runtime-boot.log
           if-no-files-found: error
