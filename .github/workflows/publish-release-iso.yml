@@ -19,17 +19,20 @@ on:
         description: "Expected SHA-256 of the complete ISO"
         required: true
         default: "9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7"
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: write
   actions: read
 
 concurrency:
-  group: alpha-release-iso-${INPUT_RELEASE_TAG}
+  group: alpha-release-iso-v0.1.0a1
   cancel-in-progress: false
 
 jobs:
   publish:
+    if: ${{ github.event_name != 'issue_comment' || (github.event.issue.number == 166 && startsWith(github.event.comment.body, '/publish-iso')) }}
     name: Publish existing ISO without rebuild
     runs-on: ubuntu-latest
     timeout-minutes: 45
