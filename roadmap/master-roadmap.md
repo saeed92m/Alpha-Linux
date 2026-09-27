@@ -110,15 +110,18 @@
 ### Alpha 0.1.0a1 package track
 
 - Package artifact verified in CI.
-- Release-publication foundation complete.
-- Release evidence bound to source commit, CI run and artifact SHA-256.
-- Publication/tag remain separately gated.
+- Release publication completed as `v0.1.0a1`.
+- Release evidence is bound to source commit, CI run and artifact SHA-256.
+- Tag and GitHub Release are present and verified.
 
 ### Alpha OS image track
 
 - ISO/IMG artifact contract defined.
 - Deterministic naming and evidence model implemented.
 - Executable image-file validation and tests added.
-- Actual OS image build workflow is implemented. The first verified image artifact, boot/install validation, reproducibility evidence, and image release evidence remain required before any OS image release claim.
+- Actual OS image build workflow is implemented.
+- The first verified amd64 image artifact is published as release-safe split assets with checksum and reassembly evidence.
+- ISO reassembly, checksum, size, and manifest QA are automated and passing.
+- Physical installation/boot validation and installer readiness remain future gates.
 
 Dates are intentionally not fixed until the relevant implementation and release evidence is available.
