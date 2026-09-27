@@ -96,8 +96,11 @@ COSMIC_MANIFEST="${OUT_DIR}/alpha-cosmic-package-manifest.txt"
 
 echo "Extracting Live filesystem for COSMIC integration"
 rm -rf "${ROOTFS_DIR}" "${LIVE_SQUASHFS}" "${COSMIC_MANIFEST}"
-SQUASHFS_ISO_PATH="$(xorriso -indev "${BASE_PATH}" -find / -name filesystem.squashfs -ls \
-  | awk '$NF ~ /filesystem\\.squashfs$/ {print $NF; exit}')"
+CASPER_LIST="$(xorriso -indev "${BASE_PATH}" -ls /casper 2>&1)"
+echo "${CASPER_LIST}"
+SQUASHFS_ISO_NAME="$(printf '%s\\n' "${CASPER_LIST}" | awk '$NF ~ /\\.squashfs$/ {print $NF; exit}')"
+test -n "${SQUASHFS_ISO_NAME}"
+SQUASHFS_ISO_PATH="/casper/${SQUASHFS_ISO_NAME}"
 test -n "${SQUASHFS_ISO_PATH}"
 echo "Detected Live filesystem payload: ${SQUASHFS_ISO_PATH}"
 xorriso -indev "${BASE_PATH}" -osirrox on -extract "${SQUASHFS_ISO_PATH}" "${WORK_DIR}/filesystem.squashfs"
