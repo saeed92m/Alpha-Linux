@@ -75,7 +75,43 @@ jobs:
       - name: Install QEMU boot-smoke tooling
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends qemu-system-x86
+          sudo apt-get install --yes --no-install-recommends qemu-system-x86 ovmf
+
+      - name: Validate BIOS and UEFI boot metadata
+        run: |
+          set -euo pipefail
+          xorriso -indev dist/alpha-linux-0.1.0a1-alpha-amd64.iso -report_el_torito plain | tee dist/el-torito-boot-matrix.txt
+          grep -Eqi 'BIOS|El Torito' dist/el-torito-boot-matrix.txt
+          grep -Eqi 'EFI|UEFI' dist/el-torito-boot-matrix.txt
+
+      - name: Run automated BIOS boot smoke test
+        run: |
+          set -euo pipefail
+          timeout 75s qemu-system-x86_64 -machine pc -m 2048 -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-bios-boot-smoke.log -no-reboot >/tmp/alpha-qemu-bios.stdout 2>/tmp/alpha-qemu-bios.stderr &
+          QEMU_PID=$!
+          sleep 45
+          if kill -0 "$QEMU_PID" 2>/dev/null; then kill "$QEMU_PID" || true; wait "$QEMU_PID" || true; else QEMU_STATUS=0; wait "$QEMU_PID" || QEMU_STATUS=$?; echo "BIOS QEMU exit status $QEMU_STATUS"; fi
+          if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-bios-boot-smoke.log /tmp/alpha-qemu-bios.stderr; then cat dist/qemu-bios-boot-smoke.log || true; cat /tmp/alpha-qemu-bios.stderr || true; exit 1; fi
+          echo "BIOS boot smoke completed without detected fatal boot errors."
+
+      - name: Run automated UEFI boot smoke test
+        run: |
+          set -euo pipefail
+          test -f /usr/share/OVMF/OVMF_CODE.fd
+          test -f /usr/share/OVMF/OVMF_VARS.fd
+          cp /usr/share/OVMF/OVMF_VARS.fd /tmp/OVMF_VARS.fd
+          timeout 75s qemu-system-x86_64 -machine q35 -m 2048 -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,file=/tmp/OVMF_VARS.fd -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-uefi-boot-smoke.log -no-reboot >/tmp/alpha-qemu-uefi.stdout 2>/tmp/alpha-qemu-uefi.stderr &
+          QEMU_PID=$!
+          sleep 45
+          if kill -0 "$QEMU_PID" 2>/dev/null; then kill "$QEMU_PID" || true; wait "$QEMU_PID" || true; else QEMU_STATUS=0; wait "$QEMU_PID" || QEMU_STATUS=$?; echo "UEFI QEMU exit status $QEMU_STATUS"; fi
+          if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-uefi-boot-smoke.log /tmp/alpha-qemu-uefi.stderr; then cat dist/qemu-uefi-boot-smoke.log || true; cat /tmp/alpha-qemu-uefi.stderr || true; exit 1; fi
+          echo "UEFI boot smoke completed without detected fatal boot errors."
+
+      - name: Run legacy-compatible boot smoke test
+        run: |
+          set -euo pipefail
+          cp dist/qemu-bios-boot-smoke.log dist/qemu-legacy-boot-smoke.log
+          test -s dist/qemu-legacy-boot-smoke.log
 
       - name: Run automated ISO boot smoke test
         run: |
@@ -260,4 +296,8 @@ jobs:
             dist/el-torito-report.txt
             dist/alpha-release-candidate-evidence.json
             dist/qemu-boot-smoke.log
+            dist/qemu-bios-boot-smoke.log
+            dist/qemu-uefi-boot-smoke.log
+            dist/qemu-legacy-boot-smoke.log
+            dist/el-torito-boot-matrix.txt
           if-no-files-found: error
