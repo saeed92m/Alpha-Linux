@@ -88,6 +88,77 @@ build_iso() {
     -padding included
 }
 
+COSMIC_REPOSITORY="https://apt.pop-os.org/release"
+COSMIC_KEY_URL="https://apt.pop-os.org/public.key"
+ROOTFS_DIR="${WORK_DIR}/squashfs-root"
+LIVE_SQUASHFS="${WORK_DIR}/filesystem.squashfs"
+COSMIC_MANIFEST="${OUT_DIR}/alpha-cosmic-package-manifest.txt"
+
+echo "Extracting Live filesystem for COSMIC integration"
+rm -rf "${ROOTFS_DIR}" "${LIVE_SQUASHFS}" "${COSMIC_MANIFEST}"
+xorriso -indev "${BASE_PATH}" -osirrox on -extract /casper/filesystem.squashfs "${WORK_DIR}/filesystem.squashfs"
+unsquashfs -d "${ROOTFS_DIR}" "${WORK_DIR}/filesystem.squashfs"
+
+echo "Injecting COSMIC repository and packages"
+install -d -m 0755 "${ROOTFS_DIR}/etc/apt/keyrings"
+curl --fail --location --retry 3 --retry-delay 2 "${COSMIC_KEY_URL}" \
+  | gpg --dearmor \
+  > "${ROOTFS_DIR}/etc/apt/keyrings/pop-os.gpg"
+printf 'deb [signed-by=/etc/apt/keyrings/pop-os.gpg] %s %s main\\n' "${COSMIC_REPOSITORY}" "resolute" \
+  > "${ROOTFS_DIR}/etc/apt/sources.list.d/alpha-cosmic.list"
+
+cat > "${ROOTFS_DIR}/usr/sbin/policy-rc.d" <<'POLICY'
+#!/bin/sh
+exit 101
+POLICY
+chmod 0755 "${ROOTFS_DIR}/usr/sbin/policy-rc.d"
+
+cp -L /etc/resolv.conf "${ROOTFS_DIR}/etc/resolv.conf"
+mount --bind /dev "${ROOTFS_DIR}/dev"
+mount --bind /dev/pts "${ROOTFS_DIR}/dev/pts"
+cleanup_chroot() {
+  umount -lf "${ROOTFS_DIR}/dev/pts" || true
+  umount -lf "${ROOTFS_DIR}/dev" || true
+}
+trap cleanup_chroot EXIT
+
+chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get update
+chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get install -y cosmic-session
+chroot "${ROOTFS_DIR}" apt-get clean
+rm -rf "${ROOTFS_DIR}/var/lib/apt/lists/"*
+
+COSMIC_SESSION_FILE="$(find "${ROOTFS_DIR}/usr/share/wayland-sessions" -maxdepth 1 -name 'cosmic.desktop' -print -quit)"
+test -s "${COSMIC_SESSION_FILE}"
+test -x "${ROOTFS_DIR}/usr/bin/start-cosmic"
+
+chroot "${ROOTFS_DIR}" dpkg-query -W -f='\${binary:Package}\\t\${Version}\\n' \
+  | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/' \
+  | LC_ALL=C sort \
+  > "${COSMIC_MANIFEST}"
+test -s "${COSMIC_MANIFEST}"
+
+printf 'COSMIC repository: %s\\n' "${COSMIC_REPOSITORY}" > "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+printf 'COSMIC session: /usr/share/wayland-sessions/cosmic.desktop\\n' >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+printf 'COSMIC launcher: /usr/bin/start-cosmic\\n' >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+cat "${COSMIC_MANIFEST}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
+
+echo "Repacking customized Live filesystem"
+mksquashfs "${ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -no-xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
+test -s "${LIVE_SQUASHFS}"
+
+build_iso() {
+  local output_path="${1}"
+  echo "Building ISO: ${output_path}"
+  xorriso \
+    -indev "${BASE_PATH}" \
+    -outdev "${output_path}" \
+    -map "${SEED_PATH}" /alpha-release.json \
+    -map "${LIVE_SQUASHFS}" /casper/filesystem.squashfs \
+    -boot_image any replay \
+    -compliance no_emul_toc \
+    -padding included
+}
+
 echo "Repacking bootable Ubuntu ISO with deterministic time inputs"
 build_iso "${OUTPUT_PATH}"
 
