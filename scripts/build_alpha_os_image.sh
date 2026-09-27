@@ -262,6 +262,7 @@ EOF
     echo "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS"
     echo "cosmic_comp=$(pgrep -u 1000 -x cosmic-comp | head -n1)"
     echo "wayland_socket=$(find /run/user/1000 -maxdepth 1 -type s -name 'wayland-*' -print -quit)"
+    cat "$OUT" > /dev/console 2>/dev/null || true
     exit 0
   fi
   sleep 5
@@ -277,6 +278,7 @@ echo "=== wayland runtime ==="
 find /run/user -maxdepth 3 -type s -name 'wayland-*' -ls 2>&1 || true
 echo "=== gdm journal ==="
 journalctl -u gdm3 --no-pager -n 160 2>&1 || true
+cat "$OUT" > /dev/console 2>/dev/null || true
 exit 1
 CHECK
 sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
