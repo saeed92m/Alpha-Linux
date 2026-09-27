@@ -298,7 +298,7 @@ EOF
 done
 echo "ALPHA_COSMIC_GRAPHICAL_RUNTIME=FAIL"
 echo "=== processes ==="
-ps -eo user,pid,ppid,tty,stat,cmd | grep -E 'cosmic|gdm|wayland' | grep -v grep || true
+ps -eo user,pid,ppid,tty,stat,cmd | grep -E 'cosmic|greetd|wayland' | grep -v grep || true
 echo "=== sessions ==="
 loginctl list-sessions --no-legend 2>&1 || true
 echo "=== session details ==="
