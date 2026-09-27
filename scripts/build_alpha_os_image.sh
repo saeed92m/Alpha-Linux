@@ -140,6 +140,7 @@ curl --fail --location --retry 3 --retry-delay 2 --max-time 60 "${COSMIC_KEY_URL
   | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/keyrings/pop-os.gpg" >/dev/null
 printf 'deb [signed-by=/etc/apt/keyrings/pop-os.gpg] %s %s main\n' "${COSMIC_REPOSITORY}" "resolute" \
   | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list.d/alpha-cosmic.list" >/dev/null
+sudo sed -i '/^[[:space:]]*deb[[:space:]]\+cdrom:/s/^/# disabled by Alpha Linux Live build/' "${OVERLAY_ROOTFS_DIR}/etc/apt/sources.list" || true
 
 sudo tee "${OVERLAY_ROOTFS_DIR}/usr/sbin/policy-rc.d" >/dev/null <<'POLICY'
 #!/bin/sh
