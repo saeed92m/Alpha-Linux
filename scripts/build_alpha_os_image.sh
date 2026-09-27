@@ -111,7 +111,7 @@ sudo unsquashfs -d "${ROOTFS_DIR}" "${WORK_DIR}/filesystem.squashfs"
 sudo chown -R "$(id -u):$(id -g)" "${ROOTFS_DIR}"
 
 echo "Injecting COSMIC repository and packages"
-install -d -m 0755 "${ROOTFS_DIR}/etc/apt/keyrings"
+install -d -m 0755 "${ROOTFS_DIR}/etc/apt/keyrings" "${ROOTFS_DIR}/etc/apt/sources.list.d"
 curl --fail --location --retry 3 --retry-delay 2 --max-time 60 "${COSMIC_KEY_URL}" \
   | gpg --dearmor \
   > "${ROOTFS_DIR}/etc/apt/keyrings/pop-os.gpg"
