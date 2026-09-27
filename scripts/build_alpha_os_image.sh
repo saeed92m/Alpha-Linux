@@ -195,18 +195,25 @@ if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
   echo "apt-get returned ${APT_INSTALL_STATUS}, but cosmic-session is configured; continuing with explicit runtime validation."
 fi
 
-sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean
+sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean || true
 sudo rm -rf "${OVERLAY_ROOTFS_DIR}/var/lib/apt/lists/"*
 
 COSMIC_SESSION_FILE="$(find "${OVERLAY_ROOTFS_DIR}/usr/share/wayland-sessions" -maxdepth 1 -name 'cosmic.desktop' -print -quit)"
-test -s "${COSMIC_SESSION_FILE}"
-test -x "${OVERLAY_ROOTFS_DIR}/usr/bin/start-cosmic"
+if [[ ! -s "${COSMIC_SESSION_FILE}" ]]; then
+  echo "ERROR: COSMIC Wayland session file was not installed"
+  find "${OVERLAY_ROOTFS_DIR}/usr/share/wayland-sessions" -maxdepth 1 -type f -print 2>/dev/null || true
+  exit 1
+fi
+if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/start-cosmic" ]]; then
+  echo "ERROR: /usr/bin/start-cosmic is missing or not executable"
+  exit 1
+fi
 
-sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='\${binary:Package}\t\${Version}\n' \
-  | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/' \
-  | LC_ALL=C sort \
-  > "${COSMIC_MANIFEST}"
-test -s "${COSMIC_MANIFEST}"
+sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='\${binary:Package}\t\${Version}\n'   | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/'   | LC_ALL=C sort   > "${COSMIC_MANIFEST}"
+if [[ ! -s "${COSMIC_MANIFEST}" ]]; then
+  echo "ERROR: COSMIC package manifest is empty"
+  exit 1
+fi
 
 printf 'COSMIC repository: %s\\n' "${COSMIC_REPOSITORY}" > "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
 printf 'COSMIC base layer: %s\\n' "${BASE_SQUASHFS_PATH}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
