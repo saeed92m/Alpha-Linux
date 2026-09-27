@@ -265,4 +265,5 @@ jobs:
             dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json
             dist/el-torito-report.txt
             dist/alpha-release-candidate-evidence.json
+            dist/qemu-boot-smoke.log
           if-no-files-found: error
