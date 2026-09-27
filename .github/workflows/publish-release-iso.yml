@@ -5,8 +5,6 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/publish-release-iso.yml"
-  workflow_dispatch:
-
 permissions:
   contents: write
   actions: read
@@ -21,7 +19,7 @@ jobs:
       - name: Download existing ISO artifact
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN_ID: ${{ inputs.source_run_id || '36302661734' }}
+          SOURCE_RUN_ID: 36302661734
         run: |
           set -euo pipefail
           rm -rf iso-publish
@@ -37,7 +35,7 @@ jobs:
 
       - name: Verify exact existing ISO
         env:
-          EXPECTED_SHA256: ${{ inputs.expected_sha256 || '9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7' }}
+          EXPECTED_SHA256: 9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7
         run: |
           set -euo pipefail
           ISO="iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso"
@@ -62,7 +60,7 @@ jobs:
           root=Path("iso-publish")
           iso=root/"alpha-linux-0.1.0a1-alpha-amd64.iso"
           parts=sorted(root.glob("*.iso.part-*"))
-          manifest={"artifact":iso.name,"source_run_id":int("${{ inputs.source_run_id || '36302661734' }}"),"release_tag":"${{ inputs.release_tag || 'v0.1.0a1' }}","source_commit":"d2643248e5ea3ebea13bd3d54aa7116acb695bbd","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":1900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso"}
+          manifest={"artifact":iso.name,"source_run_id":int("36302661734"),"release_tag":"v0.1.0a1","source_commit":"d2643248e5ea3ebea13bd3d54aa7116acb695bbd","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":1900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso"}
           (root/"alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json").write_text(json.dumps(manifest,indent=2)+"\n")
           PY
           cat > iso-publish/REASSEMBLE-ISO.txt <<'EOF'
@@ -86,7 +84,7 @@ EOF
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag || 'v0.1.0a1' }}
+          RELEASE_TAG: v0.1.0a1
         run: |
           set -euo pipefail
           gh release view "$RELEASE_TAG" >/dev/null
@@ -95,7 +93,7 @@ EOF
       - name: Verify release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_TAG: v0.1.0a1
         run: |
           set -euo pipefail
           gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort > release-assets.txt
