@@ -75,7 +75,7 @@ class CosmicLiveImageEvidence:
         if missing_packages:
             raise ValueError(f"missing COSMIC packages: {missing_packages}")
 
-        payload = {
+        payload: dict[str, object] = {
             "desktop_file": str(desktop_path),
             "session_launcher": str(launcher_path),
             "required_packages": list(self.package_names),
