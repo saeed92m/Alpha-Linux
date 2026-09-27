@@ -34,7 +34,7 @@ jobs:
 
       - name: Verify exact existing ISO
         env:
-          EXPECTED_SHA256: "9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7"
+          EXPECTED_SHA256: "9582810c2fbb7191a8c190280e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7"
         run: |
           set -euo pipefail
           ISO="iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso"
@@ -76,7 +76,7 @@ jobs:
             Get-FileHash .\alpha-linux-0.1.0a1-alpha-amd64.iso -Algorithm SHA256
           
           Expected complete ISO SHA-256:
-          9582810c2fbb7191a8c19028028e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7
+          9582810c2fbb7191a8c190280e6b448c2d22f3d3fbac666a00ee164e6f3d9ca7
           EOF
           rm -f "$ISO"
 
