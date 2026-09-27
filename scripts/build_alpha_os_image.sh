@@ -184,8 +184,9 @@ if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
   sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --configure -a
   sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get -f install -y
 fi
-if sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --audit | grep -q .; then
-  sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --audit
+DPKG_AUDIT_OUTPUT="$(sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg --audit || true)"
+if [[ -n "${DPKG_AUDIT_OUTPUT}" ]]; then
+  printf '%s\n' "${DPKG_AUDIT_OUTPUT}"
   exit 1
 fi
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean
