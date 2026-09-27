@@ -109,6 +109,15 @@ jobs:
           if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-uefi-boot-smoke.log /tmp/alpha-qemu-uefi.stderr; then cat dist/qemu-uefi-boot-smoke.log || true; cat /tmp/alpha-qemu-uefi.stderr || true; exit 1; fi
           echo "UEFI boot smoke completed without detected fatal boot errors."
 
+      - name: Validate Live filesystem and graphical session prerequisites
+        run: |
+          set -euo pipefail
+          xorriso -indev dist/alpha-linux-0.1.0a1-alpha-amd64.iso -find / -name '*filesystem.squashfs' -print | tee dist/live-filesystem-evidence.txt
+          grep -Eq 'filesystem\.squashfs|casper' dist/live-filesystem-evidence.txt
+          xorriso -indev dist/alpha-linux-0.1.0a1-alpha-amd64.iso -find / -name 'casper' -print | tee -a dist/live-filesystem-evidence.txt
+          echo "Live image structure detected; graphical runtime remains a separate runtime gate."
+
+
       - name: Run automated ISO boot smoke test
         run: |
           set -euo pipefail
