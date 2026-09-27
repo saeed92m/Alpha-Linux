@@ -133,8 +133,8 @@ cleanup_chroot() {
 }
 trap cleanup_chroot EXIT
 
-timeout 20m sudo chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get update
-timeout 20m sudo chroot "${ROOTFS_DIR}" env DEBIAN_FRONTEND=noninteractive apt-get install -y cosmic-session
+timeout 20m sudo chroot "${ROOTFS_DIR}" /bin/sh -c 'export DEBIAN_FRONTEND=noninteractive; apt-get update'
+timeout 20m sudo chroot "${ROOTFS_DIR}" /bin/sh -c 'export DEBIAN_FRONTEND=noninteractive; apt-get install -y cosmic-session'
 sudo chroot "${ROOTFS_DIR}" apt-get clean
 rm -rf "${ROOTFS_DIR}/var/lib/apt/lists/"*
 
