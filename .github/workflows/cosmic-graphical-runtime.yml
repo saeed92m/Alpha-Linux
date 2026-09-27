@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/source
-          ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.expired == false and (.name | contains("alpha-linux-0.1.0a1-alpha-amd64-iso"))) | .id' | head -n 1)"
+          ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.expired == false and (.name == "artifact" or (.name | contains("alpha-linux-0.1.0a1-alpha-amd64.iso")))) | .id' | head -n 1)"
           test -n "$ARTIFACT_ID"
           curl --fail --location --retry 3 -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" -o dist/source/artifact.zip
           unzip -o dist/source/artifact.zip -d dist/source/unpacked >/dev/null
@@ -70,6 +70,11 @@ jobs:
           sudo mount -t tmpfs tmpfs "$W/rootfs/run"
           trap 'sudo umount -lf "$W/rootfs/run" || true; sudo umount -lf "$W/rootfs/sys" || true; sudo umount -lf "$W/rootfs/proc" || true; sudo umount -lf "$W/rootfs/dev/pts" || true; sudo umount -lf "$W/rootfs/dev" || true' EXIT
           sudo cp -L /etc/resolv.conf "$W/rootfs/etc/resolv.conf"
+          sudo tee "$W/rootfs/usr/sbin/policy-rc.d" >/dev/null <<'POLICY'
+#!/bin/sh
+exit 101
+POLICY
+          sudo chmod 0755 "$W/rootfs/usr/sbin/policy-rc.d"
           sudo env DEBIAN_FRONTEND=noninteractive chroot "$W/rootfs" apt-get update
           sudo env DEBIAN_FRONTEND=noninteractive chroot "$W/rootfs" apt-get install -y greetd
           sudo chroot "$W/rootfs" useradd --create-home --shell /bin/bash alpha-runtime || true
