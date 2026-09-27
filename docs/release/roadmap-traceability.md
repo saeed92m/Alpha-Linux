@@ -1,30 +1,60 @@
 # Alpha Linux — Roadmap Traceability
 
-**Status:** Phase 0 planning control
+**Status:** Active delivery control — Phase 7: Alpha Releases
+
+This document is the release traceability view of the current master roadmap. The master roadmap is normative for phase names and program state; this document maps each phase to its required evidence and delivery gates.
 
 ## Delivery gates
 
 | Phase | Entry condition | Exit evidence |
 |---|---|---|
-| Phase 0 — Definition | Product scope established | Frozen requirements/spec/architecture baseline |
-| Phase 1 — Foundation | Phase 0 frozen | Minimal Alpha system contracts + automated CI |
-| Phase 2 — System Integration | Foundation validated | Hardware/package/update/installer integration evidence |
-| Phase 3 — Intelligence | System integration stable | AI/agent security + functional validation |
-| Phase 4 — Domain Platform | Core APIs stable | Domain integration validation |
-| Phase 5 — Release Engineering | Build/release gates operational | Reproducible signed release artifacts |
-| Phase 6 — Stable Release | RC passes all gates | Stable release + provenance + compatibility evidence |
-| Phase 7 — Observe & Improve | Stable release deployed | Measured improvements with traceability |
+| Phase 0 — Product and specification | Product scope and architecture defined | Frozen requirements/specification/architecture baseline |
+| Phase 1 — Foundation | Phase 0 frozen | Reproducible build, package policy, CI/CD, baseline QA and artifact evidence |
+| Phase 2 — Alpha Core | Foundation validated | System-integration and reference-runtime evidence for core platform surfaces |
+| Phase 3 — Desktop and interaction | Alpha Core baseline available | Desktop/interaction reference-runtime evidence and CI validation |
+| Phase 4 — AI Platform | Core platform contracts available | AI/agent runtime, permissions and verification foundation evidence |
+| Phase 5 — Domain platform | Core and AI platform foundations available | Domain foundation evidence across supported technical and creative domains |
+| Phase 6 — Hardening | Domain/platform foundations available | Security, privacy, recovery, compatibility, performance, hardware-validation, accessibility, localization and release-QA evidence |
+| Phase 7 — Alpha releases | Hardening baseline and release contracts validated | Versioned release artifacts, provenance, traceability, publication and release-readiness evidence |
+
+## Current Phase 7 release gates
+
+### Alpha 0.1.0a1 package track
+
+- Package artifact verified in CI.
+- Release publication completed as `v0.1.0a1`.
+- Tag and GitHub Release are bound to verified source/CI evidence.
+- Artifact provenance and SHA-256 evidence are retained.
+
+### Alpha OS image track
+
+- ISO/IMG artifact contract defined.
+- Deterministic naming and evidence model implemented.
+- Executable image-file validation and tests are present.
+- Actual amd64 OS image build is implemented and CI-verified.
+- The verified image is distributed through release-safe split assets.
+- Part checksums, reassembly instructions, full ISO checksum, size and manifest are automatically validated.
+- Physical installation/boot validation across target hardware remains a future gate.
+- Installer UX and production installer readiness remain future gates.
+- Beta/Stable promotion remains gated by their respective implementation and validation evidence.
 
 ## Mandatory sequencing
 
-- No Phase 1 production implementation before Phase 0 Freeze.
-- No stable release before build, security, recovery, compatibility and artifact gates pass.
-- Domain suites must consume stable platform contracts.
-- AI capabilities must not bypass security/policy boundaries.
-- Every phase exit requires retained evidence.
+- No implementation may silently redefine frozen normative scope; material scope changes follow the Change Request process.
+- No release claim is made without the corresponding artifact and retained evidence.
+- Domain capabilities consume stable platform contracts rather than bypassing core boundaries.
+- AI capabilities remain subject to explicit permission, security and verification boundaries.
+- Privileged host integration and production application execution remain separately gated from reference-runtime foundations.
+- Every phase exit requires retained, machine-checkable or otherwise auditable evidence.
 
-## Improvement loop
+## Continuous improvement loop
 
 **Build → Test → Observe → Measure → Gap → Requirement/Spec/Architecture update → Implement → Verify → Release → Observe**
 
-A roadmap change that alters scope or normative behavior requires the documented Change Request process.
+This loop is cumulative rather than strictly linear: later evidence can trigger a requirement, architecture, implementation or validation update in an earlier subsystem without reopening completed phase gates unnecessarily.
+
+## Evidence principle
+
+A roadmap item is considered implemented only when the repository contains the corresponding implementation or executable contract, automated/manual validation evidence appropriate to the item, and traceability to the applicable requirement or release gate.
+
+Dates are not treated as completion evidence; artifact and validation evidence are.
