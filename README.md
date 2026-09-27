@@ -14,9 +14,9 @@ Alpha Linux preserves Ubuntu compatibility while providing an integrated platfor
 
 Phase 0 specification/architecture work is frozen as the normative foundation. Phases 1–6 established the executable engineering, Alpha Core, desktop/interaction, AI platform, domain platform, and hardening reference foundations. Phase 7 is implementing release-scoped artifact, traceability, readiness, and publication foundations with deterministic contracts, executable tests, CI evidence, and explicit non-goal boundaries.
 
-The current CI/CD workflow is authoritative for runtime and release-gate evidence. Phase 7 release foundations do not claim a public product release, OS ISO/IMG release, privileged host integration, production application execution, or repository publication side effects unless separately evidenced.
+The current CI/CD workflow is authoritative for runtime and release-gate evidence. Phase 7 release claims are made only where the corresponding artifact and evidence exist; privileged host integration, production application execution, and installer/production-readiness claims remain separately gated.
 
-The current Alpha package target is **0.1.0a1**. Its release-publication foundation binds release metadata to the verified package artifact, source commit, CI evidence, and checksum. The deterministic tag intent is `v0.1.0a1`; tag creation and release publication remain separately gated.
+Alpha **0.1.0a1** is the current verified Alpha release candidate. The `v0.1.0a1` tag and GitHub Release are bound to the verified source/CI evidence. The OS image track additionally publishes the verified amd64 image as four release-safe parts with checksums and a reassembly manifest.
 
 ## Core principles
 
@@ -64,7 +64,7 @@ The CI/CD workflow covers:
 - machine-readable gate evidence;
 - Alpha OS ISO build, base-image verification, boot-metadata preservation, artifact hashing, provenance, and evidence publication on the OS image track.
 
-Public OS release, installation validation, and release promotion remain deferred until the actual image artifact and corresponding release evidence are verified.
+The OS image artifact and release evidence have been verified for `v0.1.0a1`. Physical installation/boot validation across target hardware, installer UX, and promotion to Beta/Stable remain future gates.
 
 ## Documentation hierarchy
 
