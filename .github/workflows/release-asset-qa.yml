@@ -29,6 +29,7 @@ jobs:
         working-directory: release-qa
         run: |
           set -euo pipefail
+          sed -i 's#iso-publish/##g' alpha-linux-0.1.0a1-alpha-amd64.iso.parts.sha256
           sha256sum -c alpha-linux-0.1.0a1-alpha-amd64.iso.parts.sha256
 
       - name: Reassemble and verify complete ISO
