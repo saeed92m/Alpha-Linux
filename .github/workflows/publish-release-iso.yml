@@ -14,7 +14,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Smoke
+      - name: Download existing ISO artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: "36302661734"
         run: |
           set -euo pipefail
-          echo "publisher smoke"
+          rm -rf iso-publish
+          mkdir -p iso-publish
+          echo "Downloading existing artifact from run $SOURCE_RUN_ID"
+          gh run download "$SOURCE_RUN_ID" -n alpha-linux-0.1.0a1-alpha-amd64.iso -D iso-publish
+          ISO="$(find iso-publish -type f -name 'alpha-linux-0.1.0a1-alpha-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          test -s "$ISO"
+          if [ "$ISO" != "iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso" ]; then
+            mv "$ISO" iso-publish/alpha-linux-0.1.0a1-alpha-amd64.iso
+          fi
