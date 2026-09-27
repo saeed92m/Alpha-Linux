@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify-release:
@@ -24,36 +24,6 @@ jobs:
           set -euo pipefail
           mkdir -p release-qa
           gh release download "$RELEASE_TAG" -R saeed92m/Alpha-Linux             --pattern 'alpha-linux-0.1.0a1-alpha-amd64.iso.part-*'             --pattern 'alpha-linux-0.1.0a1-alpha-amd64.iso.parts.sha256'             --pattern 'alpha-linux-0.1.0a1-alpha-amd64.iso.sha256'             --pattern 'alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json'             --dir release-qa
-
-      - name: Repair and publish canonical manifest
-        working-directory: release-qa
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: v0.1.0a1
-        run: |
-          set -euo pipefail
-          cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso
-          python3 - <<'PY'
-          import hashlib, json
-          from pathlib import Path
-          root=Path(".")
-          iso=root/"alpha-linux-0.1.0a1-alpha-amd64.iso"
-          parts=sorted(root.glob("alpha-linux-0.1.0a1-alpha-amd64.iso.part-*"))
-          m={
-            "artifact": iso.name,
-            "source_run_id": 36302661734,
-            "release_tag": "v0.1.0a1",
-            "source_commit": "d2643248e5ea3ebea13bd3d54aa7116acb695bbd",
-            "iso_size_bytes": iso.stat().st_size,
-            "iso_sha256": hashlib.sha256(iso.read_bytes()).hexdigest(),
-            "part_count": len(parts),
-            "part_max_bytes": 1900*1024*1024,
-            "parts": [{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],
-            "reassembly":"cat alpha-linux-0.1.0a1-alpha-amd64.iso.part-* > alpha-linux-0.1.0a1-alpha-amd64.iso"
-          }
-          Path("alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json").write_text(json.dumps(m,indent=2)+"\n")
-          PY
-          gh release upload "$RELEASE_TAG" -R saeed92m/Alpha-Linux alpha-linux-0.1.0a1-alpha-amd64.iso.parts.json --clobber
 
       - name: Verify part checksums
         working-directory: release-qa
