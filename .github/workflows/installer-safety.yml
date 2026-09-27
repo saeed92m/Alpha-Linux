@@ -7,8 +7,10 @@ on:
     paths:
       - "implementation/alpha_core/installer_safety.py"
       - "implementation/alpha_core/installer_fixture.py"
+      - "implementation/alpha_core/installer_transaction.py"
       - "implementation/tests/test_installer_safety.py"
       - "implementation/tests/test_installer_fixture.py"
+      - "implementation/tests/test_installer_transaction.py"
       - "implementation/installer_safety.md"
       - ".github/workflows/installer-safety.yml"
   pull_request:
