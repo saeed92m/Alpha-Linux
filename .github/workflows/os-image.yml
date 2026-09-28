@@ -29,8 +29,8 @@ permissions:
   issues: write
 
 concurrency:
-  group: alpha-os-image-${{ github.ref }}
-  cancel-in-progress: false
+  group: alpha-os-image-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   build:
