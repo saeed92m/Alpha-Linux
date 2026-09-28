@@ -83,6 +83,7 @@ build_iso() {
     -indev "${BASE_PATH}" \
     -outdev "${output_path}" \
     -map "${SEED_PATH}" /alpha-release.json \
+    -map "${LIVE_SQUASHFS}" /casper/minimal.standard.live.squashfs \
     -boot_image any replay \
     -compliance no_emul_toc \
     -padding included
