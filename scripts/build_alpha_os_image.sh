@@ -252,13 +252,14 @@ sudo tee "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-ch
 set -eu
 OUT=/var/log/alpha-cosmic-graphical-runtime.log
 exec >>"$OUT" 2>&1
-echo "ALPHA_COSMIC_GRAPHICAL_RUNTIME=START"
-echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-echo "kernel=$(uname -r)"
-echo "uid1000=$(getent passwd 1000 || true)"
-echo "drm=$(ls -l /dev/dri 2>/dev/null || true)"
-deadline=$((SECONDS + 150))
-while [ "$SECONDS" -lt "$deadline" ]; do
+emit() { printf "%s\\n" "$*" | tee -a "$OUT" /dev/ttyS0 2>/dev/null || printf "%s\\n" "$*" >>"$OUT"; }
+emit "ALPHA_COSMIC_GRAPHICAL_RUNTIME=START"
+emit "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+emit "kernel=$(uname -r)"
+emit "uid1000=$(getent passwd 1000 || true)"
+emit "drm=$(ls -l /dev/dri 2>/dev/null || true)"
+deadline=$(( $(date +%s) + 150 ))
+while [ "$(date +%s)" -lt "$deadline" ]; do
   session_ok=0
   cosmic_ok=0
   wayland_ok=0
@@ -282,15 +283,15 @@ while [ "$SECONDS" -lt "$deadline" ]; do
 $(loginctl list-sessions --no-legend 2>/dev/null || true)
 EOF
   if [ "$session_ok" -eq 1 ] && [ "$cosmic_ok" -eq 1 ] && [ "$wayland_ok" -eq 1 ] && [ "$desktop_ok" -eq 1 ]; then
-    echo "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS"
-    echo "cosmic_comp=$(pgrep -u 1000 -x cosmic-comp | head -n1)"
-    echo "wayland_socket=$(find /run/user/1000 -maxdepth 1 -type s -name 'wayland-*' -print -quit)"
+    emit "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS"
+    emit "cosmic_comp=$(pgrep -u 1000 -x cosmic-comp | head -n1)"
+    emit "wayland_socket=$(find /run/user/1000 -maxdepth 1 -type s -name 'wayland-*' -print -quit)"
     cat "$OUT" > /dev/console 2>/dev/null || true
     exit 0
   fi
   sleep 5
 done
-echo "ALPHA_COSMIC_GRAPHICAL_RUNTIME=FAIL"
+emit "ALPHA_COSMIC_GRAPHICAL_RUNTIME=FAIL"
 echo "=== processes ==="
 ps -eo user,pid,ppid,tty,stat,cmd | grep -E 'cosmic|greetd|wayland' | grep -v grep || true
 echo "=== sessions ==="
@@ -317,8 +318,8 @@ ConditionPathExists=/usr/bin/start-cosmic
 Type=oneshot
 ExecStart=/usr/local/sbin/alpha-cosmic-graphical-runtime-check
 TimeoutStartSec=180s
-StandardOutput=journal
-StandardError=journal
+StandardOutput=journal+console
+StandardError=journal+console
 [Install]
 WantedBy=multi-user.target
 UNIT
