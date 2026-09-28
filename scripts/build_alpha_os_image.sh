@@ -258,9 +258,11 @@ if [[ -e "${OVERLAY_ROOTFS_DIR}/lib/systemd/system/greetd.service" ]]; then
   sudo ln -sf /lib/systemd/system/greetd.service "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
 fi
 
-echo "Installing executable COSMIC graphical-session validator"
-sudo mkdir -p "${LIVE_ROOTFS_DIR}/usr/local/sbin" "${LIVE_ROOTFS_DIR}/var/log"
-sudo tee "${LIVE_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check" >/dev/null <<'CHECK'
+echo "Staging executable COSMIC graphical-session validator outside the mounted OverlayFS upperdir"
+VALIDATOR_ROOTFS_DIR="${WORK_DIR}/cosmic-validator-root"
+rm -rf "${VALIDATOR_ROOTFS_DIR}"
+sudo mkdir -p "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin" "${VALIDATOR_ROOTFS_DIR}/var/log" "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants"
+sudo tee "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check" >/dev/null <<'CHECK'
 #!/bin/sh
 set -eu
 OUT=/var/log/alpha-cosmic-graphical-runtime.log
@@ -319,7 +321,7 @@ cat "$OUT" > /dev/console 2>/dev/null || true
 exit 1
 CHECK
 sudo chmod 0755 "${LIVE_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
-sudo tee "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" >/dev/null <<'TARGET'
+sudo tee "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" >/dev/null <<'TARGET'
 [Unit]
 Description=Alpha Linux COSMIC graphical runtime validation target
 Requires=greetd.service
@@ -328,7 +330,7 @@ After=basic.target greetd.service
 AllowIsolate=yes
 TARGET
 
-sudo tee "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service" >/dev/null <<'UNIT'
+sudo tee "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service" >/dev/null <<'UNIT'
 [Unit]
 Description=Alpha Linux COSMIC graphical runtime validation
 After=greetd.service
@@ -343,9 +345,8 @@ StandardError=journal+console
 [Install]
 WantedBy=multi-user.target
 UNIT
-sudo mkdir -p "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants"
-sudo ln -sf /lib/systemd/system/greetd.service "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/greetd.service"
-sudo ln -sf ../alpha-cosmic-graphical-runtime.service "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/alpha-cosmic-graphical-runtime.service"
+sudo ln -sf /lib/systemd/system/greetd.service "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/greetd.service"
+sudo ln -sf ../alpha-cosmic-graphical-runtime.service "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/alpha-cosmic-graphical-runtime.service"
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='${binary:Package}\t${Version}\n'   | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/'   | LC_ALL=C sort   > "${COSMIC_MANIFEST}"
 if [[ ! -s "${COSMIC_MANIFEST}" ]]; then
   echo "ERROR: COSMIC package manifest is empty"
@@ -362,17 +363,31 @@ cat "${COSMIC_MANIFEST}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
 
 echo "Finalizing modified Ubuntu Live leaf layer"
 cleanup_chroot
+
+echo "Persisting staged COSMIC graphical validator into the unmounted Live leaf layer"
+sudo cp -a "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check" "${LIVE_ROOTFS_DIR}/usr/local/sbin/"
+sudo mkdir -p "${LIVE_ROOTFS_DIR}/var/log" "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants"
+sudo cp -a "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" "${LIVE_ROOTFS_DIR}/etc/systemd/system/"
+sudo cp -a "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service" "${LIVE_ROOTFS_DIR}/etc/systemd/system/"
+sudo cp -a "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/." "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/"
+
 sudo test -x "${LIVE_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
 sudo test -f "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target"
 sudo test -f "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service"
 sudo test -L "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/greetd.service"
 sudo test -L "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/alpha-cosmic-graphical-runtime.service"
-echo "COSMIC graphical validator persisted in live leaf layer"
+echo "COSMIC graphical validator persisted in unmounted live leaf layer"
 
 echo "Repacking modified Ubuntu Live layer"
 sudo mksquashfs "${LIVE_ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
 sudo chown "$(id -u):$(id -g)" "${LIVE_SQUASHFS}"
 test -s "${LIVE_SQUASHFS}"
+
+echo "Verifying COSMIC graphical validator inside the exact squashfs leaf consumed by QEMU"
+sudo unsquashfs -cat "${LIVE_SQUASHFS}" etc/systemd/system/alpha-cosmic-validation.target >/dev/null
+sudo unsquashfs -cat "${LIVE_SQUASHFS}" etc/systemd/system/alpha-cosmic-graphical-runtime.service >/dev/null
+sudo unsquashfs -cat "${LIVE_SQUASHFS}" usr/local/sbin/alpha-cosmic-graphical-runtime-check >/dev/null
+echo "COSMIC graphical validator verified inside final Live leaf squashfs"
 
 echo "Repacking bootable Ubuntu ISO with deterministic time inputs"
 build_iso "${OUTPUT_PATH}"
