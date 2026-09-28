@@ -320,7 +320,7 @@ journalctl -u greetd --no-pager -n 160 2>&1 || true
 cat "$OUT" > /dev/console 2>/dev/null || true
 exit 1
 CHECK
-sudo chmod 0755 "${LIVE_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
+sudo chmod 0755 "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
 sudo tee "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" >/dev/null <<'TARGET'
 [Unit]
 Description=Alpha Linux COSMIC graphical runtime validation target
