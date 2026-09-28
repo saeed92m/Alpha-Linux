@@ -183,7 +183,7 @@ jobs:
             -m 4096 \
             -kernel "$LIVE_DIR/vmlinuz" \
             -initrd "$LIVE_DIR/initrd" \
-            -append "boot=casper layerfs-path=minimal.standard.live.squashfs console=ttyS0 systemd.show_status=true systemd.unit=alpha-cosmic-validation.target systemd.mask=ldconfig.service systemd.mask=snapd.apparmor.service systemd.mask=snapd.service systemd.mask=gdm.service cloud-init=disabled" \
+            -append "boot=casper layerfs-path=minimal.standard.live.squashfs console=ttyS0 rd.systemd.unit=initrd-switch-root.target systemd.show_status=true systemd.unit=alpha-cosmic-validation.target systemd.mask=ldconfig.service systemd.mask=snapd.apparmor.service systemd.mask=snapd.service systemd.mask=gdm.service cloud-init=disabled" \
             -cdrom "$ISO" \
             -vga virtio \
             -display none \
