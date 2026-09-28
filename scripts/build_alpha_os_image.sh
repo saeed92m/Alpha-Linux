@@ -359,6 +359,15 @@ printf 'COSMIC session: /usr/share/wayland-sessions/cosmic.desktop\\n' >> "${OUT
 printf 'COSMIC launcher: /usr/bin/start-cosmic\\n' >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
 cat "${COSMIC_MANIFEST}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
 
+echo "Finalizing modified Ubuntu Live leaf layer"
+cleanup_chroot
+sudo test -x "${LIVE_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
+sudo test -f "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target"
+sudo test -f "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service"
+sudo test -L "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/greetd.service"
+sudo test -L "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/alpha-cosmic-graphical-runtime.service"
+echo "COSMIC graphical validator persisted in live leaf layer"
+
 echo "Repacking modified Ubuntu Live layer"
 sudo mksquashfs "${LIVE_ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
 sudo chown "$(id -u):$(id -g)" "${LIVE_SQUASHFS}"
