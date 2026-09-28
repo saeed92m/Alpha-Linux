@@ -30,7 +30,7 @@ permissions:
 
 concurrency:
   group: alpha-os-image-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
