@@ -225,7 +225,7 @@ fi
 echo "Configuring greetd for deterministic COSMIC graphical-session validation"
 sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/greetd"
 sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/gdm3/custom.conf"
-sudo tee "${OVERLAY_ROOTFS_DIR}/etc/greetd/cosmic-greeter.toml" >/dev/null <<'GREETD'
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/greetd/config.toml" >/dev/null <<'GREETD'
 [terminal]
 vt = "1"
 [general]
@@ -236,20 +236,14 @@ user = "cosmic-greeter"
 [initial_session]
 command = "start-cosmic"
 user = "ubuntu"
-GREETD for deterministic COSMIC graphical-session validation"
-sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/gdm3"
-sudo tee "${OVERLAY_ROOTFS_DIR}/etc/gdm3/custom.conf" >/dev/null <<'GDM'
-# Alpha Linux CI graphical-session validation
-[daemon]
-AutomaticLoginEnable=true
-AutomaticLogin=ubuntu
-DefaultSession=cosmic.desktop
-WaylandEnable=true
-[security]
-[xdmcp]
-[chooser]
-[debug]
-GDM
+GREETD
+
+echo "Binding display-manager.service to greetd"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
+if [[ -e "${OVERLAY_ROOTFS_DIR}/lib/systemd/system/greetd.service" ]]; then
+  sudo ln -sf /lib/systemd/system/greetd.service "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
+fi
 
 echo "Installing executable COSMIC graphical-session validator"
 sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/usr/local/sbin" "${OVERLAY_ROOTFS_DIR}/var/log"
