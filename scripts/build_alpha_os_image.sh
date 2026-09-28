@@ -258,8 +258,8 @@ if [[ -e "${OVERLAY_ROOTFS_DIR}/lib/systemd/system/greetd.service" ]]; then
 fi
 
 echo "Installing executable COSMIC graphical-session validator"
-sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/usr/local/sbin" "${OVERLAY_ROOTFS_DIR}/var/log"
-sudo tee "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check" >/dev/null <<'CHECK'
+sudo mkdir -p "${LIVE_ROOTFS_DIR}/usr/local/sbin" "${LIVE_ROOTFS_DIR}/var/log"
+sudo tee "${LIVE_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check" >/dev/null <<'CHECK'
 #!/bin/sh
 set -eu
 OUT=/var/log/alpha-cosmic-graphical-runtime.log
@@ -317,8 +317,8 @@ journalctl -u greetd --no-pager -n 160 2>&1 || true
 cat "$OUT" > /dev/console 2>/dev/null || true
 exit 1
 CHECK
-sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
-sudo tee "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" >/dev/null <<'TARGET'
+sudo chmod 0755 "${LIVE_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
+sudo tee "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" >/dev/null <<'TARGET'
 [Unit]
 Description=Alpha Linux COSMIC graphical runtime validation target
 Requires=greetd.service
@@ -327,7 +327,7 @@ After=basic.target greetd.service
 AllowIsolate=yes
 TARGET
 
-sudo tee "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service" >/dev/null <<'UNIT'
+sudo tee "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service" >/dev/null <<'UNIT'
 [Unit]
 Description=Alpha Linux COSMIC graphical runtime validation
 After=greetd.service
@@ -342,9 +342,9 @@ StandardError=journal+console
 [Install]
 WantedBy=multi-user.target
 UNIT
-sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants"
-sudo ln -sf /lib/systemd/system/greetd.service "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/greetd.service"
-sudo ln -sf ../alpha-cosmic-graphical-runtime.service "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/alpha-cosmic-graphical-runtime.service"
+sudo mkdir -p "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants"
+sudo ln -sf /lib/systemd/system/greetd.service "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/greetd.service"
+sudo ln -sf ../alpha-cosmic-graphical-runtime.service "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/alpha-cosmic-graphical-runtime.service"
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='${binary:Package}\t${Version}\n'   | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/'   | LC_ALL=C sort   > "${COSMIC_MANIFEST}"
 if [[ ! -s "${COSMIC_MANIFEST}" ]]; then
   echo "ERROR: COSMIC package manifest is empty"
