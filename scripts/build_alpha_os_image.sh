@@ -222,6 +222,15 @@ if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/cosmic-greeter-start" ]]; then
   exit 1
 fi
 
+echo "Configuring deterministic graphical-runtime boot dependencies"
+# These services are unrelated to the COSMIC runtime gate and can block indefinitely
+# under the QEMU/AppArmor-constrained CI environment. Mask them in the disposable
+# validation image only; the production Live filesystem remains otherwise intact.
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system"
+for unit in ldconfig.service snapd.apparmor.service; do
+  sudo ln -sfn /dev/null "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/$unit"
+done
+
 echo "Configuring greetd for deterministic COSMIC graphical-session validation"
 sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/greetd"
 sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/gdm3/custom.conf"
