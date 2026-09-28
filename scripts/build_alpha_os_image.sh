@@ -241,6 +241,9 @@ GREETD
 echo "Binding display-manager.service to greetd"
 sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system"
 sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/multi-user.target.wants/gdm.service" "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/graphical.target.wants/gdm.service"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system"
+sudo ln -sfn /dev/null "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/gdm.service"
 if [[ -e "${OVERLAY_ROOTFS_DIR}/lib/systemd/system/greetd.service" ]]; then
   sudo ln -sf /lib/systemd/system/greetd.service "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
 fi
