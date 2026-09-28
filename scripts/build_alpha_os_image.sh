@@ -209,6 +209,125 @@ if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/start-cosmic" ]]; then
   exit 1
 fi
 
+if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/sbin/greetd" ]]; then
+  echo "ERROR: greetd is required for the executable COSMIC graphical-session gate"
+  exit 1
+fi
+if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/start-cosmic" ]]; then
+  echo "ERROR: /usr/bin/start-cosmic is missing or not executable"
+  exit 1
+fi
+if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/cosmic-greeter-start" ]]; then
+  echo "ERROR: cosmic-greeter-start is required for the COSMIC display-manager path"
+  exit 1
+fi
+
+echo "Configuring greetd for deterministic COSMIC graphical-session validation"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/greetd"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/gdm3/custom.conf"
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/greetd/cosmic-greeter.toml" >/dev/null <<'GREETD'
+[terminal]
+vt = "1"
+[general]
+service = "cosmic-greeter"
+[default_session]
+command = "cosmic-greeter-start"
+user = "cosmic-greeter"
+[initial_session]
+command = "start-cosmic"
+user = "ubuntu"
+GREETD for deterministic COSMIC graphical-session validation"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/gdm3"
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/gdm3/custom.conf" >/dev/null <<'GDM'
+# Alpha Linux CI graphical-session validation
+[daemon]
+AutomaticLoginEnable=true
+AutomaticLogin=ubuntu
+DefaultSession=cosmic.desktop
+WaylandEnable=true
+[security]
+[xdmcp]
+[chooser]
+[debug]
+GDM
+
+echo "Installing executable COSMIC graphical-session validator"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/usr/local/sbin" "${OVERLAY_ROOTFS_DIR}/var/log"
+sudo tee "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check" >/dev/null <<'CHECK'
+#!/bin/sh
+set -eu
+OUT=/var/log/alpha-cosmic-graphical-runtime.log
+exec >>"$OUT" 2>&1
+echo "ALPHA_COSMIC_GRAPHICAL_RUNTIME=START"
+echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "kernel=$(uname -r)"
+echo "uid1000=$(getent passwd 1000 || true)"
+echo "drm=$(ls -l /dev/dri 2>/dev/null || true)"
+deadline=$((SECONDS + 150))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  session_ok=0
+  cosmic_ok=0
+  wayland_ok=0
+  desktop_ok=0
+  cosmic_pid="$(pgrep -u 1000 -x cosmic-comp | head -n1 || true)"
+  if [ -n "$cosmic_pid" ]; then
+    cosmic_ok=1
+    cosmic_desktop="$(tr '\0' '\n' < "/proc/$cosmic_pid/environ" 2>/dev/null | sed -n 's/^XDG_CURRENT_DESKTOP=//p' | head -n1 || true)"
+    if printf '%s' "$cosmic_desktop" | grep -Eqi 'cosmic'; then desktop_ok=1; fi
+  fi
+  if find /run/user/1000 -maxdepth 1 -type s -name 'wayland-*' -print -quit 2>/dev/null | grep -q .; then wayland_ok=1; fi
+  while read -r sid _; do
+    [ -n "$sid" ] || continue
+    name=$(loginctl show-session "$sid" -p Name --value 2>/dev/null || true)
+    type=$(loginctl show-session "$sid" -p Type --value 2>/dev/null || true)
+    desktop=$(loginctl show-session "$sid" -p Desktop --value 2>/dev/null || true)
+    echo "session sid=$sid name=$name type=$type desktop=$desktop"
+    if [ "$name" = "ubuntu" ] && [ "$type" = "wayland" ]; then session_ok=1; fi
+    if printf '%s' "$desktop" | grep -Eqi 'cosmic'; then desktop_ok=1; fi
+  done <<EOF
+$(loginctl list-sessions --no-legend 2>/dev/null || true)
+EOF
+  if [ "$session_ok" -eq 1 ] && [ "$cosmic_ok" -eq 1 ] && [ "$wayland_ok" -eq 1 ] && [ "$desktop_ok" -eq 1 ]; then
+    echo "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS"
+    echo "cosmic_comp=$(pgrep -u 1000 -x cosmic-comp | head -n1)"
+    echo "wayland_socket=$(find /run/user/1000 -maxdepth 1 -type s -name 'wayland-*' -print -quit)"
+    cat "$OUT" > /dev/console 2>/dev/null || true
+    exit 0
+  fi
+  sleep 5
+done
+echo "ALPHA_COSMIC_GRAPHICAL_RUNTIME=FAIL"
+echo "=== processes ==="
+ps -eo user,pid,ppid,tty,stat,cmd | grep -E 'cosmic|greetd|wayland' | grep -v grep || true
+echo "=== sessions ==="
+loginctl list-sessions --no-legend 2>&1 || true
+echo "=== session details ==="
+for sid in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do loginctl show-session "$sid" -p Name -p Type -p Desktop -p State 2>&1 || true; done
+echo "=== wayland runtime ==="
+find /run/user -maxdepth 3 -type s -name 'wayland-*' -ls 2>&1 || true
+echo "=== greetd journal ==="
+journalctl -u greetd --no-pager -n 160 2>&1 || true
+cat "$OUT" > /dev/console 2>/dev/null || true
+exit 1
+CHECK
+sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/graphical.target.wants"
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service" >/dev/null <<'UNIT'
+[Unit]
+Description=Alpha Linux COSMIC graphical runtime validation
+After=display-manager.service
+Wants=display-manager.service
+ConditionPathExists=/usr/bin/start-cosmic
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/alpha-cosmic-graphical-runtime-check
+TimeoutStartSec=180s
+StandardOutput=journal
+StandardError=journal
+[Install]
+WantedBy=graphical.target
+UNIT
+sudo ln -sf ../alpha-cosmic-graphical-runtime.service "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/graphical.target.wants/alpha-cosmic-graphical-runtime.service"
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='${binary:Package}\t${Version}\n'   | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/'   | LC_ALL=C sort   > "${COSMIC_MANIFEST}"
 if [[ ! -s "${COSMIC_MANIFEST}" ]]; then
   echo "ERROR: COSMIC package manifest is empty"
