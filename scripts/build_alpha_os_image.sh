@@ -365,6 +365,7 @@ echo "Finalizing modified Ubuntu Live leaf layer"
 cleanup_chroot
 
 echo "Persisting staged COSMIC graphical validator into the unmounted Live leaf layer"
+sudo mkdir -p "${LIVE_ROOTFS_DIR}/usr/local/sbin"
 sudo cp -a "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check" "${LIVE_ROOTFS_DIR}/usr/local/sbin/"
 sudo mkdir -p "${LIVE_ROOTFS_DIR}/var/log" "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants"
 sudo cp -a "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" "${LIVE_ROOTFS_DIR}/etc/systemd/system/"
