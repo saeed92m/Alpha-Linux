@@ -235,6 +235,17 @@ done
 echo "Configuring greetd for deterministic COSMIC graphical-session validation"
 sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/greetd"
 sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/gdm3/custom.conf"
+sudo tee "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-start-cosmic-session" >/dev/null <<'COSMIC_WRAPPER'
+#!/bin/sh
+set -eu
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP=COSMIC
+export XDG_SESSION_DESKTOP=COSMIC
+export XDG_RUNTIME_DIR=/run/user/1000
+exec /usr/bin/start-cosmic
+COSMIC_WRAPPER
+sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-start-cosmic-session"
+
 sudo tee "${OVERLAY_ROOTFS_DIR}/etc/greetd/config.toml" >/dev/null <<'GREETD'
 [terminal]
 vt = "1"
@@ -244,7 +255,7 @@ service = "cosmic-greeter"
 command = "cosmic-greeter-start"
 user = "cosmic-greeter"
 [initial_session]
-command = "start-cosmic"
+command = "/usr/local/sbin/alpha-start-cosmic-session"
 user = "ubuntu"
 GREETD
 
@@ -277,13 +288,17 @@ deadline=$(( $(date +%s) + 150 ))
 while [ "$(date +%s)" -lt "$deadline" ]; do
   session_ok=0
   cosmic_ok=0
+  cosmic_wayland_ok=0
   wayland_ok=0
   desktop_ok=0
   cosmic_pid="$(pgrep -u 1000 -x cosmic-comp | head -n1 || true)"
   if [ -n "$cosmic_pid" ]; then
     cosmic_ok=1
+    cosmic_type="$(tr '\0' '\n' < "/proc/$cosmic_pid/environ" 2>/dev/null | sed -n 's/^XDG_SESSION_TYPE=//p' | head -n1 || true)"
     cosmic_desktop="$(tr '\0' '\n' < "/proc/$cosmic_pid/environ" 2>/dev/null | sed -n 's/^XDG_CURRENT_DESKTOP=//p' | head -n1 || true)"
-    if printf '%s' "$cosmic_desktop" | grep -Eqi 'cosmic'; then desktop_ok=1; fi
+    cosmic_session_desktop="$(tr '\0' '\n' < "/proc/$cosmic_pid/environ" 2>/dev/null | sed -n 's/^XDG_SESSION_DESKTOP=//p' | head -n1 || true)"
+    if [ "$cosmic_type" = "wayland" ]; then cosmic_wayland_ok=1; fi
+    if printf '%s' "$cosmic_desktop" | grep -Eqi 'cosmic' && printf '%s' "$cosmic_session_desktop" | grep -Eqi 'cosmic'; then desktop_ok=1; fi
   fi
   if find /run/user/1000 -maxdepth 1 -type s -name 'wayland-*' -print -quit 2>/dev/null | grep -q .; then wayland_ok=1; fi
   while read -r sid _; do
@@ -292,14 +307,23 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
     type=$(loginctl show-session "$sid" -p Type --value 2>/dev/null || true)
     desktop=$(loginctl show-session "$sid" -p Desktop --value 2>/dev/null || true)
     echo "session sid=$sid name=$name type=$type desktop=$desktop"
-    if [ "$name" = "ubuntu" ] && [ "$type" = "wayland" ]; then session_ok=1; fi
+    if [ "$name" = "ubuntu" ] && [ "$type" = "wayland" ]; then
+      session_ok=1
+    elif [ "$name" = "ubuntu" ] && [ "$type" = "tty" ] && [ "$cosmic_wayland_ok" -eq 1 ]; then
+      # greetd initial_session is autologin and does not open a PAM login session;
+      # therefore logind can legitimately report the inherited VT session as tty.
+      session_ok=1
+    fi
     if printf '%s' "$desktop" | grep -Eqi 'cosmic'; then desktop_ok=1; fi
   done <<EOF
 $(loginctl list-sessions --no-legend 2>/dev/null || true)
 EOF
-  if [ "$session_ok" -eq 1 ] && [ "$cosmic_ok" -eq 1 ] && [ "$wayland_ok" -eq 1 ] && [ "$desktop_ok" -eq 1 ]; then
+  if [ "$session_ok" -eq 1 ] && [ "$cosmic_ok" -eq 1 ] && [ "$cosmic_wayland_ok" -eq 1 ] && [ "$wayland_ok" -eq 1 ] && [ "$desktop_ok" -eq 1 ]; then
     emit "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS"
     emit "cosmic_comp=$(pgrep -u 1000 -x cosmic-comp | head -n1)"
+    emit "cosmic_session_type=$cosmic_type"
+    emit "cosmic_current_desktop=$cosmic_desktop"
+    emit "cosmic_session_desktop=$cosmic_session_desktop"
     emit "wayland_socket=$(find /run/user/1000 -maxdepth 1 -type s -name 'wayland-*' -print -quit)"
     cat "$OUT" > /dev/console 2>/dev/null || true
     exit 0
