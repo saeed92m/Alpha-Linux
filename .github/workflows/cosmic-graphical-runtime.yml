@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           RUN_ID=""
           for attempt in $(seq 1 240); do
-            RUN_ID="$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs?event=pull_request&per_page=100"               --jq '.workflow_runs[] | select(.workflow_id == 367943227 and .head_sha == "'"$HEAD_SHA"'" ) | [.id,.status,.conclusion] | @tsv'               | head -n 1 | cut -f1 || true)"
+            RUN_ID="$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs?event=pull_request&per_page=100"               --jq '[.workflow_runs[] | select(.workflow_id == 367943227 and .head_sha == "'"$HEAD_SHA"'" )] | sort_by(.id) | reverse | .[] | [.id,.status,.conclusion] | @tsv'               | head -n 1 | cut -f1 || true)"
             if [ -n "$RUN_ID" ]; then
               STATUS="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq '.status')"
               CONCLUSION="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq '.conclusion // empty')"
