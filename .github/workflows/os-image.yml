@@ -29,7 +29,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: alpha-os-image-${{ github.event.pull_request.head.sha || github.sha }}
+  group: alpha-os-image-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
