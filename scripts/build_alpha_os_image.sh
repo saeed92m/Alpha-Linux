@@ -83,6 +83,7 @@ build_iso() {
     -indev "${BASE_PATH}" \
     -outdev "${output_path}" \
     -map "${SEED_PATH}" /alpha-release.json \
+    -map "${LIVE_SQUASHFS}" /casper/minimal.standard.live.squashfs \
     -boot_image any replay \
     -compliance no_emul_toc \
     -padding included
@@ -209,6 +210,170 @@ if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/start-cosmic" ]]; then
   exit 1
 fi
 
+if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/sbin/greetd" ]]; then
+  echo "ERROR: greetd is required for the executable COSMIC graphical-session gate"
+  exit 1
+fi
+if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/start-cosmic" ]]; then
+  echo "ERROR: /usr/bin/start-cosmic is missing or not executable"
+  exit 1
+fi
+if [[ ! -x "${OVERLAY_ROOTFS_DIR}/usr/bin/cosmic-greeter-start" ]]; then
+  echo "ERROR: cosmic-greeter-start is required for the COSMIC display-manager path"
+  exit 1
+fi
+
+echo "Configuring deterministic graphical-runtime boot dependencies"
+# These services are unrelated to the COSMIC runtime gate and can block indefinitely
+# under the QEMU/AppArmor-constrained CI environment. Mask them in the disposable
+# validation image only; the production Live filesystem remains otherwise intact.
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system"
+for unit in ldconfig.service snapd.apparmor.service; do
+  sudo ln -sfn /dev/null "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/$unit"
+done
+
+echo "Configuring greetd for deterministic COSMIC graphical-session validation"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/greetd"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/gdm3/custom.conf"
+sudo tee "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-start-cosmic-session" >/dev/null <<'COSMIC_WRAPPER'
+#!/bin/sh
+set -eu
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP=COSMIC
+export XDG_SESSION_DESKTOP=COSMIC
+export XDG_RUNTIME_DIR=/run/user/1000
+exec /usr/bin/start-cosmic
+COSMIC_WRAPPER
+sudo chmod 0755 "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-start-cosmic-session"
+
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/greetd/config.toml" >/dev/null <<'GREETD'
+[terminal]
+vt = "1"
+[general]
+service = "cosmic-greeter"
+[default_session]
+command = "cosmic-greeter-start"
+user = "cosmic-greeter"
+[initial_session]
+command = "/usr/local/sbin/alpha-start-cosmic-session"
+user = "ubuntu"
+GREETD
+
+echo "Binding display-manager.service to greetd"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
+sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/multi-user.target.wants/gdm.service" "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/graphical.target.wants/gdm.service"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system"
+sudo ln -sfn /dev/null "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/gdm.service"
+if [[ -e "${OVERLAY_ROOTFS_DIR}/lib/systemd/system/greetd.service" ]]; then
+  sudo ln -sf /lib/systemd/system/greetd.service "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
+fi
+
+echo "Staging executable COSMIC graphical-session validator outside the mounted OverlayFS upperdir"
+VALIDATOR_ROOTFS_DIR="${WORK_DIR}/cosmic-validator-root"
+rm -rf "${VALIDATOR_ROOTFS_DIR}"
+sudo mkdir -p "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin" "${VALIDATOR_ROOTFS_DIR}/var/log" "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants"
+sudo tee "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check" >/dev/null <<'CHECK'
+#!/bin/sh
+set -eu
+OUT=/var/log/alpha-cosmic-graphical-runtime.log
+exec >>"$OUT" 2>&1
+emit() { printf "%s\\n" "$*" | tee -a "$OUT" /dev/ttyS0 2>/dev/null || printf "%s\\n" "$*" >>"$OUT"; }
+emit "ALPHA_COSMIC_GRAPHICAL_RUNTIME=START"
+emit "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+emit "kernel=$(uname -r)"
+emit "uid1000=$(getent passwd 1000 || true)"
+emit "drm=$(ls -l /dev/dri 2>/dev/null || true)"
+deadline=$(( $(date +%s) + 150 ))
+while [ "$(date +%s)" -lt "$deadline" ]; do
+  session_ok=0
+  cosmic_ok=0
+  cosmic_wayland_ok=0
+  wayland_ok=0
+  desktop_ok=0
+  cosmic_pid="$(pgrep -u 1000 -x cosmic-comp | head -n1 || true)"
+  if [ -n "$cosmic_pid" ]; then
+    cosmic_ok=1
+    cosmic_type="$(tr '\0' '\n' < "/proc/$cosmic_pid/environ" 2>/dev/null | sed -n 's/^XDG_SESSION_TYPE=//p' | head -n1 || true)"
+    cosmic_desktop="$(tr '\0' '\n' < "/proc/$cosmic_pid/environ" 2>/dev/null | sed -n 's/^XDG_CURRENT_DESKTOP=//p' | head -n1 || true)"
+    cosmic_session_desktop="$(tr '\0' '\n' < "/proc/$cosmic_pid/environ" 2>/dev/null | sed -n 's/^XDG_SESSION_DESKTOP=//p' | head -n1 || true)"
+    if [ "$cosmic_type" = "wayland" ]; then cosmic_wayland_ok=1; fi
+    if printf '%s' "$cosmic_desktop" | grep -Eqi 'cosmic' && printf '%s' "$cosmic_session_desktop" | grep -Eqi 'cosmic'; then desktop_ok=1; fi
+  fi
+  if find /run/user/1000 -maxdepth 1 -type s -name 'wayland-*' -print -quit 2>/dev/null | grep -q .; then wayland_ok=1; fi
+  while read -r sid _; do
+    [ -n "$sid" ] || continue
+    name=$(loginctl show-session "$sid" -p Name --value 2>/dev/null || true)
+    type=$(loginctl show-session "$sid" -p Type --value 2>/dev/null || true)
+    desktop=$(loginctl show-session "$sid" -p Desktop --value 2>/dev/null || true)
+    echo "session sid=$sid name=$name type=$type desktop=$desktop"
+    if [ "$name" = "ubuntu" ] && [ "$type" = "wayland" ]; then
+      session_ok=1
+    elif [ "$name" = "ubuntu" ] && [ "$type" = "tty" ] && [ "$cosmic_wayland_ok" -eq 1 ]; then
+      # greetd initial_session is autologin and does not open a PAM login session;
+      # therefore logind can legitimately report the inherited VT session as tty.
+      session_ok=1
+    fi
+    if printf '%s' "$desktop" | grep -Eqi 'cosmic'; then desktop_ok=1; fi
+  done <<EOF
+$(loginctl list-sessions --no-legend 2>/dev/null || true)
+EOF
+  if [ "$session_ok" -eq 1 ] && [ "$cosmic_ok" -eq 1 ] && [ "$cosmic_wayland_ok" -eq 1 ] && [ "$wayland_ok" -eq 1 ] && [ "$desktop_ok" -eq 1 ]; then
+    emit "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS"
+    emit "cosmic_comp=$(pgrep -u 1000 -x cosmic-comp | head -n1)"
+    emit "cosmic_session_type=$cosmic_type"
+    emit "cosmic_current_desktop=$cosmic_desktop"
+    emit "cosmic_session_desktop=$cosmic_session_desktop"
+    emit "wayland_socket=$(find /run/user/1000 -maxdepth 1 -type s -name 'wayland-*' -print -quit)"
+    cat "$OUT" > /dev/console 2>/dev/null || true
+    exit 0
+  fi
+  sleep 5
+done
+emit "ALPHA_COSMIC_GRAPHICAL_RUNTIME=FAIL"
+echo "=== processes ==="
+ps -eo user,pid,ppid,tty,stat,cmd | grep -E 'cosmic|greetd|wayland' | grep -v grep || true
+echo "=== sessions ==="
+loginctl list-sessions --no-legend 2>&1 || true
+echo "=== session details ==="
+for sid in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do loginctl show-session "$sid" -p Name -p Type -p Desktop -p State 2>&1 || true; done
+echo "=== wayland runtime ==="
+find /run/user -maxdepth 3 -type s -name 'wayland-*' -ls 2>&1 || true
+echo "=== greetd journal ==="
+journalctl -u greetd --no-pager -n 160 2>&1 || true
+cat "$OUT" > /dev/console 2>/dev/null || true
+exit 1
+CHECK
+sudo chmod 0755 "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
+sudo tee "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" >/dev/null <<'TARGET'
+[Unit]
+Description=Alpha Linux COSMIC graphical runtime validation target
+Requires=dbus.service
+Requires=systemd-logind.service
+Requires=greetd.service
+Wants=alpha-cosmic-graphical-runtime.service
+After=basic.target dbus.service systemd-logind.service greetd.service
+AllowIsolate=yes
+TARGET
+
+sudo tee "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service" >/dev/null <<'UNIT'
+[Unit]
+Description=Alpha Linux COSMIC graphical runtime validation
+After=greetd.service
+Wants=greetd.service
+ConditionPathExists=/usr/bin/start-cosmic
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/alpha-cosmic-graphical-runtime-check
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+TimeoutStartSec=180s
+StandardOutput=journal+console
+StandardError=journal+console
+[Install]
+WantedBy=multi-user.target
+UNIT
+sudo ln -sf /lib/systemd/system/greetd.service "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/greetd.service"
+sudo ln -sf ../alpha-cosmic-graphical-runtime.service "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/alpha-cosmic-graphical-runtime.service"
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/dpkg-query -W -f='${binary:Package}\t${Version}\n'   | awk '/^(cosmic-|xdg-desktop-portal-cosmic|greetd)/'   | LC_ALL=C sort   > "${COSMIC_MANIFEST}"
 if [[ ! -s "${COSMIC_MANIFEST}" ]]; then
   echo "ERROR: COSMIC package manifest is empty"
@@ -223,10 +388,34 @@ printf 'COSMIC session: /usr/share/wayland-sessions/cosmic.desktop\\n' >> "${OUT
 printf 'COSMIC launcher: /usr/bin/start-cosmic\\n' >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
 cat "${COSMIC_MANIFEST}" >> "${OUT_DIR}/alpha-cosmic-runtime-evidence.txt"
 
+echo "Finalizing modified Ubuntu Live leaf layer"
+cleanup_chroot
+
+echo "Persisting staged COSMIC graphical validator into the unmounted Live leaf layer"
+sudo mkdir -p "${LIVE_ROOTFS_DIR}/usr/local/sbin"
+sudo cp -a "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check" "${LIVE_ROOTFS_DIR}/usr/local/sbin/"
+sudo mkdir -p "${LIVE_ROOTFS_DIR}/var/log" "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants"
+sudo cp -a "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" "${LIVE_ROOTFS_DIR}/etc/systemd/system/"
+sudo cp -a "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service" "${LIVE_ROOTFS_DIR}/etc/systemd/system/"
+sudo cp -a "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/." "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/"
+
+sudo test -x "${LIVE_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-runtime-check"
+sudo test -f "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target"
+sudo test -f "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runtime.service"
+sudo test -L "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/greetd.service"
+sudo test -L "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/alpha-cosmic-graphical-runtime.service"
+echo "COSMIC graphical validator persisted in unmounted live leaf layer"
+
 echo "Repacking modified Ubuntu Live layer"
 sudo mksquashfs "${LIVE_ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
 sudo chown "$(id -u):$(id -g)" "${LIVE_SQUASHFS}"
 test -s "${LIVE_SQUASHFS}"
+
+echo "Verifying COSMIC graphical validator inside the exact squashfs leaf consumed by QEMU"
+sudo unsquashfs -cat "${LIVE_SQUASHFS}" etc/systemd/system/alpha-cosmic-validation.target >/dev/null
+sudo unsquashfs -cat "${LIVE_SQUASHFS}" etc/systemd/system/alpha-cosmic-graphical-runtime.service >/dev/null
+sudo unsquashfs -cat "${LIVE_SQUASHFS}" usr/local/sbin/alpha-cosmic-graphical-runtime-check >/dev/null
+echo "COSMIC graphical validator verified inside final Live leaf squashfs"
 
 echo "Repacking bootable Ubuntu ISO with deterministic time inputs"
 build_iso "${OUTPUT_PATH}"
