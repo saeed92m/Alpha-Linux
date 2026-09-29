@@ -34,32 +34,32 @@ jobs:
           CONCLUSION=""
 
           for attempt in $(seq 1 360); do
-            RUN_JSON="$(gh api "${API}?head_sha=${HEAD_SHA}&event=pull_request&per_page=20"               --jq '[.workflow_runs[] | select(.head_sha == "'"\$HEAD_SHA"'" and .event == "pull_request")] | sort_by(.id) | reverse | .[0] // empty')"
+            RUN_JSON="$(gh run list               --repo "$GITHUB_REPOSITORY"               --workflow os-image.yml               --commit "$HEAD_SHA"               --limit 20               --json databaseId,status,conclusion,headSha,event               | jq '[.[] | select(.headSha == "'"$HEAD_SHA"'" and .event == "pull_request")] | sort_by(.databaseId) | reverse | .[0] // empty')"
 
-            if [ -n "${RUN_JSON}" ]; then
-              RUN_ID="$(printf '%s' "${RUN_JSON}" | jq -r '.id')"
-              STATUS="$(printf '%s' "${RUN_JSON}" | jq -r '.status')"
-              CONCLUSION="$(printf '%s' "${RUN_JSON}" | jq -r '.conclusion // empty')"
-              echo "Alpha OS Image exact gate: run=${RUN_ID} head_sha=${HEAD_SHA} status=${STATUS} conclusion=${CONCLUSION}"
+            if [ -n "$RUN_JSON" ]; then
+              RUN_ID="$(printf '%s' "$RUN_JSON" | jq -r '.databaseId')"
+              STATUS="$(printf '%s' "$RUN_JSON" | jq -r '.status')"
+              CONCLUSION="$(printf '%s' "$RUN_JSON" | jq -r '.conclusion // empty')"
+              echo "Alpha OS Image exact gate: run=$RUN_ID head_sha=$HEAD_SHA status=$STATUS conclusion=$CONCLUSION"
 
-              if [ "${STATUS}" = "completed" ]; then
-                if [ "${CONCLUSION}" != "success" ]; then
-                  echo "Alpha OS Image gate failed for exact HEAD_SHA ${HEAD_SHA}."
+              if [ "$STATUS" = "completed" ]; then
+                if [ "$CONCLUSION" != "success" ]; then
+                  echo "Alpha OS Image gate failed for exact HEAD_SHA $HEAD_SHA."
                   exit 1
                 fi
                 break
               fi
             else
-              echo "Waiting for Alpha OS Image run for exact HEAD_SHA ${HEAD_SHA}..."
+              echo "Waiting for Alpha OS Image run for exact HEAD_SHA $HEAD_SHA..."
             fi
 
             sleep 15
           done
 
-          test -n "${RUN_ID}"
-          test "${STATUS}" = "completed"
-          test "${CONCLUSION}" = "success"
-          echo "ALPHA_OS_IMAGE_RUN_ID=${RUN_ID}" >> "${GITHUB_ENV}"
+          test -n "$RUN_ID"
+          test "$STATUS" = "completed"
+          test "$CONCLUSION" = "success"
+          echo "ALPHA_OS_IMAGE_RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
 
       - name: Download exact graphical runtime evidence
         env:
