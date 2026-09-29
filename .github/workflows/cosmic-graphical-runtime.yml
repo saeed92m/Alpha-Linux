@@ -18,47 +18,64 @@ jobs:
   graphical-runtime:
     name: Verify COSMIC graphical runtime evidence
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 100
 
     steps:
-      - name: Wait for Alpha OS Image gate
+      - name: Resolve exact Alpha OS Image gate for this SHA
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
+
+          API="/repos/${GITHUB_REPOSITORY}/actions/workflows/os-image.yml/runs"
           RUN_ID=""
-          for attempt in $(seq 1 240); do
-            RUN_ID="$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs?event=pull_request&per_page=100"               --jq '[.workflow_runs[] | select(.workflow_id == 367943227 and .head_sha == "'"$HEAD_SHA"'" )] | sort_by(.id) | reverse | .[] | [.id,.status,.conclusion] | @tsv'               | head -n 1 | cut -f1 || true)"
-            if [ -n "$RUN_ID" ]; then
-              STATUS="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq '.status')"
-              CONCLUSION="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq '.conclusion // empty')"
-              echo "Alpha OS Image run=$RUN_ID status=$STATUS conclusion=$CONCLUSION"
-              if [ "$STATUS" = "completed" ]; then
-                [ "$CONCLUSION" = "success" ] || { echo "Alpha OS Image gate failed."; exit 1; }
+          STATUS=""
+          CONCLUSION=""
+
+          for attempt in $(seq 1 360); do
+            RUN_JSON="$(gh api "${API}?head_sha=${HEAD_SHA}&event=pull_request&per_page=20"               --jq '[.workflow_runs[] | select(.head_sha == "'"\$HEAD_SHA"'" and .event == "pull_request")] | sort_by(.id) | reverse | .[0] // empty')"
+
+            if [ -n "${RUN_JSON}" ]; then
+              RUN_ID="$(printf '%s' "${RUN_JSON}" | jq -r '.id')"
+              STATUS="$(printf '%s' "${RUN_JSON}" | jq -r '.status')"
+              CONCLUSION="$(printf '%s' "${RUN_JSON}" | jq -r '.conclusion // empty')"
+              echo "Alpha OS Image exact gate: run=${RUN_ID} head_sha=${HEAD_SHA} status=${STATUS} conclusion=${CONCLUSION}"
+
+              if [ "${STATUS}" = "completed" ]; then
+                if [ "${CONCLUSION}" != "success" ]; then
+                  echo "Alpha OS Image gate failed for exact HEAD_SHA ${HEAD_SHA}."
+                  exit 1
+                fi
                 break
               fi
+            else
+              echo "Waiting for Alpha OS Image run for exact HEAD_SHA ${HEAD_SHA}..."
             fi
+
             sleep 15
           done
-          test -n "$RUN_ID"
-          echo "ALPHA_OS_IMAGE_RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
 
-      - name: Download graphical runtime evidence
+          test -n "${RUN_ID}"
+          test "${STATUS}" = "completed"
+          test "${CONCLUSION}" = "success"
+          echo "ALPHA_OS_IMAGE_RUN_ID=${RUN_ID}" >> "${GITHUB_ENV}"
+
+      - name: Download exact graphical runtime evidence
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p dist/evidence
-          gh run download "$ALPHA_OS_IMAGE_RUN_ID"             --repo "$GITHUB_REPOSITORY"             --name alpha-linux-0.1.0a1-alpha-amd64-evidence             --dir dist/evidence
+          gh run download "${ALPHA_OS_IMAGE_RUN_ID}"             --repo "${GITHUB_REPOSITORY}"             --name alpha-linux-0.1.0a1-alpha-amd64-evidence             --dir dist/evidence
           test -n "$(find dist/evidence -type f -name 'cosmic-graphical-runtime-boot.log' -print -quit)"
 
       - name: Verify explicit COSMIC graphical runtime evidence
         run: |
           set -euo pipefail
           LOG="$(find dist/evidence -type f -name 'cosmic-graphical-runtime-boot.log' -print -quit)"
-          echo "Evidence log: $LOG"
-          grep -Fq "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS" "$LOG"
-          grep -Fq "cosmic_comp=" "$LOG"
-          grep -Fq "wayland_socket=" "$LOG"
+          echo "Evidence log: ${LOG}"
+          grep -Fq "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS" "${LOG}"
+          grep -Fq "cosmic_comp=" "${LOG}"
+          grep -Fq "wayland_socket=" "${LOG}"
           echo "COSMIC graphical runtime evidence: PASS"
