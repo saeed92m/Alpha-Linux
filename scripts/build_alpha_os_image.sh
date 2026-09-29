@@ -324,9 +324,11 @@ sudo chmod 0755 "${VALIDATOR_ROOTFS_DIR}/usr/local/sbin/alpha-cosmic-graphical-r
 sudo tee "${VALIDATOR_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target" >/dev/null <<'TARGET'
 [Unit]
 Description=Alpha Linux COSMIC graphical runtime validation target
+Requires=dbus.service
+Requires=systemd-logind.service
 Requires=greetd.service
 Wants=alpha-cosmic-graphical-runtime.service
-After=basic.target greetd.service
+After=basic.target dbus.service systemd-logind.service greetd.service
 AllowIsolate=yes
 TARGET
 
@@ -339,6 +341,7 @@ ConditionPathExists=/usr/bin/start-cosmic
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/alpha-cosmic-graphical-runtime-check
+Environment=XDG_RUNTIME_DIR=/run/user/1000
 TimeoutStartSec=180s
 StandardOutput=journal+console
 StandardError=journal+console
