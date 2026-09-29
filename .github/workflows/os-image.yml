@@ -290,18 +290,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PACKAGE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          PACKAGE_EVENT: ${{ github.event_name == 'pull_request' && 'pull_request' || 'push' }}
         run: |
           set -euo pipefail
 
           PACKAGE_RUN_ID=""
           for attempt in $(seq 1 30); do
-            PACKAGE_RUN_ID="$(gh api --paginate               "/repos/$GITHUB_REPOSITORY/actions/runs?event=pull_request&per_page=100"               --jq '.workflow_runs[] | select(.workflow_id == 367314749 and .head_sha == "'"${PACKAGE_HEAD_SHA}"'" and .status == "completed" and .conclusion == "success") | .id'               | head -n 1 || true)"
+            PACKAGE_RUN_ID="$(gh api --paginate               "/repos/$GITHUB_REPOSITORY/actions/runs?event=${PACKAGE_EVENT}&per_page=100"               --jq '.workflow_runs[] | select(.workflow_id == 367314749 and .head_sha == "'"${PACKAGE_HEAD_SHA}"'" and .status == "completed" and .conclusion == "success") | .id'               | head -n 1 || true)"
             if [[ -n "$PACKAGE_RUN_ID" ]]; then break; fi
             sleep 10
           done
           if [[ -z "$PACKAGE_RUN_ID" ]]; then
             echo "ERROR: no successful package CI run found for head SHA $PACKAGE_HEAD_SHA"
-            gh api --paginate               "/repos/$GITHUB_REPOSITORY/actions/runs?event=pull_request&per_page=100"               --jq '.workflow_runs[] | select(.workflow_id == 367314749) | [.id,.head_sha,.status,.conclusion] | @tsv'               | head -n 20
+            gh api --paginate               "/repos/$GITHUB_REPOSITORY/actions/runs?event=${PACKAGE_EVENT}&per_page=100"               --jq '.workflow_runs[] | select(.workflow_id == 367314749) | [.id,.head_sha,.status,.conclusion] | @tsv'               | head -n 20
             exit 1
           fi
 
