@@ -26,8 +26,22 @@ MANIFEST_PATH="${OUT_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.manifest.jso
 mkdir -p "${OUT_DIR}" "${WORK_DIR}"
 rm -f "${OUTPUT_PATH}" "${REFERENCE_PATH}" "${MANIFEST_PATH}" "${SEED_PATH}"
 
-echo "Downloading Ubuntu base image: ${BASE_ISO}"
-curl --fail --location --retry 3 --retry-delay 2 --output "${BASE_PATH}" "${BASE_URL}${BASE_ISO}"
+echo "Downloading Ubuntu base image with parallel range requests: ${BASE_ISO}"
+aria2c \
+  --allow-overwrite=true \
+  --auto-file-renaming=false \
+  --continue=true \
+  --file-allocation=none \
+  --max-connection-per-server=8 \
+  --split=8 \
+  --min-split-size=16M \
+  --max-tries=8 \
+  --retry-wait=3 \
+  --connect-timeout=15 \
+  --timeout=60 \
+  --dir="${WORK_DIR}" \
+  --out="${BASE_ISO}" \
+  "${BASE_URL}${BASE_ISO}"
 
 echo "Verifying Ubuntu base SHA-256"
 printf '%s  %s\n' "${BASE_SHA256}" "${BASE_PATH}" | sha256sum --check --strict -
