@@ -1,5 +1,11 @@
 # Alpha Linux Master Handbook
 
+**Handbook version:** 1.1.0  
+**Handbook state:** Current / maintained  
+**Repository release context:** Alpha 0.1.0a2  
+**Current program phase:** Phase 7 — Alpha Releases  
+**Last synchronized:** after PR #193 release-asset metadata correction (#193)
+
 ## Purpose
 
 The Master Handbook is the learning and operational guide for understanding Alpha Linux from first principles through distribution engineering, AI integration, implementation, testing, release engineering and maintenance.
@@ -51,6 +57,8 @@ Each chapter should end with:
 
 The Handbook teaches **what, why and how the underlying concepts work**.
 
+Release evidence establishes which implementation claims are currently verified; the Handbook must not turn an unverified capability into a completion claim.
+
 The Specification defines **exactly what Alpha Linux must provide**.
 
 The Architecture describes **how Alpha is intended to provide it**.
@@ -61,10 +69,18 @@ Testing demonstrates that the system satisfies its requirements.
 
 ## Current phase
 
-The project is currently in **Phase 7 — Alpha releases**.
+The project is currently in **Phase 7 — Alpha Releases**, with **Alpha 0.1.0a2** as the active release context on `main`.
 
-The verified baseline includes executable Alpha Core and reference-runtime foundations, deterministic package/OS-image evidence, the `v0.1.0a1` release, QEMU pre-install boot-smoke evidence, installer safety planning and executable disposable transaction validation.
+The immutable `v0.1.0a1` lineage remains historical and unchanged. Current `main` has a real amd64 OS-image build/evidence track with deterministic manifests, SHA-256/provenance, reproducibility validation, QEMU boot evidence, Live kernel/initramfs evidence, automated COSMIC graphical-runtime evidence, and release-safe ISO split assets.
 
-The next release-scoped work extends this baseline into boot compatibility, Live environment validation, graphical installer architecture, transaction/recovery evidence and physical installation gates.
+These are engineering/CI evidence capabilities, not claims of physical installation readiness, complete hardware validation, production installer readiness, or Beta/Stable release.
+
+The next release-scoped work closes the remaining boot/media matrix, Live product UX, installer implementation, physical installation, Windows coexistence, Secure Boot and post-install validation gates.
 
 The Handbook remains educational and must not be treated as a substitute for normative requirements or architecture decisions.
+
+### Phase 7 evidence model
+
+**Requirement → Specification → Architecture → Implementation → Test → CI Evidence → Artifact → Runtime Validation → Gap Detection → Refinement → Verification → Release**
+
+A capability is product-complete only when the applicable implementation and validation gates are satisfied. Physical installation, Secure Boot, Windows dual-boot, complete hardware compatibility and production installer readiness remain open gates.

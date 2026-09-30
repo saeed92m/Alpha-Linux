@@ -1,6 +1,8 @@
 # Alpha Linux — Roadmap Traceability
 
-**Status:** Active delivery control — Phase 7: Alpha Releases
+**Status:** Active delivery control — Phase 7: Alpha Releases  
+**Current release context:** Alpha 0.1.0a2  
+**Evidence rule:** artifact and validation evidence, not dates, determine completion.
 
 This document is the release traceability view of the current master roadmap. The master roadmap is normative for phase names and program state; this document maps each phase to its required evidence and delivery gates.
 
@@ -19,7 +21,25 @@ This document is the release traceability view of the current master roadmap. Th
 
 ## Current Phase 7 release gates
 
-### Alpha 0.1.0a1 package track
+### Alpha 0.1.0a2 release context
+
+#### Package track
+
+- Historical `v0.1.0a1` remains immutable.
+- Package evidence binds artifact, source commit, CI run and SHA-256.
+- Later OS-image evidence is not retroactively attached to the historical tag.
+
+#### OS-image track
+
+- Real amd64 image build is implemented and CI-verified.
+- Image-format, boot-metadata, checksum, provenance and reproducibility validation are executable.
+- Live runtime and COSMIC graphical-runtime evidence are executable CI gates.
+- Release-safe split assets include per-part checksums and reassembly instructions.
+- PR #193 corrected release-asset metadata interpolation and is merged to `main`.
+
+#### Explicit non-claims
+
+Physical installation, complete hardware compatibility, Windows dual-boot, Secure Boot, production installer UX and Beta/Stable promotion remain open.
 
 - Package artifact verified in CI.
 - Release publication completed as `v0.1.0a1`.
@@ -64,7 +84,7 @@ Dates are not treated as completion evidence; artifact and validation evidence a
 | Area | Requirement / architecture | Current evidence | Remaining gate |
 |---|---|---|---|
 | Boot | `docs/requirements/boot-live-installer-requirements.md`, BOOT-001..005 | ISO boot metadata preserved; QEMU pre-install boot smoke verified | UEFI/BIOS matrix validation, Rufus validation, Secure Boot |
-| Live | LIVE-001..005 | ISO artifact exists; Live runtime not yet claimed | COSMIC Live startup, diagnostics, installer launch, recovery validation |
+| Live | LIVE-001..005 | Live kernel/initramfs and COSMIC runtime evidence exist in CI | Full Live UX, diagnostics, recovery and installer launch |
 | Installer safety | INST-001..005 | Safety model + disposable transaction evidence | Full installation transaction, failure injection, rollback, physical adapter |
 | Post-install | INST-006 | Not yet claimed | Filesystem, boot configuration and health verification after installation |
 | Physical installation | Phase 7D | Not yet claimed | UEFI/Legacy hardware, Windows coexistence, recovery and Secure Boot |

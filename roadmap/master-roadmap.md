@@ -1,5 +1,10 @@
 # Alpha Linux Master Roadmap
 
+**Roadmap state:** Active delivery control  
+**Current phase:** Phase 7 — Alpha Releases  
+**Current release context:** Alpha 0.1.0a2  
+**Last synchronized:** after PR #193 release-asset metadata correction
+
 ## Phase 0 — Product and specification
 
 - Repository foundation
@@ -102,17 +107,40 @@
 
 ## Phase 7 — Alpha releases
 
-### Release 0.1.0a1
+### Release context — Alpha 0.1.0a2
+
+The immutable `v0.1.0a1` package release remains historical. Current `main` carries newer OS-image release-candidate evidence without rewriting that tag.
+
+### Verified engineering/release evidence
+
+- Real amd64 OS image build and CI verification.
+- Deterministic image manifest, SHA-256 and provenance.
+- Reproducibility validation.
+- QEMU pre-install boot smoke.
+- Live kernel/initramfs runtime evidence.
+- Automated COSMIC graphical-runtime evidence.
+- Package/OS release-candidate evidence binding.
+- Release-safe ISO split assets with checksums and reassembly instructions.
+- PR #193 release-asset metadata interpolation correction merged to `main`.
+
+### Explicitly not yet product-complete
+
+- Complete UEFI/Legacy media matrix.
+- Rufus validation.
+- Secure Boot.
+- Complete Live UX/diagnostics/recovery.
+- Production installer UX and full real-disk transaction.
+- Physical installation and hardware validation.
+- Windows dual-boot validation.
+- Post-install boot/health validation.
+- Beta/Stable promotion.
+
+### Release 0.1.0a1 (historical)
 
 - Package artifact verified.
 - `v0.1.0a1` package release published; its tag remains immutable.
-- Current `main` lineage has a verified OS image release candidate with reproducibility and release-candidate evidence; OS-image publication remains separate from the package release.
-- ISO checksum, size, manifest and boot/runtime evidence automated and passing.
-- QEMU pre-install boot smoke verified.
-- Installer safety model verified.
-- Disposable installer transaction execution verified.
 
-**Status:** Active Alpha release program.
+**Status:** Historical package-release lineage. Current Phase 7 state is documented above under Alpha 0.1.0a2.
 
 ### Phase 7A — Boot and media compatibility
 
@@ -168,6 +196,17 @@
 - Stable release
 
 Dates are intentionally not fixed until the relevant implementation and evidence exist.
+
+## Current priority order
+
+1. Close documentation/evidence synchronization gaps.
+2. Complete boot/media compatibility validation.
+3. Close Live-environment product gates.
+4. Implement and validate the production installer transaction path.
+5. Execute physical installation and hardware validation.
+6. Add Secure Boot and Windows coexistence evidence.
+7. Reconcile release publication only after required gates pass.
+8. Promote only when release evidence is complete.
 
 ## Continuous improvement
 

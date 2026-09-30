@@ -1,10 +1,19 @@
 # Changelog
 
+**Current documentation/release context:** Alpha 0.1.0a2  
+**Handbook:** v1.1.0
+
 All notable Alpha Linux changes will be documented here.
 
 The project follows a release-oriented change history. Unreleased work is kept under the `Unreleased` section until it is assigned to a release.
 
 ## Unreleased
+
+### Documentation synchronization
+
+- Synchronized README, Master Handbook, roadmap and release traceability with the actual Phase 7 / Alpha 0.1.0a2 state.
+- Recorded the distinction between CI/runtime evidence and physical product validation.
+- Recorded PR #193 as the release-asset metadata interpolation correction merged to `main`.
 
 ### Added
 
