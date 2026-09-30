@@ -3,7 +3,7 @@
 **Roadmap state:** Active delivery control  
 **Current phase:** Phase 7 — Alpha Releases  
 **Current release context:** Alpha 0.1.0a2  
-**Last synchronized:** after PR #193 release-asset metadata correction
+**Last synchronized:** PR #199 filesystem staging and post-install verification
 
 ## Phase 0 — Product and specification
 
@@ -124,6 +124,14 @@ The immutable `v0.1.0a1` package release remains historical. Current `main` carr
 - Release-safe ISO split assets with checksums and reassembly instructions.
 - PR #193 release-asset metadata interpolation correction merged to `main`.
 
+### Newly verified in PR #199
+
+- Deterministic filesystem install staging with content manifest and SHA-256 verification before and after commit.
+- Fail-closed post-install verification contract requiring filesystem, boot-configuration, and health evidence.
+- Automated tests for staging integrity, target safety, and post-install evidence requirements.
+- PR #199 merged to `main` as `35c1ff79033f7105b32e45cf1437b0191b06a5f3`; CI run `36757368104` completed successfully across all reported gates.
+- This remains fixture/runtime contract evidence; it does **not** constitute physical-disk installation or physical rollback validation.
+
 ### Explicitly not yet product-complete
 
 - Complete UEFI/Legacy media matrix.
@@ -208,6 +216,40 @@ Dates are intentionally not fixed until the relevant implementation and evidence
 6. Add Secure Boot and Windows coexistence evidence.
 7. Reconcile release publication only after required gates pass.
 8. Promote only when release evidence is complete.
+
+## Completion and evidence protocol
+
+A Phase 7 item is not complete merely because code exists or a pull request is mergeable. The project uses this fail-closed sequence:
+
+1. Implement the smallest verifiable contract.
+2. Add deterministic automated tests for the normal path and relevant failure paths.
+3. Run real repository CI and wait for terminal conclusions; queued, running, missing, or unknown evidence is not success.
+4. Inspect the actual failed job/log when any gate fails; do not infer the cause from a summary.
+5. Merge only after required CI gates are successful.
+6. Verify the PR after merge with `merged=true`, `state=closed`, and the actual merge commit; never treat `merge_commit_sha` alone as proof.
+7. Re-check the target `main` commit and its CI after merge before using the change as release evidence.
+8. Bind release claims to concrete evidence: commit SHA, workflow run, artifact/provenance, and applicable runtime or physical validation record.
+9. Keep virtual/fixture/QEMU evidence separate from physical hardware evidence. QEMU cannot satisfy a physical installation or hardware gate.
+10. Before advancing phases, re-audit open PRs/issues and current `main` so stale evidence cannot silently drive the roadmap.
+
+### Definition-of-done matrix
+
+| Evidence layer | What it proves | What it cannot prove |
+|---|---|---|
+| Unit/contract tests | Deterministic software behavior | Real hardware behavior |
+| CI gates | Repository-level quality and build contracts | Physical installation |
+| Artifact/provenance | Exact produced output and lineage | Hardware compatibility |
+| QEMU/runtime validation | Boot/runtime behavior in the declared virtual environment | Physical firmware/device matrix |
+| Physical validation | Actual device/firmware/install behavior | Broader untested hardware populations |
+| Release gate | Required evidence is bound and present | Evidence outside its declared scope |
+
+### Evidence truth rules
+
+- Never claim success from a pending or partial workflow.
+- Never use an old run ID as evidence for a newer commit unless the binding is explicit and verified.
+- Never infer physical validation from CI, fixtures, or QEMU.
+- Never mark a roadmap item complete without identifying the evidence that closes its gate.
+- If required evidence is missing or ambiguous, the gate remains open.
 
 ## Continuous improvement
 
