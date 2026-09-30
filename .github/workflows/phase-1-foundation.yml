@@ -245,6 +245,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/download-artifact@v8
         with:
           name: alpha-package-artifacts
@@ -257,17 +260,32 @@ jobs:
           python - <<'PY'
           import hashlib
           import json
+          import subprocess
           from pathlib import Path
 
           artifact = next(Path("dist").glob("*.whl"))
+          release_tag = "v0.1.0a1"
+          try:
+              tag_commit = subprocess.check_output(
+                  ["git", "rev-list", "-n", "1", f"refs/tags/{release_tag}"],
+                  text=True,
+              ).strip()
+          except subprocess.CalledProcessError:
+              tag_commit = ""
+
+          source_commit = "${{ env.SOURCE_COMMIT }}"
           evidence = {
               "release_id": "alpha-0-1-0a1",
               "version": "0.1.0a1",
               "artifact_id": artifact.name,
               "artifact_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
-              "source_commit": "${{ env.SOURCE_COMMIT }}",
+              "source_commit": source_commit,
               "ci_run_id": "${{ env.RUN_ID }}",
-              "deterministic_tag": "v0.1.0a1",
+              "release_tag": release_tag,
+              "tag_binding": {
+                  "tag_commit": tag_commit,
+                  "matches_source_commit": bool(tag_commit) and tag_commit == source_commit,
+              },
           }
           Path("dist/release-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
           PY
