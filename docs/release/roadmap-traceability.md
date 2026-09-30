@@ -4,8 +4,6 @@
 **Current release context:** Alpha 0.1.0a2  
 **Evidence rule:** artifact and validation evidence, not dates, determine completion.
 
-**Status:** Active delivery control — Phase 7: Alpha Releases
-
 This document is the release traceability view of the current master roadmap. The master roadmap is normative for phase names and program state; this document maps each phase to its required evidence and delivery gates.
 
 ## Delivery gates
