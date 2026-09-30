@@ -370,10 +370,93 @@ jobs:
           echo "Reproducibility: passed (two same-input builds, matching SHA-256)" >> "$GITHUB_STEP_SUMMARY"
           echo "SOURCE_DATE_EPOCH: 946684800" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload Alpha OS ISO
+      - name: Prepare release-safe ISO assets
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
+          test -s "$ISO"
+          mkdir -p dist/release-assets
+          split -b 1900M -d -a 2 "$ISO" dist/release-assets/part-
+          i=1
+          for part in dist/release-assets/part-*; do
+            mv "$part" "dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-$(printf '%02d' "$i")"
+            i=$((i + 1))
+          done
+          sha256sum dist/release-assets/*.iso.part-* > dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path("dist/release-assets")
+          iso=Path("dist/alpha-linux-0.1.0a2-alpha-amd64.iso")
+          parts=sorted(root.glob("*.iso.part-*"))
+          m={"artifact":iso.name,"source_run_id":int("\${{ github.run_id }}"),"release_tag":"v0.1.0a2","source_commit":"\${{ github.sha }}","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":1900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a2-alpha-amd64.iso.part-* > alpha-linux-0.1.0a2-alpha-amd64.iso"}
+          (root/"alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json").write_text(json.dumps(m,indent=2,sort_keys=True)+"\n")
+          PY
+          cat > dist/release-assets/REASSEMBLE-ISO.txt <<'EOF'
+          Alpha Linux 0.1.0a2 ISO reassembly
+
+          Linux/macOS:
+            cat alpha-linux-0.1.0a2-alpha-amd64.iso.part-* > alpha-linux-0.1.0a2-alpha-amd64.iso
+            sha256sum alpha-linux-0.1.0a2-alpha-amd64.iso
+
+          PowerShell:
+            $parts = Get-ChildItem .\alpha-linux-0.1.0a2-alpha-amd64.iso.part-* | Sort-Object Name
+            $out = [IO.File]::OpenWrite(".\alpha-linux-0.1.0a2-alpha-amd64.iso")
+            try { foreach ($p in $parts) { $in = [IO.File]::OpenRead($p.FullName); try { $in.CopyTo($out) } finally { $in.Dispose() } } } finally { $out.Dispose() }
+            Get-FileHash .\alpha-linux-0.1.0a2-alpha-amd64.iso -Algorithm SHA256
+          EOF
+          rm -f "$ISO"
+
+      - name: Upload release-safe ISO part 01
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
-          path: dist/alpha-linux-0.1.0a2-alpha-amd64.iso
+          name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-01
+          path: dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
+          archive: false
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload release-safe ISO part 02
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-02
+          path: dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
+          archive: false
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload release-safe ISO part 03
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-03
+          path: dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
+          archive: false
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload release-safe ISO part 04
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-04
+          path: dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04
+          archive: false
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload release asset metadata
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-release-metadata
+          path: |
+            dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
+            dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
+            dist/release-assets/REASSEMBLE-ISO.txt
           archive: false
           compression-level: 0
           if-no-files-found: error
