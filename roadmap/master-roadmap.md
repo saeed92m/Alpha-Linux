@@ -140,15 +140,7 @@ The immutable `v0.1.0a1` package release remains historical. Current `main` carr
 - Package artifact verified.
 - `v0.1.0a1` package release published; its tag remains immutable.
 
-- Package artifact verified.
-- `v0.1.0a1` package release published; its tag remains immutable.
-- Current `main` lineage has a verified OS image release candidate with reproducibility and release-candidate evidence; OS-image publication remains separate from the package release.
-- ISO checksum, size, manifest and boot/runtime evidence automated and passing.
-- QEMU pre-install boot smoke verified.
-- Installer safety model verified.
-- Disposable installer transaction execution verified.
-
-**Status:** Active Alpha release program.
+**Status:** Historical package-release lineage. Current Phase 7 state is documented above under Alpha 0.1.0a2.
 
 ### Phase 7A — Boot and media compatibility
 
