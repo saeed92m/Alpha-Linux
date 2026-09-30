@@ -3,7 +3,7 @@
 **Roadmap state:** Active delivery control  
 **Current phase:** Phase 7 — Alpha Releases  
 **Current release context:** Alpha 0.1.0a2  
-**Last synchronized:** PR #199 filesystem staging and post-install verification
+**Last synchronized:** PR #200 evidence protocol; Phase 7A media-compatibility contract in progress
 
 ## Phase 0 — Product and specification
 
@@ -150,6 +150,13 @@ The immutable `v0.1.0a1` package release remains historical. Current `main` carr
 - `v0.1.0a1` package release published; its tag remains immutable.
 
 **Status:** Historical package-release lineage. Current Phase 7 state is documented above under Alpha 0.1.0a2.
+
+### Phase 7A evidence contract
+
+- Added a fail-closed media compatibility matrix contract covering UEFI/Legacy BIOS × GPT/MBR declarations.
+- A matrix entry is not accepted as evidence unless it is explicitly declared bootable and carries an evidence reference.
+- Missing matrix cases remain open rather than being inferred from other firmware/partition combinations.
+- This contract does **not** claim Rufus, physical USB, firmware, or hardware validation; those require direct validation evidence.
 
 ### Phase 7A — Boot and media compatibility
 
