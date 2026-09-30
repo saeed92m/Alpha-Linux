@@ -4,7 +4,7 @@ set -euo pipefail
 VERSION="${ALPHA_VERSION:-0.1.0a2}"
 CHANNEL="${ALPHA_CHANNEL:-alpha}"
 ARCH="${ALPHA_ARCH:-amd64}"
-RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-1-0a1}"
+RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-1-0a2}"
 SOURCE_COMMIT="${GITHUB_SHA:?GITHUB_SHA is required}"
 CI_RUN_ID="${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
 BUILD_ENVIRONMENT="${ALPHA_BUILD_ENVIRONMENT:-github-hosted-ubuntu-latest}"
