@@ -9,7 +9,7 @@ from alpha_core.os_image import OSImageEvidence
 
 def make_evidence(**overrides) -> OSImageEvidence:
     values = {
-        "release_id": "alpha-os-0-1-0a1",
+        "release_id": "alpha-os-0-1-0a2",
         "version": "0.1.0a2",
         "channel": "alpha",
         "architecture": "amd64",
@@ -42,7 +42,7 @@ def test_file_evidence_binds_size_and_sha256(tmp_path: Path):
     image.write_bytes(b"alpha-image")
     evidence = OSImageEvidence.from_file(
         image,
-        release_id="alpha-os-0-1-0a1",
+        release_id="alpha-os-0-1-0a2",
         version="0.1.0a2",
         channel="alpha",
         architecture="amd64",
