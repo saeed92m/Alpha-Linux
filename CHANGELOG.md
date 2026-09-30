@@ -21,9 +21,9 @@ The project follows a release-oriented change history. Unreleased work is kept u
 
 ### Notes
 
-- `v0.1.0a1` now has a verified amd64 OS image release candidate distributed as four release-safe parts with SHA-256 and reassembly evidence. This is not yet a claim of production installer readiness.
+- The current `main` lineage has a verified amd64 OS image release candidate with SHA-256 and machine-readable evidence. This is not a retroactive modification of the immutable `v0.1.0a1` tag and is not a claim of production installer readiness.
 - `v0.1.0a1` is an Alpha release candidate with verified package and OS-image evidence. Beta/Stable promotion remains gated by the remaining release criteria.
-- The Alpha OS image track now includes a real CI build path that repacks the verified Ubuntu 26.04.1 amd64 desktop image while preserving boot metadata and emits deterministic image/provenance evidence. It does not perform privileged host mutation, disk repartitioning, installation, or public release publication.
+- The Alpha OS image track now includes a real CI build path that repacks the verified Ubuntu 26.04.1 amd64 desktop image while preserving boot metadata and emits deterministic image/provenance evidence. OS-image publication remains a separate release decision from the Python package release. It does not perform privileged host mutation, disk repartitioning, installation, or public release publication.
 - Phase 3 completion refers to the deterministic reference/runtime foundation. Privileged host mutation, production COSMIC runtime integration, installer/ISO delivery, and release-scoped validation remain governed by their respective roadmap phases.
 - Phase 4 reference-runtime implementation is complete. Production provider execution, persistent knowledge/memory backends, autonomous host actions, privileged integration, and release-scoped evidence remain outside these foundations and are governed by later implementation/release phases.
 - Phase 5 and Phase 6 foundations remain reference contracts only unless their individual implementation evidence explicitly expands the boundary.
