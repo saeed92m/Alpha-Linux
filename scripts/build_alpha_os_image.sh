@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${ALPHA_VERSION:-0.1.0a1}"
+VERSION="${ALPHA_VERSION:-0.1.0a2}"
 CHANNEL="${ALPHA_CHANNEL:-alpha}"
 ARCH="${ALPHA_ARCH:-amd64}"
 RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-1-0a1}"
