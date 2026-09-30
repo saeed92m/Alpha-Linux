@@ -114,6 +114,7 @@ The immutable `v0.1.0a1` package release remains historical. Current `main` carr
 ### Verified engineering/release evidence
 
 - Real amd64 OS image build and CI verification.
+- BIOS + UEFI El Torito boot metadata validation and independent QEMU boot-smoke evidence.
 - Deterministic image manifest, SHA-256 and provenance.
 - Reproducibility validation.
 - QEMU pre-install boot smoke.
@@ -144,9 +145,9 @@ The immutable `v0.1.0a1` package release remains historical. Current `main` carr
 
 ### Phase 7A — Boot and media compatibility
 
-- Preserve a single release ISO containing UEFI and Legacy BIOS boot paths where supported by the base image.
-- Validate UEFI boot in QEMU.
-- Validate Legacy BIOS boot in QEMU.
+- Preserve a single release ISO containing UEFI and Legacy BIOS boot paths where supported by the base image. **Verified in CI.**
+- Validate UEFI boot in QEMU. **Verified in CI with OVMF.**
+- Validate Legacy BIOS boot in QEMU. **Verified in CI.**
 - Validate Rufus USB creation workflows.
 - Validate GPT and MBR media/firmware combinations that are technically supported.
 - Record the tested compatibility matrix.

@@ -121,14 +121,17 @@ The installer must detect firmware mode, partition table, ESP presence, Windows/
 ### Current evidence
 
 - ISO build and reproducibility evidence: verified.
-- QEMU pre-install boot smoke: verified.
+- El Torito boot metadata for BIOS and UEFI paths: verified in CI.
+- Legacy BIOS QEMU boot smoke: verified in CI.
+- UEFI QEMU boot smoke with OVMF: verified in CI.
 - Non-destructive installer safety model: verified.
 - Disposable regular-file transaction execution: verified on the merged PR path.
 
-### Required future evidence
+### Remaining evidence
 
-- UEFI QEMU boot validation.
-- Legacy BIOS QEMU boot validation.
+- Physical UEFI/Legacy boot validation.
+- Rufus USB creation and media/firmware matrix validation.
+- GPT/MBR media/firmware compatibility validation on representative hardware.
 - Live desktop startup validation.
 - Installer graphical UX validation.
 - Disposable full-install transaction and post-install verification.

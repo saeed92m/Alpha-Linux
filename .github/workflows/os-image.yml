@@ -64,7 +64,7 @@ jobs:
           ALPHA_VERSION: "0.1.0a2"
           ALPHA_CHANNEL: "alpha"
           ALPHA_ARCH: "amd64"
-          ALPHA_RELEASE_ID: "alpha-os-0-1-0a1"
+          ALPHA_RELEASE_ID: "alpha-os-0-1-0a2"
           ALPHA_BUILD_ENVIRONMENT: "github-hosted-ubuntu-latest"
           ALPHA_VERIFY_REPRODUCIBILITY: "true"
           SOURCE_DATE_EPOCH: "946684800"

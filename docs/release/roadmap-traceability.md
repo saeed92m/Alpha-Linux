@@ -83,7 +83,7 @@ Dates are not treated as completion evidence; artifact and validation evidence a
 
 | Area | Requirement / architecture | Current evidence | Remaining gate |
 |---|---|---|---|
-| Boot | `docs/requirements/boot-live-installer-requirements.md`, BOOT-001..005 | ISO boot metadata preserved; QEMU pre-install boot smoke verified | UEFI/BIOS matrix validation, Rufus validation, Secure Boot |
+| Boot | `docs/requirements/boot-live-installer-requirements.md`, BOOT-001..005 | BIOS + UEFI El Torito metadata and independent QEMU boot-smoke checks verified in CI | Physical UEFI/Legacy matrix, Rufus validation, GPT/MBR media matrix, Secure Boot |
 | Live | LIVE-001..005 | Live kernel/initramfs and COSMIC runtime evidence exist in CI | Full Live UX, diagnostics, recovery and installer launch |
 | Installer safety | INST-001..005 | Safety model + disposable transaction evidence | Full installation transaction, failure injection, rollback, physical adapter |
 | Post-install | INST-006 | Not yet claimed | Filesystem, boot configuration and health verification after installation |
