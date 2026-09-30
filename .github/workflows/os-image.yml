@@ -390,7 +390,7 @@ jobs:
           root=Path("dist/release-assets")
           iso=Path("dist/alpha-linux-0.1.0a2-alpha-amd64.iso")
           parts=sorted(root.glob("*.iso.part-*"))
-          m={"artifact":iso.name,"source_run_id":int("\${{ github.run_id }}"),"release_tag":"v0.1.0a2","source_commit":"\${{ github.sha }}","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":1900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a2-alpha-amd64.iso.part-* > alpha-linux-0.1.0a2-alpha-amd64.iso"}
+          m={"artifact":iso.name,"source_run_id":int("${{ github.run_id }}"),"release_tag":"v0.1.0a2","source_commit":"${{ github.sha }}","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":1900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a2-alpha-amd64.iso.part-* > alpha-linux-0.1.0a2-alpha-amd64.iso"}
           (root/"alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json").write_text(json.dumps(m,indent=2,sort_keys=True)+"\n")
           PY
           cat > dist/release-assets/REASSEMBLE-ISO.txt <<'EOF'
