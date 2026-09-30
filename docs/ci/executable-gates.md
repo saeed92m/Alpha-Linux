@@ -29,8 +29,10 @@ The boot-smoke check:
 - captures serial/stderr evidence;
 - fails when fatal/kernel-panic signatures are detected.
 
+The current OS-image workflow now independently exercises both BIOS and UEFI firmware boot paths under QEMU and records separate logs. This closes the automated virtualized firmware-boot evidence portion of BOOT-001/BOOT-002; it does not claim physical hardware compatibility.
+
 The following remain separate validation requirements before CI-ISO-001 can be considered fully satisfied for a release candidate:
-- UEFI boot validation on target physical hardware;
+- UEFI/Legacy boot validation on target physical hardware;
 - live-session functional validation;
 - network, graphics, audio and input validation;
 - actual installation;
