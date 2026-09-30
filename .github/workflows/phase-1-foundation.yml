@@ -403,6 +403,22 @@ jobs:
             }
           }
           EOF
+      - name: Fail closed when any CI gate fails
+        env:
+          GATE_RESULTS: >-
+            {"CI-VAL-001":"${{ needs.ci_val_001.result }}","CI-DOC-001":"${{ needs.ci_doc_001.result }}","CI-LINT-001":"${{ needs.ci_lint_001.result }}","CI-TEST-001":"${{ needs.ci_test_001.result }}","CI-TEST-002":"${{ needs.ci_test_002.result }}","CI-TYPE-001":"${{ needs.ci_type_001.result }}","CI-COV-001":"${{ needs.ci_cov_001.result }}","CI-PKG-001":"${{ needs.ci_pkg_001.result }}","CI-BLD-001":"${{ needs.ci_bld_001.result }}","CI-ART-001":"${{ needs.ci_art_001.result }}","CI-REP-001":"${{ needs.ci_rep_001.result }}","CI-REL-001":"${{ needs.ci_rel_001.result }}","CI-SEC-001":"${{ needs.ci_sec_001.result }}","CI-SCAN-001":"${{ needs.ci_scan_001.result }}","CI-SBOM-001":"${{ needs.ci_sbom_001.result }}"}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          results = json.loads(os.environ["GATE_RESULTS"])
+          failed = {name: result for name, result in results.items() if result != "success"}
+          if failed:
+              raise SystemExit(f"CI gate failure detected; evidence job is fail-closed: {failed}")
+          print("All CI gates passed; fail-closed evidence gate: PASS")
+          PY
+
       - uses: actions/upload-artifact@v7
         with:
           name: alpha-ci-gate-evidence
