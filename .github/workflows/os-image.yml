@@ -61,7 +61,7 @@ jobs:
 
       - name: Build and validate Alpha OS ISO
         env:
-          ALPHA_VERSION: "0.1.0a1"
+          ALPHA_VERSION: "0.1.0a2"
           ALPHA_CHANNEL: "alpha"
           ALPHA_ARCH: "amd64"
           ALPHA_RELEASE_ID: "alpha-os-0-1-0a1"
@@ -92,14 +92,14 @@ jobs:
       - name: Validate BIOS and UEFI boot metadata
         run: |
           set -euo pipefail
-          xorriso -indev dist/alpha-linux-0.1.0a1-alpha-amd64.iso -report_el_torito plain | tee dist/el-torito-boot-matrix.txt
+          xorriso -indev dist/alpha-linux-0.1.0a2-alpha-amd64.iso -report_el_torito plain | tee dist/el-torito-boot-matrix.txt
           grep -Eqi 'BIOS|El Torito' dist/el-torito-boot-matrix.txt
           grep -Eqi 'EFI|UEFI' dist/el-torito-boot-matrix.txt
 
       - name: Run automated BIOS boot smoke test
         run: |
           set -euo pipefail
-          timeout 75s qemu-system-x86_64 -machine pc -m 2048 -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-bios-boot-smoke.log -no-reboot >/tmp/alpha-qemu-bios.stdout 2>/tmp/alpha-qemu-bios.stderr &
+          timeout 75s qemu-system-x86_64 -machine pc -m 2048 -cdrom dist/alpha-linux-0.1.0a2-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-bios-boot-smoke.log -no-reboot >/tmp/alpha-qemu-bios.stdout 2>/tmp/alpha-qemu-bios.stderr &
           QEMU_PID=$!
           sleep 45
           if kill -0 "$QEMU_PID" 2>/dev/null; then kill "$QEMU_PID" || true; wait "$QEMU_PID" || true; else QEMU_STATUS=0; wait "$QEMU_PID" || QEMU_STATUS=$?; echo "BIOS QEMU exit status $QEMU_STATUS"; fi
@@ -113,7 +113,7 @@ jobs:
           if [[ ! -f "$UEFI_CODE" ]]; then UEFI_CODE=/usr/share/OVMF/OVMF_CODE.fd; fi
           test -f "$UEFI_CODE"
           echo "Using UEFI firmware: $UEFI_CODE"
-          timeout 75s qemu-system-x86_64 -machine q35,accel=tcg -m 2048 -bios "$UEFI_CODE" -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-uefi-boot-smoke.log -no-reboot >/tmp/alpha-qemu-uefi.stdout 2>/tmp/alpha-qemu-uefi.stderr &
+          timeout 75s qemu-system-x86_64 -machine q35,accel=tcg -m 2048 -bios "$UEFI_CODE" -cdrom dist/alpha-linux-0.1.0a2-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-uefi-boot-smoke.log -no-reboot >/tmp/alpha-qemu-uefi.stdout 2>/tmp/alpha-qemu-uefi.stderr &
           QEMU_PID=$!
           sleep 45
           if kill -0 "$QEMU_PID" 2>/dev/null; then kill "$QEMU_PID" || true; wait "$QEMU_PID" || true; else QEMU_STATUS=0; wait "$QEMU_PID" || QEMU_STATUS=$?; echo "UEFI QEMU exit status $QEMU_STATUS"; fi
@@ -124,7 +124,7 @@ jobs:
       - name: Validate Live filesystem structure prerequisites
         run: |
           set -euo pipefail
-          ISO="dist/alpha-linux-0.1.0a1-alpha-amd64.iso"
+          ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
           test -s "$ISO"
           xorriso -indev "$ISO" -ls /casper | tee dist/live-filesystem-evidence.txt
           grep -Eq "\.squashfs['[:space:]]*$" dist/live-filesystem-evidence.txt
@@ -136,7 +136,7 @@ jobs:
       - name: Run automated Live kernel/initramfs runtime validation
         run: |
           set -euo pipefail
-          ISO="dist/alpha-linux-0.1.0a1-alpha-amd64.iso"
+          ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
           LIVE_DIR="dist/live-runtime"
           mkdir -p "$LIVE_DIR"
           xorriso -indev "$ISO" -osirrox on -extract /casper/vmlinuz "$LIVE_DIR/vmlinuz"
@@ -173,7 +173,7 @@ jobs:
       - name: Run automated COSMIC graphical session runtime validation
         run: |
           set -euo pipefail
-          ISO="dist/alpha-linux-0.1.0a1-alpha-amd64.iso"
+          ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
           LIVE_DIR="dist/live-runtime"
           test -s "$LIVE_DIR/vmlinuz"
           test -s "$LIVE_DIR/initrd"
@@ -217,7 +217,7 @@ jobs:
       - name: Run automated ISO boot smoke test
         run: |
           set -euo pipefail
-          timeout 75s qemu-system-x86_64 -machine accel=tcg -m 2048 -cdrom dist/alpha-linux-0.1.0a1-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-boot-smoke.log -no-reboot >/tmp/alpha-qemu.stdout 2>/tmp/alpha-qemu.stderr &
+          timeout 75s qemu-system-x86_64 -machine accel=tcg -m 2048 -cdrom dist/alpha-linux-0.1.0a2-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-boot-smoke.log -no-reboot >/tmp/alpha-qemu.stdout 2>/tmp/alpha-qemu.stderr &
           QEMU_PID=$!
           sleep 45
           if kill -0 "$QEMU_PID" 2>/dev/null; then
@@ -245,7 +245,7 @@ jobs:
           import json
           from pathlib import Path
 
-          manifest = json.loads(Path("dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json").read_text())
+          manifest = json.loads(Path("dist/alpha-linux-0.1.0a2-alpha-amd64.manifest.json").read_text())
 
           required = [
               "release_id",
@@ -270,7 +270,7 @@ jobs:
               raise SystemExit("manifest source commit does not match workflow SHA")
           if manifest["ci_run_id"] != "${{ github.run_id }}":
               raise SystemExit("manifest CI run ID does not match workflow run")
-          if manifest["artifact_filename"] != "alpha-linux-0.1.0a1-alpha-amd64.iso":
+          if manifest["artifact_filename"] != "alpha-linux-0.1.0a2-alpha-amd64.iso":
               raise SystemExit("unexpected deterministic artifact filename")
           if manifest["artifact_size"] <= 0:
               raise SystemExit("artifact size must be positive")
@@ -332,7 +332,7 @@ jobs:
           from alpha_core.alpha_release import AlphaReleaseCandidateEvidence, AlphaReleaseManifest
 
           package = json.loads(next(Path("dist/package-evidence").rglob("release-evidence.json")).read_text())
-          os_manifest = json.loads(Path("dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json").read_text())
+          os_manifest = json.loads(Path("dist/alpha-linux-0.1.0a2-alpha-amd64.manifest.json").read_text())
           print("PACKAGE_EVIDENCE", json.dumps(package, sort_keys=True))
           print("OS_EVIDENCE", json.dumps(os_manifest, sort_keys=True))
           package_manifest = AlphaReleaseManifest(
@@ -362,7 +362,7 @@ jobs:
         run: |
           echo "## Alpha OS Image" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Artifact: alpha-linux-0.1.0a1-alpha-amd64.iso" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: alpha-linux-0.1.0a2-alpha-amd64.iso" >> "$GITHUB_STEP_SUMMARY"
           echo "Source commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
           echo "CI run: ${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Boot metadata: validated with xorriso" >> "$GITHUB_STEP_SUMMARY"
@@ -373,7 +373,7 @@ jobs:
       - name: Upload Alpha OS ISO
         uses: actions/upload-artifact@v7
         with:
-          path: dist/alpha-linux-0.1.0a1-alpha-amd64.iso
+          path: dist/alpha-linux-0.1.0a2-alpha-amd64.iso
           archive: false
           compression-level: 0
           if-no-files-found: error
@@ -391,9 +391,9 @@ jobs:
       - name: Upload Alpha OS evidence
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a1-alpha-amd64-evidence
+          name: alpha-linux-0.1.0a2-alpha-amd64-evidence
           path: |
-            dist/alpha-linux-0.1.0a1-alpha-amd64.manifest.json
+            dist/alpha-linux-0.1.0a2-alpha-amd64.manifest.json
             dist/el-torito-report.txt
             dist/alpha-release-candidate-evidence.json
             dist/qemu-boot-smoke.log
