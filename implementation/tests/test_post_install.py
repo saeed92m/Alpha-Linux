@@ -1,4 +1,4 @@
-from alpha_core.install_staging import build_manifest, stage_install
+from alpha_core.install_staging import stage_install
 from alpha_core.post_install import verify_post_install
 
 
