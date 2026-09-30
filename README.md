@@ -16,7 +16,7 @@ The product vision includes a polished end-to-end experience from **boot media â
 
 Phase 0 specification/architecture work is frozen as the normative foundation. Phases 1â€“6 established the executable engineering, Alpha Core, desktop/interaction, AI platform, domain platform, and hardening reference foundations. Phase 7 is implementing release-scoped artifact, boot, Live-environment, installer, traceability, readiness, and publication foundations with deterministic contracts, executable tests, CI evidence, and explicit non-goal boundaries.
 
-Alpha **0.1.0a1** is the current verified Alpha release candidate. The `v0.1.0a1` tag and GitHub Release are bound to verified source/CI evidence. The OS image track publishes the verified amd64 image as four release-safe parts with checksums and a reassembly manifest.
+Alpha **0.1.0a1** is the current verified Alpha release candidate. The `v0.1.0a1` tag and GitHub Release are bound to verified source/CI evidence. The OS image track produces and verifies the real amd64 ISO as a release-candidate artifact with checksums, provenance and machine-readable evidence. It is not yet a public OS release.
 
 ## Boot and installation product goals
 
@@ -88,7 +88,7 @@ The CI/CD workflow covers:
 - QEMU pre-install boot smoke;
 - installer safety and disposable transaction validation.
 
-The OS image artifact and release evidence have been verified for `v0.1.0a1`. Physical installation/boot validation, full Live desktop validation, installer UX, and promotion to Beta/Stable remain future gates.
+The `v0.1.0a1` package release lineage is immutable and its CI evidence is verified. The current `main` lineage also has a separately verified Alpha OS ISO release candidate; that image has not been retroactively attached to the immutable `v0.1.0a1` tag. Physical installation/boot validation, full Live desktop validation, installer UX, and promotion to Beta/Stable remain future gates.
 
 ## Documentation hierarchy
 
