@@ -1,4 +1,4 @@
-name: Alpha OS Image
+# Post-merge OS image verification marker: keep this workflow executable on main.\nname: Alpha OS Image
 
 on:
   push:
