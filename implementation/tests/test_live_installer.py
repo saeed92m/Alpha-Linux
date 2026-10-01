@@ -1,6 +1,12 @@
 from pathlib import Path
+import subprocess
 
 INSTALLER = Path("scripts/alpha-live-installer.sh")
+
+
+def test_live_installer_passes_bash_syntax_check():
+    result = subprocess.run(["bash", "-n", str(INSTALLER)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
 
 
 def test_live_installer_exists_and_is_bash_script():
