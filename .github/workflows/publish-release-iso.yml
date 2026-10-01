@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows:
       - "Alpha OS Image Final"
+      - ".github/workflows/alpha-os-image-final.yml"
       - "Alpha Linux CI/CD"
     types: [completed]
     branches: [main]
@@ -70,7 +71,7 @@ jobs:
           set -euo pipefail
           TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
           if [[ "${EVENT_NAME}" == "issue_comment" ]]; then TARGET_SHA="${{ steps.gate.outputs.target_sha }}"; fi
-          if [[ "${EVENT_NAME}" == "workflow_run" && "${EVENT_WORKFLOW:-}" == "Alpha OS Image Final" && -n "${EVENT_RUN_ID:-}" ]]; then
+          if [[ "${EVENT_NAME}" == "workflow_run" && ( "${EVENT_WORKFLOW:-}" == "Alpha OS Image Final" || "${EVENT_WORKFLOW:-}" == ".github/workflows/alpha-os-image-final.yml" ) && -n "${EVENT_RUN_ID:-}" ]]; then
             echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -109,33 +110,19 @@ jobs:
 
       - name: Download verified ISO artifacts
         if: steps.gate.outputs.ready == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ steps.source.outputs.run_id }}
+        uses: actions/download-artifact@v5
+        with:
+          run-id: ${{ steps.source.outputs.run_id }}
+          github-token: ${{ github.token }}
+          pattern: alpha-linux-0.1.0a2-alpha-amd64-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Validate downloaded release assets
+        if: steps.gate.outputs.ready == 'true'
+        shell: bash
         run: |
           set -euo pipefail
-          mkdir -p release-assets
-
-          download_artifact() {
-            local name="$1"
-            local artifact_id
-            artifact_id="$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" --jq '.artifacts[] | select(.name=="'"$name"'") | select(.expired==false) | .id' | head -n1)"
-            if [[ -z "$artifact_id" ]]; then
-              echo "Artifact not found: $name (run $RUN_ID)" >&2
-              exit 1
-            fi
-            echo "Downloading $name (artifact $artifact_id)"
-            gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > /tmp/artifact.zip
-            unzip -q /tmp/artifact.zip -d release-assets
-            rm -f /tmp/artifact.zip
-          }
-
-          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-01"
-          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-02"
-          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-03"
-          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-04"
-          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-release-metadata"
-
           test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
           test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
           test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
@@ -143,7 +130,6 @@ jobs:
           test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
           test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
           test -f release-assets/REASSEMBLE-ISO.txt
-
       - name: Upload ISO parts
         if: steps.gate.outputs.ready == 'true'
         env:
