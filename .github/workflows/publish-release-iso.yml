@@ -6,6 +6,8 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: write
@@ -13,7 +15,7 @@ permissions:
 
 jobs:
   publish:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || (github.event_name == 'issue_comment' && github.event.issue.pull_request == null && github.event.issue.number == 158 && github.event.comment.body == '/publish-a2' && github.event.comment.user.login == 'saeed92m') }}
     name: Publish verified split ISO assets
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -38,7 +40,7 @@ jobs:
             exit 0
           fi
 
-          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" || "${EVENT_NAME}" == "issue_comment" ]]; then
             for attempt in {1..30}; do
               RUN_ID="$(gh run list -R "$GITHUB_REPOSITORY" --workflow os-image.yml --branch main --limit 50 --json databaseId,headSha,status,conclusion --jq '.[] | select(.headSha=="'"\${CURRENT_SHA}"'") | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n1 || true)"
               if [[ -n "${RUN_ID}" ]]; then
