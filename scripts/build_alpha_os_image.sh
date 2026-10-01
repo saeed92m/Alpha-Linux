@@ -211,7 +211,7 @@ if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
 fi
 
 INSTALLER_SOURCE="${GITHUB_WORKSPACE:-.}/scripts/alpha-live-installer.sh"
-test -x "${INSTALLER_SOURCE}"
+test -f "${INSTALLER_SOURCE}"
 sudo install -D -m 0755 "${INSTALLER_SOURCE}" "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-live-installer.sh"
 sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/usr/share/applications"
 sudo tee "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop" >/dev/null <<'DESKTOP'
