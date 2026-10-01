@@ -414,7 +414,7 @@ jobs:
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-01
           path: dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
-          archive: true
+          archive: false
           compression-level: 0
           if-no-files-found: error
 
