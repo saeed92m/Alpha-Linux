@@ -48,66 +48,55 @@ jobs:
           echo "No successful Alpha OS Image run found for ${CURRENT_SHA}" >&2
           exit 1
 
-      - name: Download ISO part 01
+      - name: Download verified ISO artifacts
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.source.outputs.run_id }}
-        run: gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n alpha-linux-0.1.0a2-alpha-amd64-iso-part-01 -D release-assets
-      - name: Upload ISO part 01
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY" release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01 --clobber
-      - name: Remove ISO part 01
-        run: rm -rf release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
 
-      - name: Download ISO part 02
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ steps.source.outputs.run_id }}
-        run: gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n alpha-linux-0.1.0a2-alpha-amd64-iso-part-02 -D release-assets
-      - name: Upload ISO part 02
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY" release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02 --clobber
-      - name: Remove ISO part 02
-        run: rm -rf release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
+          download_artifact() {
+            local name="$1"
+            local artifact_id
+            artifact_id="$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" --jq '.artifacts[] | select(.name=="'"$name"'") | select(.expired==false) | .id' | head -n1)"
+            if [[ -z "$artifact_id" ]]; then
+              echo "Artifact not found: $name (run $RUN_ID)" >&2
+              exit 1
+            fi
+            echo "Downloading $name (artifact $artifact_id)"
+            gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > /tmp/artifact.zip
+            unzip -q /tmp/artifact.zip -d release-assets
+            rm -f /tmp/artifact.zip
+          }
 
-      - name: Download ISO part 03
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ steps.source.outputs.run_id }}
-        run: gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n alpha-linux-0.1.0a2-alpha-amd64-iso-part-03 -D release-assets
-      - name: Upload ISO part 03
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY" release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03 --clobber
-      - name: Remove ISO part 03
-        run: rm -rf release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-01"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-02"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-03"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-04"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-release-metadata"
 
-      - name: Download ISO part 04
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ steps.source.outputs.run_id }}
-        run: gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n alpha-linux-0.1.0a2-alpha-amd64-iso-part-04 -D release-assets
-      - name: Upload ISO part 04
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY" release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04 --clobber
-      - name: Remove ISO part 04
-        run: rm -rf release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
+          test -f release-assets/REASSEMBLE-ISO.txt
 
-      - name: Download release metadata
+      - name: Upload ISO parts
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ steps.source.outputs.run_id }}
-        run: gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n alpha-linux-0.1.0a2-alpha-amd64-release-metadata -D release-assets
+        run: |
+          set -euo pipefail
+          gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04             --clobber
 
       - name: Upload release metadata
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY" release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256 release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json release-assets/REASSEMBLE-ISO.txt --clobber
+          gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json             release-assets/REASSEMBLE-ISO.txt             --clobber
 
       - name: Publish prerelease
         env:
