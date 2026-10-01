@@ -74,9 +74,16 @@ jobs:
             echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          RUN_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          RUN_ID=""
+          while read -r CANDIDATE_ID; do
+            [[ -z "$CANDIDATE_ID" ]] && continue
+            if gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_ID/artifacts?per_page=100" --jq '.artifacts[] | select(.name=="alpha-linux-0.1.0a2-alpha-amd64-iso-part-01") | .id' | grep -q .; then
+              RUN_ID="$CANDIDATE_ID"
+              break
+            fi
+          done < <(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id')
           if [[ -z "${RUN_ID}" ]]; then
-            echo "No successful Alpha OS Image run found for ${TARGET_SHA}" >&2
+            echo "No successful Alpha OS Image run with release artifacts found for ${TARGET_SHA}" >&2
             exit 1
           fi
           echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
@@ -88,8 +95,7 @@ jobs:
           CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
-          if [[ "${EVENT_NAME:-}" == "issue_comment" ]]; then TARGET_SHA="${{ steps.gate.outputs.target_sha }}"; fi
+          TARGET_SHA="${{ steps.gate.outputs.target_sha }}"
           if gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             if TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha' 2>/dev/null)"; then
               if [[ "$TAG_SHA" != "$TARGET_SHA" ]]; then
