@@ -38,8 +38,8 @@ jobs:
             echo "Triggering workflow ${EVENT_WORKFLOW} did not succeed; release publication is fail-closed."
             exit 1
           fi
-          OS_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/alpha-os-image-final.yml/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
-          CI_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/phase-1-foundation.yml/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          OS_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          CI_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha Linux CI/CD" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
           echo "TARGET_SHA=$TARGET_SHA"
           echo "OS_READY=$OS_READY"
           echo "CI_READY=$CI_READY"
@@ -68,7 +68,7 @@ jobs:
             echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          RUN_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/alpha-os-image-final.yml/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          RUN_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
           if [[ -z "${RUN_ID}" ]]; then
             echo "No successful Alpha OS Image run found for ${TARGET_SHA}" >&2
             exit 1
