@@ -38,8 +38,8 @@ jobs:
             echo "Triggering workflow ${EVENT_WORKFLOW} did not succeed; release publication is fail-closed."
             exit 1
           fi
-          OS_STATE="$(gh run list -R "$GITHUB_REPOSITORY" --workflow os-image.yml --branch main --limit 50 --json headSha,status,conclusion --jq '.[] | select(.headSha=="'\''"${TARGET_SHA}"'\''") | [.status, (.conclusion // "")] | @tsv' | head -n 1 || true)"
-          CI_STATE="$(gh run list -R "$GITHUB_REPOSITORY" --workflow phase-1-foundation.yml --branch main --limit 50 --json headSha,status,conclusion --jq '.[] | select(.headSha=="'\''"${TARGET_SHA}"'\''") | [.status, (.conclusion // "")] | @tsv' | head -n 1 || true)"
+          OS_STATE="$(gh run list -R "$GITHUB_REPOSITORY" --workflow os-image.yml --branch main --limit 50 --json headSha,status,conclusion --jq '.[] | select(.headSha=="'"$TARGET_SHA"'") | [.status, (.conclusion // "")] | @tsv' | head -n 1 || true)"
+          CI_STATE="$(gh run list -R "$GITHUB_REPOSITORY" --workflow phase-1-foundation.yml --branch main --limit 50 --json headSha,status,conclusion --jq '.[] | select(.headSha=="'"$TARGET_SHA"'") | [.status, (.conclusion // "")] | @tsv' | head -n 1 || true)"
           echo "TARGET_SHA=$TARGET_SHA"
           echo "OS_STATE=$OS_STATE"
           echo "CI_STATE=$CI_STATE"
@@ -58,30 +58,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_WORKFLOW: ${{ github.event.workflow_run.name }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
           CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-
+          TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
           if [[ "${EVENT_NAME}" == "workflow_run" && "${EVENT_WORKFLOW:-}" == "Alpha OS Image" && -n "${EVENT_RUN_ID:-}" ]]; then
             echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
-          if [[ "${EVENT_NAME}" == "workflow_dispatch" || "${EVENT_NAME}" == "issue_comment" ]]; then
-            for attempt in {1..30}; do
-              RUN_ID="$(gh run list -R "$GITHUB_REPOSITORY" --workflow os-image.yml --branch main --limit 50 --json databaseId,headSha,status,conclusion --jq '.[] | select(.headSha=="'"\${CURRENT_SHA}"'") | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n1 || true)"
-              if [[ -n "${RUN_ID}" ]]; then
-                echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
-              echo "Waiting for successful Alpha OS Image run for ${CURRENT_SHA} (attempt ${attempt}/30)"
-              sleep 20
-            done
+          RUN_ID="$(gh run list -R "$GITHUB_REPOSITORY" --workflow os-image.yml --branch main --limit 50 --json databaseId,headSha,status,conclusion --jq '.[] | select(.headSha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n 1 || true)"
+          if [[ -z "${RUN_ID}" ]]; then
+            echo "No successful Alpha OS Image run found for ${TARGET_SHA}" >&2
+            exit 1
           fi
-
-          echo "No successful Alpha OS Image run found for ${CURRENT_SHA}" >&2
-          exit 1
-
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
       - name: Download verified ISO artifacts
         env:
           GH_TOKEN: ${{ github.token }}
