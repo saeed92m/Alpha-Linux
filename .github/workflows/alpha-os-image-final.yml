@@ -14,6 +14,13 @@ on:
       - "specs/alpha-os-image-artifact-contract.md"
       - ".github/workflows/os-image.yml"
   workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Alpha Linux CI/CD
+    types:
+      - completed
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -29,10 +36,14 @@ jobs:
     name: Build Alpha OS ISO
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      ALPHA_SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ env.ALPHA_SOURCE_SHA }}
 
       - name: Inspect runner storage
         run: df -h
@@ -257,7 +268,7 @@ jobs:
           if missing:
               raise SystemExit(f"missing evidence fields: {missing}")
 
-          if manifest["source_commit"] != "${{ github.sha }}":
+          if manifest["source_commit"] != "${{ env.ALPHA_SOURCE_SHA }}":
               raise SystemExit("manifest source commit does not match workflow SHA")
           if manifest["ci_run_id"] != "${{ github.run_id }}":
               raise SystemExit("manifest CI run ID does not match workflow run")
@@ -280,7 +291,7 @@ jobs:
       - name: Build unified release-candidate evidence
         env:
           GH_TOKEN: ${{ github.token }}
-          PACKAGE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          PACKAGE_HEAD_SHA: ${{ env.ALPHA_SOURCE_SHA }}
           PACKAGE_EVENT: ${{ github.event_name == 'pull_request' && 'pull_request' || 'push' }}
         run: |
           set -euo pipefail
@@ -354,7 +365,7 @@ jobs:
           echo "## Alpha OS Image" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Artifact: alpha-linux-0.1.0a2-alpha-amd64.iso" >> "$GITHUB_STEP_SUMMARY"
-          echo "Source commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Source commit: ${{ env.ALPHA_SOURCE_SHA }}" >> "$GITHUB_STEP_SUMMARY"
           echo "CI run: ${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Boot metadata: validated with xorriso" >> "$GITHUB_STEP_SUMMARY"
           echo "Install validation: not performed" >> "$GITHUB_STEP_SUMMARY"
@@ -362,7 +373,7 @@ jobs:
           echo "SOURCE_DATE_EPOCH: 946684800" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Prepare release-safe ISO assets
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
           ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
@@ -381,7 +392,7 @@ jobs:
           root=Path("dist/release-assets")
           iso=Path("dist/alpha-linux-0.1.0a2-alpha-amd64.iso")
           parts=sorted(root.glob("*.iso.part-*"))
-          m={"artifact":iso.name,"source_run_id":int("${{ github.run_id }}"),"release_tag":"v0.1.0a2","source_commit":"${{ github.sha }}","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":1900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a2-alpha-amd64.iso.part-* > alpha-linux-0.1.0a2-alpha-amd64.iso"}
+          m={"artifact":iso.name,"source_run_id":int("${{ github.run_id }}"),"release_tag":"v0.1.0a2","source_commit":"${{ env.ALPHA_SOURCE_SHA }}","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":1900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a2-alpha-amd64.iso.part-* > alpha-linux-0.1.0a2-alpha-amd64.iso"}
           (root/"alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json").write_text(json.dumps(m,indent=2,sort_keys=True)+"\n")
           PY
           cat > dist/release-assets/REASSEMBLE-ISO.txt <<'EOF'
@@ -400,7 +411,7 @@ jobs:
           rm -f "$ISO"
 
       - name: Upload release-safe ISO part 01
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-01
@@ -410,7 +421,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release-safe ISO part 02
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-02
@@ -420,7 +431,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release-safe ISO part 03
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-03
@@ -430,7 +441,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release-safe ISO part 04
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-04
@@ -440,7 +451,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release asset metadata
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-release-metadata
@@ -460,7 +471,7 @@ jobs:
           gh api --method POST \
             -H "Accept: application/vnd.github+json" \
             "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
-            -f body="Alpha OS image workflow run \`${{ github.run_id }}\` completed with job status \`${{ job.status }}\`. Trigger: \`${{ github.event.comment.body }}\`. Source commit: \`${{ github.sha }}\`. Reproducibility: two-build comparison."
+            -f body="Alpha OS image workflow run \`${{ github.run_id }}\` completed with job status \`${{ job.status }}\`. Trigger: \`${{ github.event.comment.body }}\`. Source commit: \`${{ env.ALPHA_SOURCE_SHA }}\`. Reproducibility: two-build comparison."
 
       - name: Upload Alpha OS evidence
         uses: actions/upload-artifact@v7
