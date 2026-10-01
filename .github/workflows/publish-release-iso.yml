@@ -43,7 +43,227 @@ jobs:
           echo "TARGET_SHA=$TARGET_SHA"
           echo "OS_STATE=$OS_STATE"
           echo "CI_STATE=$CI_STATE"
-          if [[ "$OS_STATE" == "completed success" && "$CI_STATE" == "completed success" ]]; then
+          if [[ "$OS_STATE" == 
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Release dependency gate: PASS"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Release dependency gate: NOT READY; no wait/retry loop."
+          fi
+
+      - name: Resolve source OS image run
+        id: source
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_WORKFLOW: ${{ github.event.workflow_run.name }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
+          if [[ "${EVENT_NAME}" == "workflow_run" && "${EVENT_WORKFLOW:-}" == "Alpha OS Image Final" && -n "${EVENT_RUN_ID:-}" ]]; then
+            echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          RUN_ID="$(gh run list -R "$GITHUB_REPOSITORY" --workflow os-image.yml --branch main --limit 50 --json databaseId,headSha,status,conclusion --jq '.[] | select(.headSha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n 1 || true)"
+          if [[ -z "${RUN_ID}" ]]; then
+            echo "No successful Alpha OS Image run found for ${TARGET_SHA}" >&2
+            exit 1
+          fi
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+      - name: Ensure A2 release exists and is bound to target SHA
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
+          if gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha')"
+            if [[ "$TAG_SHA" != "$TARGET_SHA" ]]; then
+              echo "Existing v0.1.0a2 tag is bound to $TAG_SHA, expected $TARGET_SHA." >&2
+              exit 1
+            fi
+            echo "Existing A2 release/tag is correctly bound to $TARGET_SHA."
+          else
+            gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --title "Alpha Linux v0.1.0a2" --notes "Alpha Linux 0.1.0a2 prerelease. Publication is bound to the exact main commit after successful package CI and OS-image evidence gates." --prerelease
+            echo "Created v0.1.0a2 bound to $TARGET_SHA."
+          fi
+
+      - name: Download verified ISO artifacts
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.source.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          download_artifact() {
+            local name="$1"
+            local artifact_id
+            artifact_id="$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" --jq '.artifacts[] | select(.name=="'"$name"'") | select(.expired==false) | .id' | head -n1)"
+            if [[ -z "$artifact_id" ]]; then
+              echo "Artifact not found: $name (run $RUN_ID)" >&2
+              exit 1
+            fi
+            echo "Downloading $name (artifact $artifact_id)"
+            gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > /tmp/artifact.zip
+            unzip -q /tmp/artifact.zip -d release-assets
+            rm -f /tmp/artifact.zip
+          }
+
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-01"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-02"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-03"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-04"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-release-metadata"
+
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
+          test -f release-assets/REASSEMBLE-ISO.txt
+
+      - name: Upload ISO parts
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04             --clobber
+
+      - name: Upload release metadata
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json             release-assets/REASSEMBLE-ISO.txt             --clobber
+
+      - name: Publish prerelease
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --draft=false --prerelease
+completed\tsuccess' && "$CI_STATE" == 
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Release dependency gate: PASS"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Release dependency gate: NOT READY; no wait/retry loop."
+          fi
+
+      - name: Resolve source OS image run
+        id: source
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_WORKFLOW: ${{ github.event.workflow_run.name }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
+          if [[ "${EVENT_NAME}" == "workflow_run" && "${EVENT_WORKFLOW:-}" == "Alpha OS Image Final" && -n "${EVENT_RUN_ID:-}" ]]; then
+            echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          RUN_ID="$(gh run list -R "$GITHUB_REPOSITORY" --workflow os-image.yml --branch main --limit 50 --json databaseId,headSha,status,conclusion --jq '.[] | select(.headSha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n 1 || true)"
+          if [[ -z "${RUN_ID}" ]]; then
+            echo "No successful Alpha OS Image run found for ${TARGET_SHA}" >&2
+            exit 1
+          fi
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+      - name: Ensure A2 release exists and is bound to target SHA
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
+          if gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha')"
+            if [[ "$TAG_SHA" != "$TARGET_SHA" ]]; then
+              echo "Existing v0.1.0a2 tag is bound to $TAG_SHA, expected $TARGET_SHA." >&2
+              exit 1
+            fi
+            echo "Existing A2 release/tag is correctly bound to $TARGET_SHA."
+          else
+            gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --title "Alpha Linux v0.1.0a2" --notes "Alpha Linux 0.1.0a2 prerelease. Publication is bound to the exact main commit after successful package CI and OS-image evidence gates." --prerelease
+            echo "Created v0.1.0a2 bound to $TARGET_SHA."
+          fi
+
+      - name: Download verified ISO artifacts
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.source.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          download_artifact() {
+            local name="$1"
+            local artifact_id
+            artifact_id="$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" --jq '.artifacts[] | select(.name=="'"$name"'") | select(.expired==false) | .id' | head -n1)"
+            if [[ -z "$artifact_id" ]]; then
+              echo "Artifact not found: $name (run $RUN_ID)" >&2
+              exit 1
+            fi
+            echo "Downloading $name (artifact $artifact_id)"
+            gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > /tmp/artifact.zip
+            unzip -q /tmp/artifact.zip -d release-assets
+            rm -f /tmp/artifact.zip
+          }
+
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-01"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-02"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-03"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-iso-part-04"
+          download_artifact "alpha-linux-0.1.0a2-alpha-amd64-release-metadata"
+
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
+          test -f release-assets/REASSEMBLE-ISO.txt
+
+      - name: Upload ISO parts
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04             --clobber
+
+      - name: Upload release metadata
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json             release-assets/REASSEMBLE-ISO.txt             --clobber
+
+      - name: Publish prerelease
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --draft=false --prerelease
+completed\tsuccess' ]]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
             echo "Release dependency gate: PASS"
           else
