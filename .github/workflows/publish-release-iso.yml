@@ -36,8 +36,9 @@ jobs:
           set -euo pipefail
           TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
           if [[ "${EVENT_NAME}" == "issue_comment" ]]; then
-            TARGET_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml") | select(.status=="completed" and .conclusion=="success") | .head_sha' | head -n 1 || true)"
-            if [[ -z "$TARGET_SHA" ]]; then echo "No successful OS image run is available for manual A2 publication." >&2; exit 1; fi
+            TARGET_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha' 2>/dev/null || true)"
+            if [[ -z "$TARGET_SHA" ]]; then echo "A2 tag v0.1.0a2 is not available; manual publication is fail-closed." >&2; exit 1; fi
+            echo "Manual A2 publication is bound to release tag v0.1.0a2 at $TARGET_SHA"
           fi
           echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
           if [[ "${EVENT_NAME}" == "workflow_run" && "${EVENT_CONCLUSION}" != "success" ]]; then
