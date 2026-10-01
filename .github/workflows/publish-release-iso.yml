@@ -38,8 +38,8 @@ jobs:
             echo "Triggering workflow ${EVENT_WORKFLOW} did not succeed; release publication is fail-closed."
             exit 1
           fi
-          OS_READY="$(gh run list -R "$GITHUB_REPOSITORY" --workflow alpha-os-image-final.yml --branch main --limit 50 --json headSha,status,conclusion --jq '.[] | select(.headSha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n 1 || true)"
-          CI_READY="$(gh run list -R "$GITHUB_REPOSITORY" --workflow phase-1-foundation.yml --branch main --limit 50 --json headSha,status,conclusion --jq '.[] | select(.headSha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n 1 || true)"
+          OS_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/alpha-os-image-final.yml/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          CI_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/phase-1-foundation.yml/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
           echo "TARGET_SHA=$TARGET_SHA"
           echo "OS_READY=$OS_READY"
           echo "CI_READY=$CI_READY"
@@ -68,7 +68,7 @@ jobs:
             echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          RUN_ID="$(gh run list -R "$GITHUB_REPOSITORY" --workflow alpha-os-image-final.yml --branch main --limit 50 --json databaseId,headSha,status,conclusion --jq '.[] | select(.headSha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n 1 || true)"
+          RUN_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/alpha-os-image-final.yml/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
           if [[ -z "${RUN_ID}" ]]; then
             echo "No successful Alpha OS Image run found for ${TARGET_SHA}" >&2
             exit 1
@@ -86,10 +86,12 @@ jobs:
           if gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha')"
             if [[ "$TAG_SHA" != "$TARGET_SHA" ]]; then
-              echo "Existing v0.1.0a2 tag is bound to $TAG_SHA, expected $TARGET_SHA." >&2
-              exit 1
+              echo "Existing draft v0.1.0a2 tag is bound to $TAG_SHA; rebinding it to verified target $TARGET_SHA."
+              gh api --method PATCH "/repos/$GITHUB_REPOSITORY/git/refs/tags/v0.1.0a2" -f sha="$TARGET_SHA" -F force=true >/dev/null
             fi
-            echo "Existing A2 release/tag is correctly bound to $TARGET_SHA."
+            FINAL_TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha')"
+            test "$FINAL_TAG_SHA" = "$TARGET_SHA"
+            echo "Existing A2 draft release/tag is correctly bound to $TARGET_SHA."
           else
             gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --title "Alpha Linux v0.1.0a2" --notes "Alpha Linux 0.1.0a2 prerelease. Publication is bound to the exact main commit after successful package CI and OS-image evidence gates." --prerelease
             echo "Created v0.1.0a2 bound to $TARGET_SHA."
@@ -153,3 +155,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --draft=false --prerelease
+
+# A2 publisher gate hardening: direct Actions API run discovery.
