@@ -34,6 +34,11 @@ jobs:
         run: |
           set -euo pipefail
           TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
+          if [[ "${EVENT_NAME}" == "issue_comment" ]]; then
+            TARGET_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml") | select(.status=="completed" and .conclusion=="success") | .head_sha' | head -n 1 || true)"
+            if [[ -z "$TARGET_SHA" ]]; then echo "No successful OS image run is available for manual A2 publication." >&2; exit 1; fi
+          fi
+          echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
           if [[ "${EVENT_NAME}" == "workflow_run" && "${EVENT_CONCLUSION}" != "success" ]]; then
             echo "Triggering workflow ${EVENT_WORKFLOW} did not succeed; release publication is fail-closed."
             exit 1
@@ -64,6 +69,7 @@ jobs:
         run: |
           set -euo pipefail
           TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
+          if [[ "${EVENT_NAME}" == "issue_comment" ]]; then TARGET_SHA="${{ steps.gate.outputs.target_sha }}"; fi
           if [[ "${EVENT_NAME}" == "workflow_run" && "${EVENT_WORKFLOW:-}" == "Alpha OS Image Final" && -n "${EVENT_RUN_ID:-}" ]]; then
             echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
             exit 0
@@ -83,15 +89,20 @@ jobs:
         run: |
           set -euo pipefail
           TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
+          if [[ "${EVENT_NAME:-}" == "issue_comment" ]]; then TARGET_SHA="${{ steps.gate.outputs.target_sha }}"; fi
           if gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha')"
-            if [[ "$TAG_SHA" != "$TARGET_SHA" ]]; then
-              echo "Existing draft v0.1.0a2 tag is bound to $TAG_SHA; rebinding it to verified target $TARGET_SHA."
-              gh api --method PATCH "/repos/$GITHUB_REPOSITORY/git/refs/tags/v0.1.0a2" -f sha="$TARGET_SHA" -F force=true >/dev/null
+            if TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha' 2>/dev/null)"; then
+              if [[ "$TAG_SHA" != "$TARGET_SHA" ]]; then
+                echo "Existing draft v0.1.0a2 tag is bound to $TAG_SHA; rebinding it to verified target $TARGET_SHA."
+                gh api --method PATCH "/repos/$GITHUB_REPOSITORY/git/refs/tags/v0.1.0a2" -f sha="$TARGET_SHA" -F force=true >/dev/null
+              fi
+              FINAL_TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha')"
+              test "$FINAL_TAG_SHA" = "$TARGET_SHA"
+            else
+              echo "Draft v0.1.0a2 has no tag ref yet; binding its release target to $TARGET_SHA before publication."
+              gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --prerelease
             fi
-            FINAL_TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha')"
-            test "$FINAL_TAG_SHA" = "$TARGET_SHA"
-            echo "Existing A2 draft release/tag is correctly bound to $TARGET_SHA."
+            echo "A2 draft release is bound to verified target $TARGET_SHA."
           else
             gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --title "Alpha Linux v0.1.0a2" --notes "Alpha Linux 0.1.0a2 prerelease. Publication is bound to the exact main commit after successful package CI and OS-image evidence gates." --prerelease
             echo "Created v0.1.0a2 bound to $TARGET_SHA."
@@ -154,6 +165,6 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --draft=false --prerelease
+        run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "${{ steps.gate.outputs.target_sha }}" --draft=false --prerelease
 
 # A2 publisher gate hardening: direct Actions API run discovery.
