@@ -14,6 +14,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Synchronized README, Master Handbook, roadmap and release traceability with the actual Phase 7 / Alpha 0.1.0a2 state.
 - Recorded the distinction between CI/runtime evidence and physical product validation.
 - Recorded PR #193 as the release-asset metadata interpolation correction merged to `main`.
+- Recorded the final A2 publication-gate hardening: publication is fail-closed and bound to the exact `main` commit after both package CI and OS-image evidence succeed.
 
 ### Added
 
@@ -27,6 +28,7 @@ The project follows a release-oriented change history. Unreleased work is kept u
 - Continued CI/CD, reproducibility, security, package, SBOM, artifact, and documentation validation as mandatory engineering evidence.
 - Phase 7 release evidence includes machine-readable artifact SHA-256 binding through CI-REL-001.
 - Phase 7 now contains a separate OS image artifact track; package release and OS image release remain independent.
+- A2 publication is now fail-closed: the publisher will not download, upload, or publish release assets unless the exact target SHA has successful Alpha OS Image and Alpha Linux CI/CD runs.
 
 ### Notes
 
