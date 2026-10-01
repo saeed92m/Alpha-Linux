@@ -74,6 +74,27 @@ jobs:
             exit 1
           fi
           echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+      - name: Ensure A2 release exists and is bound to target SHA
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
+          if gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha')"
+            if [[ "$TAG_SHA" != "$TARGET_SHA" ]]; then
+              echo "Existing v0.1.0a2 tag is bound to $TAG_SHA, expected $TARGET_SHA." >&2
+              exit 1
+            fi
+            echo "Existing A2 release/tag is correctly bound to $TARGET_SHA."
+          else
+            gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --title "Alpha Linux v0.1.0a2" --notes "Alpha Linux 0.1.0a2 prerelease. Publication is bound to the exact main commit after successful package CI and OS-image evidence gates." --prerelease
+            echo "Created v0.1.0a2 bound to $TARGET_SHA."
+          fi
+
       - name: Download verified ISO artifacts
         if: steps.gate.outputs.ready == 'true'
         env:
