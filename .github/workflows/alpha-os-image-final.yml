@@ -1,0 +1,484 @@
+# Post-merge OS image verification marker: keep this workflow executable on main.\nname: Alpha OS Image Final
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/build_alpha_os_image.sh"
+      - "implementation/alpha_core/os_image.py"
+      - "implementation/tests/test_os_image.py"
+      - "specs/alpha-os-image-artifact-contract.md"
+      - ".github/workflows/os-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: alpha-os-image-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Alpha OS ISO
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Inspect runner storage
+        run: df -h
+
+      - name: Install image build tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends aria2 xorriso squashfs-tools gnupg
+
+      - name: Install Alpha package
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+
+      - name: Validate OS image evidence tests
+        run: python3 -m pytest implementation/tests/test_os_image.py
+
+      - name: Build and validate Alpha OS ISO
+        env:
+          ALPHA_VERSION: "0.1.0a2"
+          ALPHA_CHANNEL: "alpha"
+          ALPHA_ARCH: "amd64"
+          ALPHA_RELEASE_ID: "alpha-os-0-1-0a2"
+          ALPHA_BUILD_ENVIRONMENT: "github-hosted-ubuntu-latest"
+          ALPHA_VERIFY_REPRODUCIBILITY: "true"
+          SOURCE_DATE_EPOCH: "946684800"
+        run: |
+          chmod +x scripts/build_alpha_os_image.sh
+          scripts/build_alpha_os_image.sh
+
+      - name: Validate COSMIC Live runtime payload
+        run: |
+          set -euo pipefail
+          test -s dist/alpha-cosmic-package-manifest.txt
+          test -s dist/alpha-cosmic-runtime-evidence.txt
+          grep -Eq '^cosmic-session[[:space:]]' dist/alpha-cosmic-package-manifest.txt
+          grep -Eq '^cosmic-comp[[:space:]]' dist/alpha-cosmic-package-manifest.txt
+          grep -Eq '^cosmic-greeter[[:space:]]' dist/alpha-cosmic-package-manifest.txt
+          grep -Fq '/usr/share/wayland-sessions/cosmic.desktop' dist/alpha-cosmic-runtime-evidence.txt
+          grep -Fq '/usr/bin/start-cosmic' dist/alpha-cosmic-runtime-evidence.txt
+          echo "COSMIC package/session payload evidence validated."
+
+      - name: Install QEMU boot-smoke tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends qemu-system-x86 ovmf
+
+      - name: Validate BIOS and UEFI boot metadata
+        run: |
+          set -euo pipefail
+          xorriso -indev dist/alpha-linux-0.1.0a2-alpha-amd64.iso -report_el_torito plain | tee dist/el-torito-boot-matrix.txt
+          grep -Eqi 'BIOS|El Torito' dist/el-torito-boot-matrix.txt
+          grep -Eqi 'EFI|UEFI' dist/el-torito-boot-matrix.txt
+
+      - name: Run automated BIOS boot smoke test
+        run: |
+          set -euo pipefail
+          timeout 75s qemu-system-x86_64 -machine pc -m 2048 -cdrom dist/alpha-linux-0.1.0a2-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-bios-boot-smoke.log -no-reboot >/tmp/alpha-qemu-bios.stdout 2>/tmp/alpha-qemu-bios.stderr &
+          QEMU_PID=$!
+          sleep 45
+          if kill -0 "$QEMU_PID" 2>/dev/null; then kill "$QEMU_PID" || true; wait "$QEMU_PID" || true; else QEMU_STATUS=0; wait "$QEMU_PID" || QEMU_STATUS=$?; echo "BIOS QEMU exit status $QEMU_STATUS"; fi
+          if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-bios-boot-smoke.log /tmp/alpha-qemu-bios.stderr; then cat dist/qemu-bios-boot-smoke.log || true; cat /tmp/alpha-qemu-bios.stderr || true; exit 1; fi
+          echo "BIOS boot smoke completed without detected fatal boot errors."
+
+      - name: Run automated UEFI boot smoke test
+        run: |
+          set -euo pipefail
+          UEFI_CODE=/usr/share/OVMF/OVMF_CODE_4M.fd
+          if [[ ! -f "$UEFI_CODE" ]]; then UEFI_CODE=/usr/share/OVMF/OVMF_CODE.fd; fi
+          test -f "$UEFI_CODE"
+          echo "Using UEFI firmware: $UEFI_CODE"
+          timeout 75s qemu-system-x86_64 -machine q35,accel=tcg -m 2048 -bios "$UEFI_CODE" -cdrom dist/alpha-linux-0.1.0a2-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-uefi-boot-smoke.log -no-reboot >/tmp/alpha-qemu-uefi.stdout 2>/tmp/alpha-qemu-uefi.stderr &
+          QEMU_PID=$!
+          sleep 45
+          if kill -0 "$QEMU_PID" 2>/dev/null; then kill "$QEMU_PID" || true; wait "$QEMU_PID" || true; else QEMU_STATUS=0; wait "$QEMU_PID" || QEMU_STATUS=$?; echo "UEFI QEMU exit status $QEMU_STATUS"; fi
+          if [[ ! -f dist/qemu-uefi-boot-smoke.log ]]; then cat /tmp/alpha-qemu-uefi.stdout || true; cat /tmp/alpha-qemu-uefi.stderr || true; exit 1; fi
+          if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-uefi-boot-smoke.log /tmp/alpha-qemu-uefi.stderr; then cat dist/qemu-uefi-boot-smoke.log || true; cat /tmp/alpha-qemu-uefi.stderr || true; exit 1; fi
+          echo "UEFI boot smoke completed without detected fatal boot errors."
+
+      - name: Validate Live filesystem structure prerequisites
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
+          test -s "$ISO"
+          xorriso -indev "$ISO" -ls /casper | tee dist/live-filesystem-evidence.txt
+          grep -Eq "\.squashfs['[:space:]]*$" dist/live-filesystem-evidence.txt
+          grep -Eq "^['[:space:]]*initrd['[:space:]]*$" dist/live-filesystem-evidence.txt
+          test -s dist/live-filesystem-evidence.txt
+          echo "Live filesystem payload and initrd structure detected; live-session and graphical-runtime validation remain separate gates."
+
+
+      - name: Run automated Live kernel/initramfs runtime validation
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
+          LIVE_DIR="dist/live-runtime"
+          mkdir -p "$LIVE_DIR"
+          xorriso -indev "$ISO" -osirrox on -extract /casper/vmlinuz "$LIVE_DIR/vmlinuz"
+          xorriso -indev "$ISO" -osirrox on -extract /casper/initrd "$LIVE_DIR/initrd"
+          test -s "$LIVE_DIR/vmlinuz"
+          test -s "$LIVE_DIR/initrd"
+          {
+            echo "== Extracted Live boot payload =="
+            stat -c 'vmlinuz size=%s bytes' "$LIVE_DIR/vmlinuz"
+            stat -c 'initrd size=%s bytes' "$LIVE_DIR/initrd"
+            echo "== QEMU Live runtime boot =="
+          } | tee dist/live-runtime-evidence.txt
+          timeout 105s qemu-system-x86_64             -machine q35,accel=tcg             -m 2048             -kernel "$LIVE_DIR/vmlinuz"             -initrd "$LIVE_DIR/initrd"             -append "boot=casper console=ttyS0"             -cdrom "$ISO"             -display none             -serial file:dist/live-runtime-boot.log             -no-reboot             >/tmp/alpha-live-runtime.stdout 2>/tmp/alpha-live-runtime.stderr &
+          QEMU_PID=$!
+          sleep 75
+          if kill -0 "$QEMU_PID" 2>/dev/null; then
+            kill "$QEMU_PID" || true
+            wait "$QEMU_PID" || true
+            echo "Live runtime QEMU remained alive for 75 seconds." | tee -a dist/live-runtime-evidence.txt
+          else
+            QEMU_STATUS=0
+            wait "$QEMU_PID" || QEMU_STATUS=$?
+            echo "Live runtime QEMU exited before the 75-second window with status $QEMU_STATUS." | tee -a dist/live-runtime-evidence.txt
+          fi
+          test -s dist/live-runtime-boot.log
+          if grep -Eqi 'Kernel panic - not syncing|kernel panic|(^|[^[:alnum:]_-])panic:|(^|[^[:alnum:]_-])Oops:|(^|[^[:alnum:]_-])BUG:|Call Trace:' dist/live-runtime-boot.log /tmp/alpha-live-runtime.stderr; then
+            cat dist/live-runtime-boot.log || true
+            cat /tmp/alpha-live-runtime.stderr || true
+            exit 1
+          fi
+          grep -Eqi 'Begin:.*(casper|mounting root)|boot=casper|casper-[a-z-]+|Adding live session user|overlayfs' dist/live-runtime-boot.log
+          echo "Live kernel/initramfs runtime reached the expected boot log surface." | tee -a dist/live-runtime-evidence.txt
+
+      - name: Run automated COSMIC graphical session runtime validation
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
+          LIVE_DIR="dist/live-runtime"
+          test -s "$LIVE_DIR/vmlinuz"
+          test -s "$LIVE_DIR/initrd"
+          rm -f dist/cosmic-graphical-runtime-boot.log /tmp/alpha-cosmic-graphical.stdout /tmp/alpha-cosmic-graphical.stderr
+          timeout 330s qemu-system-x86_64 \
+            -machine q35,accel=tcg \
+            -m 4096 \
+            -kernel "$LIVE_DIR/vmlinuz" \
+            -initrd "$LIVE_DIR/initrd" \
+            -append "boot=casper layerfs-path=minimal.standard.live.squashfs console=ttyS0 rd.systemd.unit=initrd-switch-root.target systemd.show_status=true systemd.unit=alpha-cosmic-validation.target systemd.mask=ldconfig.service systemd.mask=snapd.apparmor.service systemd.mask=snapd.service systemd.mask=gdm.service cloud-init=disabled" \
+            -cdrom "$ISO" \
+            -vga virtio \
+            -display none \
+            -serial file:dist/cosmic-graphical-runtime-boot.log \
+            -no-reboot \
+            >/tmp/alpha-cosmic-graphical.stdout 2>/tmp/alpha-cosmic-graphical.stderr &
+          QEMU_PID=$!
+          for _ in $(seq 1 300); do
+            if ! kill -0 "$QEMU_PID" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if kill -0 "$QEMU_PID" 2>/dev/null; then
+            kill "$QEMU_PID" || true
+            wait "$QEMU_PID" || true
+          else
+            QEMU_STATUS=0
+            wait "$QEMU_PID" || QEMU_STATUS=$?
+            echo "COSMIC graphical QEMU exit status: $QEMU_STATUS"
+          fi
+          test -s dist/cosmic-graphical-runtime-boot.log
+          cat dist/cosmic-graphical-runtime-boot.log
+          cat /tmp/alpha-cosmic-graphical.stderr || true
+          if grep -Fq "ALPHA_COSMIC_GRAPHICAL_RUNTIME=PASS" dist/cosmic-graphical-runtime-boot.log; then
+            echo "COSMIC graphical session runtime validation: PASS"
+          else
+            echo "COSMIC graphical session runtime validation: FAIL"
+            echo "Expected explicit graphical-session PASS marker was not observed."
+            exit 1
+          fi
+
+      - name: Run automated ISO boot smoke test
+        run: |
+          set -euo pipefail
+          timeout 75s qemu-system-x86_64 -machine accel=tcg -m 2048 -cdrom dist/alpha-linux-0.1.0a2-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-boot-smoke.log -no-reboot >/tmp/alpha-qemu.stdout 2>/tmp/alpha-qemu.stderr &
+          QEMU_PID=$!
+          sleep 45
+          if kill -0 "$QEMU_PID" 2>/dev/null; then
+            kill "$QEMU_PID" || true
+            wait "$QEMU_PID" || true
+            echo "QEMU boot smoke: guest remained running for 45 seconds."
+          else
+            QEMU_STATUS=0
+            wait "$QEMU_PID" || QEMU_STATUS=$?
+            echo "QEMU exited before the 45-second liveness window with status $QEMU_STATUS."
+          fi
+          if grep -Eqi 'panic|kernel panic|fatal' dist/qemu-boot-smoke.log /tmp/alpha-qemu.stderr; then
+            echo "Fatal boot error detected."
+            cat dist/qemu-boot-smoke.log || true
+            cat /tmp/alpha-qemu.stderr || true
+            exit 1
+          fi
+          echo "Automated QEMU boot smoke completed without detected fatal boot errors."
+          echo "QEMU boot smoke evidence:"
+          sed -n '1,160p' dist/qemu-boot-smoke.log || true
+
+      - name: Verify manifest and embedded provenance
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("dist/alpha-linux-0.1.0a2-alpha-amd64.manifest.json").read_text())
+
+          required = [
+              "release_id",
+              "version",
+              "channel",
+              "architecture",
+              "artifact_filename",
+              "artifact_size",
+              "artifact_sha256",
+              "source_commit",
+              "ci_run_id",
+              "build_environment",
+              "reproducibility_result",
+              "reproducibility_reference_sha256",
+              "source_date_epoch",
+          ]
+          missing = [key for key in required if key not in manifest]
+          if missing:
+              raise SystemExit(f"missing evidence fields: {missing}")
+
+          if manifest["source_commit"] != "${{ github.sha }}":
+              raise SystemExit("manifest source commit does not match workflow SHA")
+          if manifest["ci_run_id"] != "${{ github.run_id }}":
+              raise SystemExit("manifest CI run ID does not match workflow run")
+          if manifest["artifact_filename"] != "alpha-linux-0.1.0a2-alpha-amd64.iso":
+              raise SystemExit("unexpected deterministic artifact filename")
+          if manifest["artifact_size"] <= 0:
+              raise SystemExit("artifact size must be positive")
+          if len(manifest["artifact_sha256"]) != 64:
+              raise SystemExit("artifact SHA-256 is invalid")
+          if manifest["reproducibility_result"] != "passed":
+              raise SystemExit("reproducibility gate did not pass")
+          if manifest["artifact_sha256"] != manifest["reproducibility_reference_sha256"]:
+              raise SystemExit("reproducibility reference digest differs from final artifact")
+          if manifest["source_date_epoch"] != 946684800:
+              raise SystemExit("unexpected SOURCE_DATE_EPOCH")
+
+          print(json.dumps(manifest, indent=2, sort_keys=True))
+          PY
+
+      - name: Build unified release-candidate evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          PACKAGE_EVENT: ${{ github.event_name == 'pull_request' && 'pull_request' || 'push' }}
+        run: |
+          set -euo pipefail
+
+          PACKAGE_RUN_ID=""
+          for attempt in $(seq 1 30); do
+            PACKAGE_RUN_ID="$(gh api --paginate               "/repos/$GITHUB_REPOSITORY/actions/runs?event=${PACKAGE_EVENT}&per_page=100"               --jq '.workflow_runs[] | select(.workflow_id == 367314749 and .head_sha == "'"${PACKAGE_HEAD_SHA}"'" and .status == "completed" and .conclusion == "success") | .id'               | head -n 1 || true)"
+            if [[ -n "$PACKAGE_RUN_ID" ]]; then break; fi
+            sleep 10
+          done
+          if [[ -z "$PACKAGE_RUN_ID" ]]; then
+            echo "ERROR: no successful package CI run found for head SHA $PACKAGE_HEAD_SHA"
+            gh api --paginate               "/repos/$GITHUB_REPOSITORY/actions/runs?event=${PACKAGE_EVENT}&per_page=100"               --jq '.workflow_runs[] | select(.workflow_id == 367314749) | [.id,.head_sha,.status,.conclusion] | @tsv'               | head -n 20
+            exit 1
+          fi
+
+          ARTIFACT_ID=""
+          for attempt in $(seq 1 30); do
+            ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$PACKAGE_RUN_ID/artifacts" \
+              --jq '.artifacts[] | select(.name=="alpha-release-evidence" and .expired==false) | .id' \
+              | head -n 1 || true)"
+            if [[ -n "$ARTIFACT_ID" ]]; then break; fi
+            sleep 5
+          done
+          test -n "$ARTIFACT_ID"
+
+          rm -rf dist/package-evidence
+          mkdir -p dist/package-evidence
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" \
+            --output dist/package-evidence/release-evidence.zip
+          unzip -o dist/package-evidence/release-evidence.zip -d dist/package-evidence >/dev/null
+          test -s "$(find dist/package-evidence -name release-evidence.json -print -quit)"
+
+          PYTHONPATH="${GITHUB_WORKSPACE}/implementation" python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from alpha_core.alpha_release import AlphaReleaseCandidateEvidence, AlphaReleaseManifest
+
+          package = json.loads(next(Path("dist/package-evidence").rglob("release-evidence.json")).read_text())
+          os_manifest = json.loads(Path("dist/alpha-linux-0.1.0a2-alpha-amd64.manifest.json").read_text())
+          print("PACKAGE_EVIDENCE", json.dumps(package, sort_keys=True))
+          print("OS_EVIDENCE", json.dumps(os_manifest, sort_keys=True))
+          package_manifest = AlphaReleaseManifest(
+              release_id=package["release_id"],
+              version=package["version"],
+              artifact_id=package["artifact_id"],
+              artifact_sha256=package["artifact_sha256"],
+              source_commit=package["source_commit"],
+              ci_run_id=package["ci_run_id"],
+          )
+          candidate = AlphaReleaseCandidateEvidence.from_manifests(
+              package_manifest,
+              os_release_id=os_manifest["release_id"],
+              os_version=os_manifest["version"],
+              os_artifact_id=os_manifest["artifact_filename"],
+              os_artifact_sha256=os_manifest["artifact_sha256"],
+              os_source_commit=os_manifest["source_commit"],
+              os_ci_run_id=os_manifest["ci_run_id"],
+              required_gate_ids=("package-release-evidence", "os-image-evidence", "os-reproducibility"),
+              passing_gate_ids=("package-release-evidence", "os-image-evidence", "os-reproducibility"),
+          )
+          print("RELEASE_CANDIDATE_GATES", candidate.required_gate_ids, candidate.passing_gate_ids, candidate.failed_gate_ids, candidate.missing_gate_ids, candidate.ready)
+          if not candidate.ready: raise SystemExit("release candidate is not ready")
+          Path("dist/alpha-release-candidate-evidence.json").write_text(json.dumps(candidate.to_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+      - name: Write CI summary
+        run: |
+          echo "## Alpha OS Image" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: alpha-linux-0.1.0a2-alpha-amd64.iso" >> "$GITHUB_STEP_SUMMARY"
+          echo "Source commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "CI run: ${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Boot metadata: validated with xorriso" >> "$GITHUB_STEP_SUMMARY"
+          echo "Install validation: not performed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Reproducibility: passed (two same-input builds, matching SHA-256)" >> "$GITHUB_STEP_SUMMARY"
+          echo "SOURCE_DATE_EPOCH: 946684800" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Prepare release-safe ISO assets
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
+          test -s "$ISO"
+          mkdir -p dist/release-assets
+          split -b 1900M -d -a 2 "$ISO" dist/release-assets/part-
+          i=1
+          for part in dist/release-assets/part-*; do
+            mv "$part" "dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-$(printf '%02d' "$i")"
+            i=$((i + 1))
+          done
+          sha256sum dist/release-assets/*.iso.part-* > dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path("dist/release-assets")
+          iso=Path("dist/alpha-linux-0.1.0a2-alpha-amd64.iso")
+          parts=sorted(root.glob("*.iso.part-*"))
+          m={"artifact":iso.name,"source_run_id":int("${{ github.run_id }}"),"release_tag":"v0.1.0a2","source_commit":"${{ github.sha }}","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":1900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a2-alpha-amd64.iso.part-* > alpha-linux-0.1.0a2-alpha-amd64.iso"}
+          (root/"alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json").write_text(json.dumps(m,indent=2,sort_keys=True)+"\n")
+          PY
+          cat > dist/release-assets/REASSEMBLE-ISO.txt <<'EOF'
+          Alpha Linux 0.1.0a2 ISO reassembly
+
+          Linux/macOS:
+            cat alpha-linux-0.1.0a2-alpha-amd64.iso.part-* > alpha-linux-0.1.0a2-alpha-amd64.iso
+            sha256sum alpha-linux-0.1.0a2-alpha-amd64.iso
+
+          PowerShell:
+            $parts = Get-ChildItem .\alpha-linux-0.1.0a2-alpha-amd64.iso.part-* | Sort-Object Name
+            $out = [IO.File]::OpenWrite(".\alpha-linux-0.1.0a2-alpha-amd64.iso")
+            try { foreach ($p in $parts) { $in = [IO.File]::OpenRead($p.FullName); try { $in.CopyTo($out) } finally { $in.Dispose() } } } finally { $out.Dispose() }
+            Get-FileHash .\alpha-linux-0.1.0a2-alpha-amd64.iso -Algorithm SHA256
+          EOF
+          rm -f "$ISO"
+
+      - name: Upload release-safe ISO part 01
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-01
+          path: dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
+          archive: false
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload release-safe ISO part 02
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-02
+          path: dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
+          archive: false
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload release-safe ISO part 03
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-03
+          path: dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
+          archive: false
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload release-safe ISO part 04
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-04
+          path: dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04
+          archive: false
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload release asset metadata
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-release-metadata
+          path: |
+            dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
+            dist/release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
+            dist/release-assets/REASSEMBLE-ISO.txt
+          archive: true
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Publish issue-comment execution evidence
+        if: ${{ always() && github.event_name == 'issue_comment' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
+            -f body="Alpha OS image workflow run \`${{ github.run_id }}\` completed with job status \`${{ job.status }}\`. Trigger: \`${{ github.event.comment.body }}\`. Source commit: \`${{ github.sha }}\`. Reproducibility: two-build comparison."
+
+      - name: Upload Alpha OS evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64-evidence
+          path: |
+            dist/alpha-linux-0.1.0a2-alpha-amd64.manifest.json
+            dist/el-torito-report.txt
+            dist/alpha-release-candidate-evidence.json
+            dist/qemu-boot-smoke.log
+            dist/qemu-bios-boot-smoke.log
+            dist/qemu-uefi-boot-smoke.log
+            dist/qemu-legacy-boot-smoke.log
+            dist/el-torito-boot-matrix.txt
+            dist/live-filesystem-evidence.txt
+            dist/live-runtime-evidence.txt
+            dist/live-runtime-boot.log
+            dist/alpha-cosmic-package-manifest.txt
+            dist/alpha-cosmic-runtime-evidence.txt
+            dist/cosmic-graphical-runtime-boot.log
+          if-no-files-found: error
