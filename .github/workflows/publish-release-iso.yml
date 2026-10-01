@@ -75,6 +75,7 @@ jobs:
           fi
           echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
       - name: Download verified ISO artifacts
+        if: steps.gate.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.source.outputs.run_id }}
@@ -111,6 +112,7 @@ jobs:
           test -f release-assets/REASSEMBLE-ISO.txt
 
       - name: Upload ISO parts
+        if: steps.gate.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -118,6 +120,7 @@ jobs:
           gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04             --clobber
 
       - name: Upload release metadata
+        if: steps.gate.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -125,6 +128,7 @@ jobs:
           gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json             release-assets/REASSEMBLE-ISO.txt             --clobber
 
       - name: Publish prerelease
+        if: steps.gate.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --draft=false --prerelease
