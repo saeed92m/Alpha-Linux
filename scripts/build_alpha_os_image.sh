@@ -193,7 +193,7 @@ timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR
 
 echo "Installing COSMIC and validating dpkg state inside the build chroot"
 set +e
-timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get install -y cosmic-session
+timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get install -y cosmic-session zenity rsync gdisk dosfstools e2fsprogs grub-efi-amd64 efibootmgr pkexec
 APT_INSTALL_STATUS=$?
 set -e
 
@@ -210,6 +210,23 @@ if [[ "${APT_INSTALL_STATUS}" -ne 0 ]]; then
   echo "apt-get returned ${APT_INSTALL_STATUS}, but cosmic-session is configured; continuing with explicit runtime validation."
 fi
 
+INSTALLER_SOURCE="${GITHUB_WORKSPACE:-.}/scripts/alpha-live-installer.sh"
+test -f "${INSTALLER_SOURCE}"
+sudo install -D -m 0755 "${INSTALLER_SOURCE}" "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-live-installer.sh"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/usr/share/applications"
+sudo tee "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop" >/dev/null <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=Alpha Linux Installer
+Comment=Install Alpha Linux to a dedicated empty disk
+Exec=pkexec /usr/local/sbin/alpha-live-installer.sh
+Icon=system-software-install
+Terminal=false
+Categories=System;Settings;
+DESKTOP
+sudo chmod 0644 "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop"
+sudo test -x "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-live-installer.sh"
+sudo test -f "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop"
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean || true
 sudo rm -rf "${OVERLAY_ROOTFS_DIR}/var/lib/apt/lists/"*
 
