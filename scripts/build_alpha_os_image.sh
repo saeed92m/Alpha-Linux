@@ -193,7 +193,7 @@ timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR
 
 echo "Installing COSMIC and validating dpkg state inside the build chroot"
 set +e
-timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get install -y cosmic-session zenity rsync gdisk dosfstools e2fsprogs grub-efi-amd64 efibootmgr policykit-1
+timeout 20m sudo env DEBIAN_FRONTEND=noninteractive chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get install -y cosmic-session zenity rsync gdisk dosfstools e2fsprogs grub-efi-amd64 efibootmgr pkexec
 APT_INSTALL_STATUS=$?
 set -e
 
