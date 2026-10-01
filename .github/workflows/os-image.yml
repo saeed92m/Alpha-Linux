@@ -371,7 +371,7 @@ jobs:
           echo "SOURCE_DATE_EPOCH: 946684800" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Prepare release-safe ISO assets
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment'
         run: |
           set -euo pipefail
           ISO="dist/alpha-linux-0.1.0a2-alpha-amd64.iso"
@@ -409,7 +409,7 @@ jobs:
           rm -f "$ISO"
 
       - name: Upload release-safe ISO part 01
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-01
@@ -419,7 +419,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release-safe ISO part 02
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-02
@@ -429,7 +429,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release-safe ISO part 03
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-03
@@ -439,7 +439,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release-safe ISO part 04
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-iso-part-04
@@ -449,7 +449,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release asset metadata
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issue_comment'
         uses: actions/upload-artifact@v7
         with:
           name: alpha-linux-0.1.0a2-alpha-amd64-release-metadata
