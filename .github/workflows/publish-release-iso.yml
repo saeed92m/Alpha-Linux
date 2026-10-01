@@ -114,7 +114,7 @@ jobs:
         with:
           run-id: ${{ steps.source.outputs.run_id }}
           github-token: ${{ github.token }}
-          pattern: alpha-linux-0.1.0a2-alpha-amd64-*
+          pattern: *
           path: release-assets
           merge-multiple: true
 
