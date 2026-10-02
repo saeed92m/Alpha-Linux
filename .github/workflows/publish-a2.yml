@@ -1,6 +1,10 @@
 name: Alpha A2 Release Publisher
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/a2-publish.trigger"
   workflow_run:
     workflows:
       - .github/workflows/alpha-os-image-final.yml
