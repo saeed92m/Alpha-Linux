@@ -6,7 +6,7 @@ REPO="${GITHUB_REPOSITORY}"
 
 echo "A2 target commit: $TARGET_SHA"
 
-OS_READY="$(gh api "/repos/$REPO/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha OS Image Final" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+OS_READY="$(gh api "/repos/$REPO/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
 CI_READY="$(gh api "/repos/$REPO/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha Linux CI/CD" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
 test -n "$OS_READY"
 test -n "$CI_READY"
@@ -20,7 +20,7 @@ while IFS= read -r candidate; do
     RUN_ID="$candidate"
     break
   fi
-done < <(gh api "/repos/$REPO/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha OS Image Final" and .event=="push" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id')
+done < <(gh api "/repos/$REPO/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .event=="push" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id')
 test -n "$RUN_ID"
 echo "Selected OS image run: $RUN_ID"
 
