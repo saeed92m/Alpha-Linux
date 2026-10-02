@@ -48,7 +48,7 @@ jobs:
       - name: Download verified A2 artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: alpha-linux-0.1.0a2-alpha-amd64-*
+          pattern: alpha-linux-0.1.0a2-alpha-amd64*
           path: release-assets
           merge-multiple: true
           github-token: ${{ github.token }}
