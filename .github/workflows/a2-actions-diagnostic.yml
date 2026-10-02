@@ -1,0 +1,10 @@
+name: A2 Actions Diagnostic
+
+on:
+  push:
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "A2 Actions diagnostic OK"
