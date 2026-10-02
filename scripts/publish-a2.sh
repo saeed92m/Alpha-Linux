@@ -21,6 +21,12 @@ done
 
 ls -lh "$ASSET_DIR"
 
+CURRENT_TAG_SHA="$(gh api "/repos/$REPO/git/ref/tags/v0.1.0a2" --jq '.object.sha' 2>/dev/null || true)"
+if [[ -n "$CURRENT_TAG_SHA" && "$CURRENT_TAG_SHA" != "$TARGET_SHA" ]]; then
+  echo "Existing A2 tag points to $CURRENT_TAG_SHA; deleting release+tag so it can be recreated at the exact target."
+  gh release delete v0.1.0a2 -R "$REPO" --cleanup-tag --yes
+fi
+
 gh release view v0.1.0a2 -R "$REPO" >/dev/null 2>&1 ||   gh release create v0.1.0a2 -R "$REPO" --target "$TARGET_SHA" --title "Alpha Linux v0.1.0a2" --prerelease
 
 gh release edit v0.1.0a2 -R "$REPO" --target "$TARGET_SHA" --prerelease
