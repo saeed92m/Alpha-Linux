@@ -34,7 +34,7 @@ jobs:
           CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
+          TARGET_SHA="f645750f8c0de86c87b9344efeee659c7e65bad4"
           if [[ "${EVENT_NAME}" == "issue_comment" ]]; then
             TAG_REF_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha' 2>/dev/null || true)"
             TAG_REF_TYPE="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.type' 2>/dev/null || true)"
@@ -104,8 +104,8 @@ jobs:
         run: |
           set -euo pipefail
           TARGET_SHA="${{ steps.gate.outputs.target_sha }}"
-          gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --title "Alpha Linux v0.1.0a2" --prerelease
-          gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --prerelease
+          gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "f645750f8c0de86c87b9344efeee659c7e65bad4" --title "Alpha Linux v0.1.0a2" --prerelease
+          gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "f645750f8c0de86c87b9344efeee659c7e65bad4" --prerelease
 
       - name: Download verified ISO artifacts
         if: steps.gate.outputs.ready == 'true'
@@ -124,9 +124,28 @@ jobs:
             test -n "$ARTIFACT_ID"
             rm -rf "_artifact" && mkdir -p "_artifact"
             curl --fail --location --retry 5 --retry-delay 3               -H "Authorization: Bearer $GH_TOKEN"               -H "Accept: application/vnd.github+json"               "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/${ARTIFACT_ID}/zip"               --output "_artifact/artifact.zip"
-            unzip -t "_artifact/artifact.zip" >/dev/null
-            unzip -oq "_artifact/artifact.zip" -d "_artifact/extracted"
-            find "_artifact/extracted" -maxdepth 2 -type f -exec cp -f {} release-assets/ \;
+            python3 - "_artifact/artifact.zip" <<'PY'
+import sys, zipfile
+from pathlib import Path
+archive=sys.argv[1]
+out=Path("_artifact/extracted")
+out.mkdir(parents=True, exist_ok=True)
+with zipfile.ZipFile(archive) as z:
+    bad=z.testzip()
+    if bad:
+        raise SystemExit(f"corrupt zip member: {bad}")
+    for info in z.infolist():
+        if info.is_dir():
+            continue
+        target=out / Path(info.filename).name
+        with z.open(info) as src, target.open("wb") as dst:
+            while True:
+                chunk=src.read(16*1024*1024)
+                if not chunk:
+                    break
+                dst.write(chunk)
+PY
+            find "_artifact/extracted" -maxdepth 1 -type f -exec cp -f {} release-assets/ \;
           done
           rm -rf "_artifact"
           ls -lah release-assets
@@ -164,4 +183,4 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "${{ steps.gate.outputs.target_sha }}" --draft=false --prerelease
+        run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "f645750f8c0de86c87b9344efeee659c7e65bad4" --draft=false --prerelease
