@@ -46,7 +46,7 @@ jobs:
           echo "Selected artifact source run: $RUN_ID"
 
       - name: Download verified A2 artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: alpha-linux-0.1.0a2-alpha-amd64*
           path: release-assets
