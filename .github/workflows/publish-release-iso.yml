@@ -13,7 +13,6 @@ permissions:
 
 jobs:
   publish:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
     name: Publish verified split ISO assets
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -22,25 +21,9 @@ jobs:
         id: gate
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
-          EVENT_WORKFLOW: ${{ github.event.workflow_run.name }}
-          EVENT_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
-          CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           TARGET_SHA="f645750f8c0de86c87b9344efeee659c7e65bad4"
-          if [[ "${EVENT_NAME}" == "issue_comment" ]]; then
-            TAG_REF_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha' 2>/dev/null || true)"
-            TAG_REF_TYPE="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.type' 2>/dev/null || true)"
-            if [[ "$TAG_REF_TYPE" == "tag" ]]; then
-              TARGET_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/tags/$TAG_REF_SHA" --jq '.object.sha' 2>/dev/null || true)"
-            else
-              TARGET_SHA="$TAG_REF_SHA"
-            fi
-            if [[ -z "$TARGET_SHA" ]]; then echo "A2 tag v0.1.0a2 cannot be resolved to a commit; publication is fail-closed." >&2; exit 1; fi
-            echo "Manual A2 publication is bound to v0.1.0a2 commit $TARGET_SHA"
-          fi
           echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
           if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
             if [[ "${EVENT_SHA}" != "${TARGET_SHA}" ]]; then
