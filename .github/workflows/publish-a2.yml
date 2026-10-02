@@ -1,0 +1,26 @@
+name: Alpha A2 Release Publisher
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/a2-publish.trigger"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish verified A2 split ISO
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish A2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/publish-a2.sh
