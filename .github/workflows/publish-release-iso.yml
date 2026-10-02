@@ -5,16 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/a2-publish.trigger"
-  workflow_run:
-    workflows:
-      - "Alpha OS Image Final"
-      - ".github/workflows/alpha-os-image-final.yml"
-      - "Alpha Linux CI/CD"
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
-  issue_comment:
-    types: [created]
 
 permissions:
   contents: write
@@ -22,7 +13,7 @@ permissions:
 
 jobs:
   publish:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_run' || (github.event_name == 'push') || (github.event_name == 'issue_comment' && github.event.issue.pull_request == null && github.event.issue.number == 158 && github.event.comment.body == '/publish-a2' && github.event.comment.user.login == 'saeed92m') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
     name: Publish verified split ISO assets
     runs-on: ubuntu-latest
     timeout-minutes: 90
