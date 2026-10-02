@@ -1,11 +1,23 @@
 name: Alpha A2 Release Publisher
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/a2-publish.trigger"
+  workflow_run:
+    workflows:
+      - Alpha OS Image Final
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Validated Alpha OS source commit
+        required: true
+        type: string
+      os_run_id:
+        description: Successful Alpha OS Image Final run ID
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -14,41 +26,32 @@ permissions:
 jobs:
   publish:
     name: Publish verified A2 split ISO
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.target_sha }}
 
-      - name: Resolve verified A2 OS image run
+      - name: Resolve verified source runs
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          TARGET_SHA: ${{ github.sha }}
+          TARGET_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.target_sha }}
+          OS_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.os_run_id }}
         run: |
           set -euo pipefail
           echo "Target source SHA: $TARGET_SHA"
-          OS_READY=""
-          CI_READY=""
-          for attempt in $(seq 1 60); do
-            OS_READY="$(gh api "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
-            CI_READY="$(gh api "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha Linux CI/CD" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
-            if [[ -n "$OS_READY" && -n "$CI_READY" ]]; then break; fi
-            echo "Waiting for verified dependencies: OS='$OS_READY' CI='$CI_READY' (attempt $attempt/60)"
-            sleep 30
-          done
-          test -n "$OS_READY"
+          gh api "/repos/$REPOSITORY/actions/runs/$OS_RUN_ID" --jq 'select(.status=="completed" and .conclusion=="success" and .head_sha=="'"$TARGET_SHA"'") | .id' | grep -qx "$OS_RUN_ID"
+          CI_READY="$(gh api --paginate "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.workflow_id == 367314749 and .head_sha == "'"$TARGET_SHA"'" and .status == "completed" and .conclusion == "success") | .id' | head -n 1 || true)"
           test -n "$CI_READY"
-          RUN_ID=""
-          for candidate in $OS_READY; do
-            count="$(gh api "/repos/$REPOSITORY/actions/runs/$candidate/artifacts" --jq '.total_count' 2>/dev/null || echo 0)"
-            if [[ "$count" -ge 6 ]]; then RUN_ID="$candidate"; break; fi
-          done
-          test -n "$RUN_ID"
-          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-          echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
-          echo "Selected verified OS artifact run: $RUN_ID"
+          COUNT="$(gh api "/repos/$REPOSITORY/actions/runs/$OS_RUN_ID/artifacts" --jq '.total_count')"
+          test "$COUNT" -ge 6
+          echo "run_id=$OS_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "ci_run_id=$CI_READY" >> "$GITHUB_OUTPUT"
 
       - name: Download verified A2 artifacts
         uses: actions/download-artifact@v4
@@ -60,14 +63,15 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ steps.source.outputs.run_id }}
 
-      - name: Verify split ISO assets are complete
+      - name: Verify split ISO assets
         run: |
           set -euo pipefail
-          test -s release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
-          test -s release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
-          test -s release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
-          test -s release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
-          test -s release-assets/REASSEMBLE-ISO.txt
+          find release-assets -maxdepth 3 -type f -print
+          test -n "$(find release-assets -type f -name 'alpha-linux-0.1.0a2-alpha-amd64.iso.part-01' -print -quit)"
+          test -n "$(find release-assets -type f -name 'alpha-linux-0.1.0a2-alpha-amd64.iso.part-02' -print -quit)"
+          test -n "$(find release-assets -type f -name 'alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256' -print -quit)"
+          test -n "$(find release-assets -type f -name 'alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json' -print -quit)"
+          test -n "$(find release-assets -type f -name 'REASSEMBLE-ISO.txt' -print -quit)"
 
       - name: Publish A2 release
         env:
