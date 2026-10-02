@@ -1,0 +1,171 @@
+name: Publish Alpha OS Release Assets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/a2-publish.trigger"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish verified split ISO assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Release dependency gate
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="f645750f8c0de86c87b9344efeee659c7e65bad4"
+          echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
+            if [[ "${EVENT_SHA}" != "${TARGET_SHA}" ]]; then
+              echo "Ignoring workflow_run for unrelated SHA ${EVENT_SHA}; A2 publisher is bound to ${TARGET_SHA}."
+              echo "ready=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if [[ "${EVENT_CONCLUSION}" != "success" ]]; then
+              echo "Target A2 dependency workflow ${EVENT_WORKFLOW} failed; release publication is fail-closed."
+              exit 1
+            fi
+          fi
+          OS_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha OS Image Final" and .head_sha=="'"$TARGET_SHA"'" ) | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          CI_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha Linux CI/CD" and .head_sha=="'"$TARGET_SHA"'" ) | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          echo "TARGET_SHA=$TARGET_SHA"
+          echo "OS_READY=$OS_READY"
+          echo "CI_READY=$CI_READY"
+          if [[ -n "$OS_READY" && -n "$CI_READY" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Release dependency gate: PASS"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Release dependency gate: NOT READY; no wait/retry loop."
+          fi
+
+      - name: Resolve source OS image run
+        id: source
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_WORKFLOW: ${{ github.event.workflow_run.name }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="${{ steps.gate.outputs.target_sha }}"
+          if [[ "${EVENT_NAME}" == "workflow_run" && ( "${EVENT_WORKFLOW:-}" == "Alpha OS Image Final" || "${EVENT_WORKFLOW:-}" == ".github/workflows/alpha-os-image-final.yml" ) && -n "${EVENT_RUN_ID:-}" ]]; then
+            echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          RUN_ID=""
+          while IFS= read -r CANDIDATE_ID; do
+            [[ -z "$CANDIDATE_ID" ]] && continue
+            ARTIFACT_COUNT="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/${CANDIDATE_ID}/artifacts" --jq '.total_count' 2>/dev/null || echo 0)"
+            if [[ "${ARTIFACT_COUNT}" -ge 6 ]]; then
+              RUN_ID="$CANDIDATE_ID"
+              break
+            fi
+          done < <(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha OS Image Final" and .event=="push" and .head_sha=="'"$TARGET_SHA"'" ) | select(.status=="completed" and .conclusion=="success") | .id')
+          if [[ -z "${RUN_ID}" ]]; then
+            echo "No successful push-triggered Alpha OS Image run with complete A2 artifact set found for ${TARGET_SHA}" >&2
+            exit 1
+          fi
+          echo "Selected verified OS image run: ${RUN_ID}"
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure A2 release exists and is bound to target SHA
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="${{ steps.gate.outputs.target_sha }}"
+          gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "f645750f8c0de86c87b9344efeee659c7e65bad4" --title "Alpha Linux v0.1.0a2" --prerelease
+          gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "f645750f8c0de86c87b9344efeee659c7e65bad4" --prerelease
+
+      - name: Download verified ISO artifacts
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-assets _artifact
+          mkdir -p release-assets
+          RUN_ID="${{ steps.source.outputs.run_id }}"
+          for ARTIFACT in             alpha-linux-0.1.0a2-alpha-amd64.iso.part-01             alpha-linux-0.1.0a2-alpha-amd64.iso.part-02             alpha-linux-0.1.0a2-alpha-amd64.iso.part-03             alpha-linux-0.1.0a2-alpha-amd64.iso.part-04             alpha-linux-0.1.0a2-alpha-amd64-release-metadata             alpha-linux-0.1.0a2-alpha-amd64-evidence
+          do
+            echo "Downloading verified artifact: $ARTIFACT"
+            ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/${RUN_ID}/artifacts" --paginate --jq '.artifacts[] | select(.name=="'"$ARTIFACT"'" and .expired==false) | .id' | head -n 1)"
+            test -n "$ARTIFACT_ID"
+            rm -rf "_artifact" && mkdir -p "_artifact"
+            curl --fail --location --retry 5 --retry-delay 3               -H "Authorization: Bearer $GH_TOKEN"               -H "Accept: application/vnd.github+json"               "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/${ARTIFACT_ID}/zip"               --output "_artifact/artifact.zip"
+            python3 - "_artifact/artifact.zip" <<'PY'
+import sys, zipfile
+from pathlib import Path
+archive=sys.argv[1]
+out=Path("_artifact/extracted")
+out.mkdir(parents=True, exist_ok=True)
+with zipfile.ZipFile(archive) as z:
+    bad=z.testzip()
+    if bad:
+        raise SystemExit(f"corrupt zip member: {bad}")
+    for info in z.infolist():
+        if info.is_dir():
+            continue
+        target=out / Path(info.filename).name
+        with z.open(info) as src, target.open("wb") as dst:
+            while True:
+                chunk=src.read(16*1024*1024)
+                if not chunk:
+                    break
+                dst.write(chunk)
+PY
+            find "_artifact/extracted" -maxdepth 1 -type f -exec cp -f {} release-assets/ \;
+          done
+          rm -rf "_artifact"
+          ls -lah release-assets
+
+      - name: Validate downloaded release assets
+        if: steps.gate.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
+          test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
+          test -f release-assets/REASSEMBLE-ISO.txt
+
+      - name: Upload ISO parts
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04             --clobber
+
+      - name: Upload release metadata
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release upload v0.1.0a2 -R "$GITHUB_REPOSITORY"             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256             release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json             release-assets/REASSEMBLE-ISO.txt             --clobber
+
+      - name: Publish prerelease
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "f645750f8c0de86c87b9344efeee659c7e65bad4" --draft=false --prerelease
