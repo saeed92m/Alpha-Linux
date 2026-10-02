@@ -44,7 +44,14 @@ for artifact in "${artifacts[@]}"; do
   test -n "$id"
   rm -rf .a2-artifact/extracted
   mkdir -p .a2-artifact/extracted
-  curl --fail --location --retry 5 --retry-delay 3     -H "Authorization: Bearer $GH_TOKEN"     -H "Accept: application/vnd.github+json"     "https://api.github.com/repos/$REPO/actions/artifacts/$id/zip"     --output .a2-artifact/artifact.zip
+  rm -f .a2-artifact/headers .a2-artifact/artifact.zip
+  curl --fail --retry 5 --retry-delay 3 -D .a2-artifact/headers -o /dev/null \
+    -H "Authorization: Bearer $GH_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/$REPO/actions/artifacts/$id/zip"
+  DOWNLOAD_URL="$(awk 'BEGIN{IGNORECASE=1} /^location:/{sub(/\r$/, "", $2); print $2}' .a2-artifact/headers | tail -n 1)"
+  test -n "$DOWNLOAD_URL"
+  curl --fail --location --retry 5 --retry-delay 3 "$DOWNLOAD_URL" --output .a2-artifact/artifact.zip
   python3 - .a2-artifact/artifact.zip <<'PY'
 import sys, zipfile
 from pathlib import Path
