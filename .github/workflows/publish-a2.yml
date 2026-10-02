@@ -1,11 +1,23 @@
 name: Alpha A2 Release Publisher
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/a2-publish.trigger"
+  workflow_run:
+    workflows:
+      - Alpha OS Image Final
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Validated Alpha OS source commit
+        required: true
+        type: string
+      os_run_id:
+        description: Successful Alpha OS Image Final run ID
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -14,48 +26,64 @@ permissions:
 jobs:
   publish:
     name: Publish verified A2 split ISO
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
-      - name: Checkout
+      - name: Checkout verified source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.target_sha }}
 
-      - name: Resolve verified A2 OS image run
+      - name: Resolve verified source runs
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
+          TARGET_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.target_sha }}
+          OS_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.os_run_id }}
         run: |
           set -euo pipefail
-          TARGET_SHA="f645750f8c0de86c87b9344efeee659c7e65bad4"
-          OS_READY="$(gh api "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
-          CI_READY="$(gh api "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha Linux CI/CD" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
-          test -n "$OS_READY"
+          echo "Target source SHA: $TARGET_SHA"
+          gh api "/repos/$REPOSITORY/actions/runs/$OS_RUN_ID"             --jq 'select(.status=="completed" and .conclusion=="success" and .head_sha=="'"$TARGET_SHA"'") | .id'             | grep -qx "$OS_RUN_ID"
+
+          CI_READY="$(gh api --paginate "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100"             --jq '.workflow_runs[] | select(.workflow_id == 367314749 and .head_sha == "'"$TARGET_SHA"'" and .status == "completed" and .conclusion == "success") | .id'             | head -n 1 || true)"
           test -n "$CI_READY"
-          RUN_ID=""
-          while IFS= read -r candidate; do
-            [[ -z "$candidate" ]] && continue
-            count="$(gh api "/repos/$REPOSITORY/actions/runs/$candidate/artifacts" --jq '.total_count' 2>/dev/null || echo 0)"
-            if [[ "$count" -ge 6 ]]; then RUN_ID="$candidate"; break; fi
-          done < <(gh api "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .event=="push" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id')
-          test -n "$RUN_ID"
-          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+          COUNT="$(gh api "/repos/$REPOSITORY/actions/runs/$OS_RUN_ID/artifacts" --jq '.total_count')"
+          test "$COUNT" -ge 6
+
+          echo "run_id=$OS_RUN_ID" >> "$GITHUB_OUTPUT"
           echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
-          echo "OS dependency: $OS_READY"
-          echo "CI dependency: $CI_READY"
-          echo "Selected artifact source run: $RUN_ID"
+          echo "ci_run_id=$CI_READY" >> "$GITHUB_OUTPUT"
 
       - name: Download verified A2 artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
-          pattern: alpha-linux-0.1.0a2-alpha-amd64*
+          pattern: alpha-linux-0.1.0a2-alpha-amd64-*
           path: release-assets
           merge-multiple: true
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: ${{ steps.source.outputs.run_id }}
 
+      - name: Verify split ISO assets
+        run: |
+          set -euo pipefail
+          find release-assets -type f -print
+          for f in \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-01 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-02 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-03 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-04 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json \
+            REASSEMBLE-ISO.txt; do
+            test -n "$(find release-assets -type f -name "$f" -print -quit)"
+          done
+
       - name: Publish A2 release
         env:
           GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ steps.source.outputs.target_sha }}
         run: bash scripts/publish-a2.sh

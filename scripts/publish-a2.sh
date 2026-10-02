@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TARGET_SHA="f645750f8c0de86c87b9344efeee659c7e65bad4"
+TARGET_SHA="${TARGET_SHA:?TARGET_SHA must be supplied by the verified publisher workflow}"
 REPO="${GITHUB_REPOSITORY}"
 ASSET_DIR="release-assets"
 
