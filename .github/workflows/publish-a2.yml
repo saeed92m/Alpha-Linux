@@ -3,7 +3,7 @@ name: Alpha A2 Release Publisher
 on:
   workflow_run:
     workflows:
-      - Alpha OS Image Final
+      - .github/workflows/alpha-os-image-final.yml
     types:
       - completed
     branches:
