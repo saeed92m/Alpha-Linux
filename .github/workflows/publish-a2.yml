@@ -1,4 +1,5 @@
 name: Alpha A2 Release Publisher
+# Publication is driven by the verified OS-image workflow, not a stale source SHA.
 
 on:
   workflow_run:
