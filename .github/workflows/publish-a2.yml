@@ -7,7 +7,7 @@ on:
       - ".github/a2-publish.trigger"
   workflow_run:
     workflows:
-      - .github/workflows/alpha-os-image-final.yml
+      - Alpha OS Image Final
     types:
       - completed
     branches:
