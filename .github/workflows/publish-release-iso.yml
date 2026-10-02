@@ -36,17 +36,23 @@ jobs:
           set -euo pipefail
           TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
           if [[ "${EVENT_NAME}" == "issue_comment" ]]; then
-            TARGET_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha' 2>/dev/null || true)"
-            if [[ -z "$TARGET_SHA" ]]; then echo "A2 tag v0.1.0a2 is not available; manual publication is fail-closed." >&2; exit 1; fi
-            echo "Manual A2 publication is bound to release tag v0.1.0a2 at $TARGET_SHA"
+            TAG_REF_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha' 2>/dev/null || true)"
+            TAG_REF_TYPE="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.type' 2>/dev/null || true)"
+            if [[ "$TAG_REF_TYPE" == "tag" ]]; then
+              TARGET_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/tags/$TAG_REF_SHA" --jq '.object.sha' 2>/dev/null || true)"
+            else
+              TARGET_SHA="$TAG_REF_SHA"
+            fi
+            if [[ -z "$TARGET_SHA" ]]; then echo "A2 tag v0.1.0a2 cannot be resolved to a commit; publication is fail-closed." >&2; exit 1; fi
+            echo "Manual A2 publication is bound to v0.1.0a2 commit $TARGET_SHA"
           fi
           echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
           if [[ "${EVENT_NAME}" == "workflow_run" && "${EVENT_CONCLUSION}" != "success" ]]; then
             echo "Triggering workflow ${EVENT_WORKFLOW} did not succeed; release publication is fail-closed."
             exit 1
           fi
-          OS_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
-          CI_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha Linux CI/CD" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          OS_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'" ) | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          CI_READY="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha Linux CI/CD" and .head_sha=="'"$TARGET_SHA"'" ) | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
           echo "TARGET_SHA=$TARGET_SHA"
           echo "OS_READY=$OS_READY"
           echo "CI_READY=$CI_READY"
@@ -70,8 +76,7 @@ jobs:
           CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          TARGET_SHA="${EVENT_SHA:-$CURRENT_SHA}"
-          if [[ "${EVENT_NAME}" == "issue_comment" ]]; then TARGET_SHA="${{ steps.gate.outputs.target_sha }}"; fi
+          TARGET_SHA="${{ steps.gate.outputs.target_sha }}"
           if [[ "${EVENT_NAME}" == "workflow_run" && ( "${EVENT_WORKFLOW:-}" == "Alpha OS Image Final" || "${EVENT_WORKFLOW:-}" == ".github/workflows/alpha-os-image-final.yml" ) && -n "${EVENT_RUN_ID:-}" ]]; then
             echo "run_id=${EVENT_RUN_ID}" >> "$GITHUB_OUTPUT"
             exit 0
@@ -84,39 +89,23 @@ jobs:
               RUN_ID="$CANDIDATE_ID"
               break
             fi
-          done < <(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .event=="push" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id')
+          done < <(gh api "/repos/$GITHUB_REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .event=="push" and .head_sha=="'"$TARGET_SHA"'" ) | select(.status=="completed" and .conclusion=="success") | .id')
           if [[ -z "${RUN_ID}" ]]; then
             echo "No successful push-triggered Alpha OS Image run with complete A2 artifact set found for ${TARGET_SHA}" >&2
             exit 1
           fi
           echo "Selected verified OS image run: ${RUN_ID}"
           echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+
       - name: Ensure A2 release exists and is bound to target SHA
         if: steps.gate.outputs.ready == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
-          CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           TARGET_SHA="${{ steps.gate.outputs.target_sha }}"
-          if gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            if TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha' 2>/dev/null)"; then
-              if [[ "$TAG_SHA" != "$TARGET_SHA" ]]; then
-                echo "Existing draft v0.1.0a2 tag is bound to $TAG_SHA; rebinding it to verified target $TARGET_SHA."
-                gh api --method PATCH "/repos/$GITHUB_REPOSITORY/git/refs/tags/v0.1.0a2" -f sha="$TARGET_SHA" -F force=true >/dev/null
-              fi
-              FINAL_TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/v0.1.0a2" --jq '.object.sha')"
-              test "$FINAL_TAG_SHA" = "$TARGET_SHA"
-            else
-              echo "Draft v0.1.0a2 has no tag ref yet; binding its release target to $TARGET_SHA before publication."
-              gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --prerelease
-            fi
-            echo "A2 draft release is bound to verified target $TARGET_SHA."
-          else
-            gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --title "Alpha Linux v0.1.0a2" --notes "Alpha Linux 0.1.0a2 prerelease. Publication is bound to the exact main commit after successful package CI and OS-image evidence gates." --prerelease
-            echo "Created v0.1.0a2 bound to $TARGET_SHA."
-          fi
+          gh release view v0.1.0a2 -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --title "Alpha Linux v0.1.0a2" --prerelease
+          gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --prerelease
 
       - name: Download verified ISO artifacts
         if: steps.gate.outputs.ready == 'true'
@@ -125,25 +114,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf release-assets
+          rm -rf release-assets _artifact
           mkdir -p release-assets
           RUN_ID="${{ steps.source.outputs.run_id }}"
-          for ARTIFACT in \
-            alpha-linux-0.1.0a2-alpha-amd64.iso.part-01 \
-            alpha-linux-0.1.0a2-alpha-amd64.iso.part-02 \
-            alpha-linux-0.1.0a2-alpha-amd64.iso.part-03 \
-            alpha-linux-0.1.0a2-alpha-amd64.iso.part-04 \
-            alpha-linux-0.1.0a2-alpha-amd64-release-metadata \
-            alpha-linux-0.1.0a2-alpha-amd64-evidence
+          for ARTIFACT in             alpha-linux-0.1.0a2-alpha-amd64.iso.part-01             alpha-linux-0.1.0a2-alpha-amd64.iso.part-02             alpha-linux-0.1.0a2-alpha-amd64.iso.part-03             alpha-linux-0.1.0a2-alpha-amd64.iso.part-04             alpha-linux-0.1.0a2-alpha-amd64-release-metadata             alpha-linux-0.1.0a2-alpha-amd64-evidence
           do
-            echo "Downloading verified artifact: ${ARTIFACT}"
-            rm -rf "_artifact"
-            gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n "$ARTIFACT" -D "_artifact"
-            find "_artifact" -maxdepth 2 -type f -exec cp -f {} release-assets/ \;
+            echo "Downloading verified artifact: $ARTIFACT"
+            ARTIFACT_ID="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/${RUN_ID}/artifacts" --paginate --jq '.artifacts[] | select(.name=="'"$ARTIFACT"'" and .expired==false) | .id' | head -n 1)"
+            test -n "$ARTIFACT_ID"
+            rm -rf "_artifact" && mkdir -p "_artifact"
+            curl --fail --location --retry 5 --retry-delay 3               -H "Authorization: Bearer $GH_TOKEN"               -H "Accept: application/vnd.github+json"               "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/${ARTIFACT_ID}/zip"               --output "_artifact/artifact.zip"
+            unzip -t "_artifact/artifact.zip" >/dev/null
+            unzip -oq "_artifact/artifact.zip" -d "_artifact/extracted"
+            find "_artifact/extracted" -maxdepth 2 -type f -exec cp -f {} release-assets/ \;
           done
           rm -rf "_artifact"
-          echo "Downloaded release assets:"
           ls -lah release-assets
+
       - name: Validate downloaded release assets
         if: steps.gate.outputs.ready == 'true'
         shell: bash
@@ -156,6 +143,7 @@ jobs:
           test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
           test -f release-assets/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
           test -f release-assets/REASSEMBLE-ISO.txt
+
       - name: Upload ISO parts
         if: steps.gate.outputs.ready == 'true'
         env:
@@ -177,5 +165,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit v0.1.0a2 -R "$GITHUB_REPOSITORY" --target "${{ steps.gate.outputs.target_sha }}" --draft=false --prerelease
-
-# A2 publisher gate hardening: direct Actions API run discovery.
