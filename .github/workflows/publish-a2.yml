@@ -20,7 +20,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Publish A2
+      - name: Resolve verified A2 OS image run
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TARGET_SHA="f645750f8c0de86c87b9344efeee659c7e65bad4"
+          OS_READY="$(gh api "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          CI_READY="$(gh api "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name=="Alpha Linux CI/CD" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id' | head -n 1 || true)"
+          test -n "$OS_READY"
+          test -n "$CI_READY"
+          RUN_ID=""
+          while IFS= read -r candidate; do
+            [[ -z "$candidate" ]] && continue
+            count="$(gh api "/repos/$REPOSITORY/actions/runs/$candidate/artifacts" --jq '.total_count' 2>/dev/null || echo 0)"
+            if [[ "$count" -ge 6 ]]; then RUN_ID="$candidate"; break; fi
+          done < <(gh api "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100" --jq '.workflow_runs[] | select(.name==".github/workflows/alpha-os-image-final.yml" and .event=="push" and .head_sha=="'"$TARGET_SHA"'") | select(.status=="completed" and .conclusion=="success") | .id')
+          test -n "$RUN_ID"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+          echo "OS dependency: $OS_READY"
+          echo "CI dependency: $CI_READY"
+          echo "Selected artifact source run: $RUN_ID"
+
+      - name: Download verified A2 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: alpha-linux-0.1.0a2-alpha-amd64-*
+          path: release-assets
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+
+      - name: Publish A2 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/publish-a2.sh
