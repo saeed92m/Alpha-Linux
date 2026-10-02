@@ -1,1 +1,1 @@
-A2 release publication trigger sentinel v8.
+A2 release publication trigger sentinel v10.
