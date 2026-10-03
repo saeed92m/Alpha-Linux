@@ -111,69 +111,45 @@ jobs:
           echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
           echo "ci_run_id=$CI_READY" >> "$GITHUB_OUTPUT"
 
-      - name: Download verified artifact 1
-        uses: actions/download-artifact@v4
-        with:
-          name: alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
-          path: release-assets
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.source.outputs.run_id }}
+      - name: Download and integrity-check verified A2 artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          OS_RUN_ID: ${{ steps.source.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          for NAME in \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-01" \\
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-02" \\
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-03" \\
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-04" \\
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256" \\
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json" \\
+            "REASSEMBLE-ISO.txt"; do
+            META="$(gh api --paginate "/repos/$REPOSITORY/actions/runs/$OS_RUN_ID/artifacts?per_page=100" \
+              --jq '.artifacts[] | select(.name == "'"$NAME"'") | [.id, .digest] | @tsv' | head -n 1)"
+            test -n "$META"
+            ARTIFACT_ID="${META%%$'\t'*}"
+            EXPECTED_DIGEST="${META#*$'\t'}"
+            test -n "$ARTIFACT_ID"
+            test -n "$EXPECTED_DIGEST"
 
-      - name: Download verified artifact 2
-        uses: actions/download-artifact@v4
-        with:
-          name: alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
-          path: release-assets
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.source.outputs.run_id }}
+            ZIP="$(mktemp --suffix=.zip)"
+            trap 'rm -f "$ZIP"' EXIT
+            curl --fail --location --retry 8 --retry-delay 5 --retry-all-errors \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -o "$ZIP" \
+              "https://api.github.com/repos/$REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip"
 
-      - name: Download verified artifact 3
-        uses: actions/download-artifact@v4
-        with:
-          name: alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
-          path: release-assets
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.source.outputs.run_id }}
-
-      - name: Download verified artifact 4
-        uses: actions/download-artifact@v4
-        with:
-          name: alpha-linux-0.1.0a2-alpha-amd64.iso.part-04
-          path: release-assets
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.source.outputs.run_id }}
-
-      - name: Download verified artifact 5
-        uses: actions/download-artifact@v4
-        with:
-          name: alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
-          path: release-assets
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.source.outputs.run_id }}
-
-      - name: Download verified artifact 6
-        uses: actions/download-artifact@v4
-        with:
-          name: alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
-          path: release-assets
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.source.outputs.run_id }}
-
-      - name: Download verified artifact 7
-        uses: actions/download-artifact@v4
-        with:
-          name: REASSEMBLE-ISO.txt
-          path: release-assets
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.source.outputs.run_id }}
-
+            ACTUAL_DIGEST="sha256:$(sha256sum "$ZIP" | awk '{print $1}')"
+            test "$ACTUAL_DIGEST" = "$EXPECTED_DIGEST"
+            unzip -Z1 "$ZIP" | grep -Fx "$NAME" >/dev/null
+            unzip -p "$ZIP" "$NAME" > "release-assets/$NAME"
+            rm -f "$ZIP"
+            trap - EXIT
+          done
       - name: Verify split ISO assets
         run: |
           set -euo pipefail
