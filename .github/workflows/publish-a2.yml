@@ -64,7 +64,7 @@ jobs:
               ;;
             push)
               TARGET_SHA="$PUSH_BEFORE_SHA"
-              OS_RUN_ID="$(gh api --paginate "/repos/$REPOSITORY/actions/runs?branch=main&per_page=100&event=push&head_sha=$TARGET_SHA"                 --jq '.workflow_runs[] | select(.workflow_id == 372212179 and .status == "completed" and .conclusion == "success") | .id'                 | head -n 1 || true)"
+              OS_RUN_ID="$(gh api --paginate "/repos/$REPOSITORY/actions/workflows/372212179/runs?branch=main&head_sha=$TARGET_SHA&status=success&per_page=100"                 --jq '.workflow_runs[] | select(.workflow_id == 372212179 and .status == "completed" and .conclusion == "success") | .id'                 | head -n 1 || true)"
               ;;
             *)
               echo "Unsupported event: $EVENT_NAME"
