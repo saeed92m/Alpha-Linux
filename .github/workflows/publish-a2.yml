@@ -119,36 +119,37 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-assets
+          ARTIFACTS_JSON="$(gh api --paginate "/repos/$REPOSITORY/actions/runs/$OS_RUN_ID/artifacts?per_page=100")"
+          declare -A IDS
+          declare -A DIGESTS
+          while IFS=$'\t' read -r NAME ID DIGEST; do
+            IDS["$NAME"]="$ID"
+            DIGESTS["$NAME"]="$DIGEST"
+          done < <(printf '%s' "$ARTIFACTS_JSON" | jq -r '.artifacts[] | [.name,.id,.digest] | @tsv')
+
           for NAME in \
-            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-01" \\
-            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-02" \\
-            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-03" \\
-            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-04" \\
-            "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256" \\
-            "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json" \\
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-01" \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-02" \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-03" \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-04" \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256" \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json" \
             "REASSEMBLE-ISO.txt"; do
-            META="$(gh api --paginate "/repos/$REPOSITORY/actions/runs/$OS_RUN_ID/artifacts?per_page=100" \
-              --jq '.artifacts[] | select(.name == "'"$NAME"'") | [.id, .digest] | @tsv' | head -n 1)"
-            test -n "$META"
-            ARTIFACT_ID="${META%%$'\t'*}"
-            EXPECTED_DIGEST="${META#*$'\t'}"
+            ARTIFACT_ID="${IDS[$NAME]:-}"
+            EXPECTED_DIGEST="${DIGESTS[$NAME]:-}"
             test -n "$ARTIFACT_ID"
             test -n "$EXPECTED_DIGEST"
-
             ZIP="$(mktemp --suffix=.zip)"
-            trap 'rm -f "$ZIP"' EXIT
             curl --fail --location --retry 8 --retry-delay 5 --retry-all-errors \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer $GH_TOKEN" \
               -o "$ZIP" \
               "https://api.github.com/repos/$REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip"
-
             ACTUAL_DIGEST="sha256:$(sha256sum "$ZIP" | awk '{print $1}')"
             test "$ACTUAL_DIGEST" = "$EXPECTED_DIGEST"
             unzip -Z1 "$ZIP" | grep -Fx "$NAME" >/dev/null
             unzip -p "$ZIP" "$NAME" > "release-assets/$NAME"
             rm -f "$ZIP"
-            trap - EXIT
           done
       - name: Verify split ISO assets
         run: |
