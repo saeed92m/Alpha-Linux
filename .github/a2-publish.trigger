@@ -1,3 +1,0 @@
-A2 release publication trigger sentinel v15.
-target_sha=a5c5560a056c756756ea1fe4f671f83f15eba2ce
-os_run_id=37160865957
