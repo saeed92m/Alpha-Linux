@@ -63,8 +63,13 @@ jobs:
               OS_RUN_ID="$DISPATCH_RUN_ID"
               ;;
             push)
-              TARGET_SHA="$PUSH_BEFORE_SHA"
-              OS_RUN_ID="$(gh api --paginate "/repos/$REPOSITORY/actions/workflows/372212179/runs?branch=main&head_sha=$TARGET_SHA&status=success&per_page=100"                 --jq '.workflow_runs[] | select(.workflow_id == 372212179 and .status == "completed" and .conclusion == "success") | .id'                 | head -n 1 || true)"
+              SENTINEL="$(gh api "/repos/$REPOSITORY/contents/.github/a2-publish.trigger?ref=$GITHUB_SHA" --jq '.content' | base64 --decode)"
+              TARGET_SHA="$(printf '%s\n' "$SENTINEL" | sed -n 's/^target_sha=//p' | head -n 1)"
+              OS_RUN_ID="$(printf '%s\n' "$SENTINEL" | sed -n 's/^os_run_id=//p' | head -n 1)"
+              if [ -z "$TARGET_SHA" ] || [ -z "$OS_RUN_ID" ]; then
+                TARGET_SHA="$PUSH_BEFORE_SHA"
+                OS_RUN_ID="$(gh api --paginate "/repos/$REPOSITORY/actions/workflows/372212179/runs?branch=main&head_sha=$TARGET_SHA&status=success&per_page=100"                   --jq '.workflow_runs[] | select(.status == "completed" and .conclusion == "success") | .id'                   | head -n 1 || true)"
+              fi
               ;;
             *)
               echo "Unsupported event: $EVENT_NAME"
@@ -106,12 +111,65 @@ jobs:
           echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
           echo "ci_run_id=$CI_READY" >> "$GITHUB_OUTPUT"
 
-      - name: Download verified A2 artifacts
+      - name: Download verified artifact 1
         uses: actions/download-artifact@v4
         with:
-          pattern: alpha-linux-0.1.0a2-alpha-amd64-*
+          name: alpha-linux-0.1.0a2-alpha-amd64.iso.part-01
           path: release-assets
-          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+
+      - name: Download verified artifact 2
+        uses: actions/download-artifact@v4
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64.iso.part-02
+          path: release-assets
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+
+      - name: Download verified artifact 3
+        uses: actions/download-artifact@v4
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64.iso.part-03
+          path: release-assets
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+
+      - name: Download verified artifact 4
+        uses: actions/download-artifact@v4
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64.iso.part-04
+          path: release-assets
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+
+      - name: Download verified artifact 5
+        uses: actions/download-artifact@v4
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256
+          path: release-assets
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+
+      - name: Download verified artifact 6
+        uses: actions/download-artifact@v4
+        with:
+          name: alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json
+          path: release-assets
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.source.outputs.run_id }}
+
+      - name: Download verified artifact 7
+        uses: actions/download-artifact@v4
+        with:
+          name: REASSEMBLE-ISO.txt
+          path: release-assets
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: ${{ steps.source.outputs.run_id }}
