@@ -132,6 +132,10 @@ jobs:
             "alpha-linux-0.1.0a2-alpha-amd64.iso.part-02" \
             "alpha-linux-0.1.0a2-alpha-amd64.iso.part-03" \
             "alpha-linux-0.1.0a2-alpha-amd64.iso.part-04" \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-05" \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-06" \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-07" \
+            "alpha-linux-0.1.0a2-alpha-amd64.iso.part-08" \
             "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256" \
             "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json" \
             "REASSEMBLE-ISO.txt"; do
@@ -155,7 +159,18 @@ jobs:
         run: |
           set -euo pipefail
           find release-assets -type f -print
-          for f in             alpha-linux-0.1.0a2-alpha-amd64.iso.part-01             alpha-linux-0.1.0a2-alpha-amd64.iso.part-02             alpha-linux-0.1.0a2-alpha-amd64.iso.part-03             alpha-linux-0.1.0a2-alpha-amd64.iso.part-04             alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256             alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json             REASSEMBLE-ISO.txt; do
+          for f in \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-01 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-02 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-03 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-04 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-05 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-06 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-07 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.part-08 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256 \
+            alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json \
+            REASSEMBLE-ISO.txt; do
             test -n "$(find release-assets -type f -name "$f" -print -quit)"
           done
 
