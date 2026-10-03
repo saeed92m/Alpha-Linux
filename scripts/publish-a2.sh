@@ -17,6 +17,10 @@ expected=(
   "alpha-linux-0.1.0a2-alpha-amd64.iso.part-02"
   "alpha-linux-0.1.0a2-alpha-amd64.iso.part-03"
   "alpha-linux-0.1.0a2-alpha-amd64.iso.part-04"
+  "alpha-linux-0.1.0a2-alpha-amd64.iso.part-05"
+  "alpha-linux-0.1.0a2-alpha-amd64.iso.part-06"
+  "alpha-linux-0.1.0a2-alpha-amd64.iso.part-07"
+  "alpha-linux-0.1.0a2-alpha-amd64.iso.part-08"
   "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256"
   "alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json"
   "REASSEMBLE-ISO.txt"
@@ -40,7 +44,7 @@ else
   gh release edit "$RELEASE_TAG" -R "$REPO"     --target "$TARGET_SHA"     --title "Alpha Linux v0.1.0a2"     --notes-file "$RELEASE_NOTES_FILE"     --prerelease
 fi
 
-gh release upload "$RELEASE_TAG" -R "$REPO"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04"   --clobber
+gh release upload "$RELEASE_TAG" -R "$REPO"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-01"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-02"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-03"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-04"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-05"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-06"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-07"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.part-08"   --clobber
 
 gh release upload "$RELEASE_TAG" -R "$REPO"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.sha256"   "$ASSET_DIR/alpha-linux-0.1.0a2-alpha-amd64.iso.parts.json"   "$ASSET_DIR/REASSEMBLE-ISO.txt"   --clobber
 
