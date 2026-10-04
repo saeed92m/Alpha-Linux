@@ -70,9 +70,10 @@ jobs:
           grep -Fq 'PRETTY_NAME="Alpha Linux 0.1.0a4"' dist/alpha-live-root-check/usr/lib/os-release
           grep -Fq 'ID=alpha-linux' dist/alpha-live-root-check/usr/lib/os-release
           grep -Fq 'DISTRIB_ID=Alpha' dist/alpha-live-root-check/etc/lsb-release
-          if find dist/alpha-live-root-check/usr/share/applications -type f -iname '*ubuntu*installer*.desktop' -print -quit | grep -q .; then
-            ! grep -Rqs '^NoDisplay=true' $(find dist/alpha-live-root-check/usr/share/applications -type f -iname '*ubuntu*installer*.desktop')
-          fi
+          while IFS= read -r desktop; do
+            test -f "$desktop"
+            grep -Fq 'NoDisplay=true' "$desktop"
+          done < <(find dist/alpha-live-root-check/usr/share/applications -type f -iname '*ubuntu*installer*.desktop' -print)
           if xorriso -indev "$ISO" -ls /boot/grub/grub.cfg >/dev/null 2>&1; then
             xorriso -indev "$ISO" -osirrox on -extract /boot/grub/grub.cfg dist/alpha-grub.cfg
             ! grep -Fq "Try or Install Ubuntu" dist/alpha-grub.cfg
