@@ -1,10 +1,10 @@
 # Alpha Linux Master Handbook
 
-**Handbook version:** 1.3.0  
+**Handbook version:** 1.4.0  
 **Handbook state:** Current / maintained  
-**Repository release context:** Alpha 0.1.0a3  
+**Repository release context:** Alpha 0.1.0a4  
 **Current program phase:** Phase 7 — Alpha Releases  
-**Last synchronized:** A3 direct publication, artifact transport hardening, and Ubuntu-based distro engineering review
+**Last synchronized:** A4 branding/runtime validation, custom-distro engineering review, and COSMIC Live runtime hardening
 
 ## Purpose
 
@@ -69,7 +69,7 @@ Testing demonstrates that the system satisfies its requirements.
 
 ## Current phase
 
-The project is currently in **Phase 7 — Alpha Releases**, with **Alpha 0.1.0a3** as the active release context on `main`.
+The project is currently in **Phase 7 — Alpha Releases**, with **Alpha 0.1.0a4** as the active release context on `main`.
 
 The immutable `v0.1.0a1` lineage remains historical and unchanged. Current `main` has a real amd64 OS-image build/evidence track with deterministic manifests, SHA-256/provenance, reproducibility validation, QEMU boot evidence, Live kernel/initramfs evidence, automated COSMIC graphical-runtime evidence, and release-safe ISO split assets.
 
@@ -77,7 +77,7 @@ These are engineering/CI evidence capabilities, not claims of physical installat
 
 PR #199 adds deterministic filesystem staging and a fail-closed post-install evidence contract. The implementation verifies the staged filesystem manifest before and after commit, while post-install success requires filesystem, boot-configuration and health evidence. This is fixture/runtime evidence and does not claim physical-disk installation or physical rollback.
 
-The next release-scoped work closes the remaining boot/media matrix, Live product UX, installer implementation, physical installation, Windows coexistence, Secure Boot and post-install validation gates.
+The A4 pipeline now has an explicit Alpha identity gate; the remaining release-scoped work closes the COSMIC graphical-runtime gate and then the physical boot/install validation sequence.
 
 The Handbook remains educational and must not be treated as a substitute for normative requirements or architecture decisions.
 
@@ -100,6 +100,20 @@ The comparative review of Ubuntu-based distribution projects is now part of Alph
 6. **Hardware claims require hardware evidence:** QEMU validates software/virtual contracts; physical hardware, Secure Boot, Windows coexistence, touch/input, graphics, networking and suspend/resume require applicable physical tests.
 7. **Document limitations explicitly:** unsupported hardware, Secure Boot state, online/offline assumptions and recovery procedures are release-visible.
 8. **Prefer deterministic release paths:** remove complexity that does not improve evidence quality.
+
+### A4 Live identity and graphical-runtime lessons
+
+A4 exposed two important distro-engineering rules that are now mandatory:
+
+1. **Brand the complete Live product, not only the desktop:** `/usr/lib/os-release`, `/etc/lsb-release`, hostname, `.disk/info`, installer desktop entries and boot-menu strings must agree on Alpha identity. COSMIC running successfully does not make the image an Alpha Linux release by itself.
+2. **Live-session identity must be internally consistent:** the user configured for greetd initial-session autologin must be the actual Live UID 1000 user. A stale Ubuntu username reference can make greetd fail before COSMIC starts even when all COSMIC packages and Wayland payloads are valid. Runtime validators must use the same canonical Live user identity.
+3. **Extraction privileges are part of validation design:** SquashFS extraction must run with root privileges when the image contains device nodes or hardlinks. An unprivileged extraction failure is a validation-environment defect, not evidence that the ISO itself is corrupt.
+4. **Layered Live customization is intentional:** Alpha can retain an Ubuntu base while replacing the Live leaf layer with Alpha identity, COSMIC and Alpha-specific tooling. This keeps the base distribution separate from Alpha's product layer and makes the build easier to reason about.
+5. **Reference projects are patterns, not dependencies:** custom-distro/remastering projects such as `penguins-eggs` are useful for studying ISO remastering, hybrid BIOS/UEFI media, compression, installer integration and offline/recovery concepts, but Alpha keeps its own reproducible, evidence-bound image pipeline rather than migrating to another builder.
+
+### Custom-distro engineering reference policy
+
+When reviewing external Linux distribution projects, capture only patterns that improve one of these areas: reproducible image creation, boot/media compatibility, installer safety, package/repository separation, offline resilience, identity/branding consistency, release provenance, recovery, or hardware validation. Do not import project-specific assumptions, branding, licensing or build architecture without a separate compatibility/security review.
 
 ### A2 transport incident and resolution
 
