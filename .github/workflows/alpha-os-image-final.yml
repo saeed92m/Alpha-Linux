@@ -68,7 +68,7 @@ jobs:
           mkdir -p dist/alpha-live-root-check
           xorriso -indev "$ISO" -ls /casper | tee dist/alpha-casper-list.txt
           xorriso -indev "$ISO" -osirrox on -extract /casper/minimal.standard.live.squashfs dist/alpha-live.squashfs
-          unsquashfs -d dist/alpha-live-root-check dist/alpha-live.squashfs >/dev/null
+          sudo unsquashfs -d dist/alpha-live-root-check dist/alpha-live.squashfs >/dev/null
           grep -Fq 'PRETTY_NAME="Alpha Linux 0.1.0a4"' dist/alpha-live-root-check/usr/lib/os-release
           grep -Fq 'ID=alpha-linux' dist/alpha-live-root-check/usr/lib/os-release
           grep -Fq 'DISTRIB_ID=Alpha' dist/alpha-live-root-check/etc/lsb-release
