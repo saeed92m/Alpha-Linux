@@ -1,9 +1,6 @@
 name: Alpha Linux v0.3.0a Release Asset Repair
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
