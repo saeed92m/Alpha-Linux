@@ -1,0 +1,224 @@
+name: Alpha Linux v0.3.0a Release Asset Repair
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: alpha-v0-3-0a-release-repair
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build, validate, and publish v0.3.0a
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Check whether v0.3.0a is already populated
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          count="$(gh release view v0.3.0a --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')"
+          echo "Existing v0.3.0a asset count: $count"
+          if [ "$count" -gt 0 ]; then
+            echo "Release already has assets; nothing to repair."
+            exit 0
+          fi
+
+      - name: Resolve immutable release tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v0.3.0a"
+          TAG_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.sha')"
+          EXPECTED_SHA="8cc931e915ff194aadf3a9bcd9304e0c4b552d02"
+          test "$TAG_SHA" = "$EXPECTED_SHA"
+          echo "tag_sha=$TAG_SHA" >> "$GITHUB_OUTPUT"
+          echo "Immutable release tag $TAG -> $TAG_SHA"
+
+      - name: Check out exact release tag
+        uses: actions/checkout@v7
+        with:
+          ref: v0.3.0a
+          fetch-depth: 0
+
+      - name: Install image build tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends aria2 xorriso squashfs-tools gnupg qemu-system-x86 ovmf
+
+      - name: Install Alpha package
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -e ".[dev]"
+
+      - name: Run OS-image contract tests
+        run: python3 -m pytest implementation/tests/test_os_image.py
+
+      - name: Build and validate v0.3.0a ISO
+        env:
+          ALPHA_VERSION: "0.3.0a"
+          ALPHA_CHANNEL: "alpha"
+          ALPHA_ARCH: "amd64"
+          ALPHA_RELEASE_ID: "alpha-os-0-3-0a"
+          ALPHA_BUILD_ENVIRONMENT: "github-hosted-ubuntu-latest"
+          ALPHA_VERIFY_REPRODUCIBILITY: "true"
+          SOURCE_DATE_EPOCH: "946684800"
+        run: |
+          set -euo pipefail
+          export GITHUB_SHA="${{ steps.tag.outputs.tag_sha }}"
+          chmod +x scripts/build_alpha_os_image.sh
+          scripts/build_alpha_os_image.sh
+
+      - name: Validate release manifest and tag binding
+        env:
+          TAG_SHA: ${{ steps.tag.outputs.tag_sha }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          p = Path("dist/alpha-linux-0.3.0a-alpha-amd64.manifest.json")
+          m = json.loads(p.read_text())
+          required = {
+              "release_id", "version", "channel", "architecture",
+              "artifact_filename", "artifact_size", "artifact_sha256",
+              "source_commit", "ci_run_id", "build_environment",
+              "reproducibility_result", "reproducibility_reference_sha256",
+              "source_date_epoch",
+          }
+          missing = sorted(required - m.keys())
+          if missing:
+              raise SystemExit(f"missing manifest fields: {missing}")
+          if m["version"] != "0.3.0a":
+              raise SystemExit("wrong release version")
+          if m["artifact_filename"] != "alpha-linux-0.3.0a-alpha-amd64.iso":
+              raise SystemExit("wrong deterministic artifact filename")
+          if m["source_commit"] != os.environ["TAG_SHA"]:
+              raise SystemExit("manifest is not bound to v0.3.0a tag commit")
+          if m["reproducibility_result"] != "passed":
+              raise SystemExit("reproducibility gate failed")
+          if m["artifact_sha256"] != m["reproducibility_reference_sha256"]:
+              raise SystemExit("reproducibility digests differ")
+          if m["artifact_size"] <= 0 or len(m["artifact_sha256"]) != 64:
+              raise SystemExit("invalid artifact evidence")
+          if m["source_date_epoch"] != 946684800:
+              raise SystemExit("unexpected SOURCE_DATE_EPOCH")
+          print(json.dumps(m, indent=2, sort_keys=True))
+          PY
+
+      - name: Validate BIOS and UEFI boot metadata
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.3.0a-alpha-amd64.iso"
+          xorriso -indev "$ISO" -report_el_torito plain | tee dist/v0.3.0a-el-torito.txt
+          grep -Eqi 'BIOS|El Torito' dist/v0.3.0a-el-torito.txt
+          grep -Eqi 'EFI|UEFI' dist/v0.3.0a-el-torito.txt
+
+      - name: Run BIOS and UEFI boot smoke tests
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.3.0a-alpha-amd64.iso"
+          timeout 75s qemu-system-x86_64 -machine pc -m 2048 -cdrom "$ISO" -boot d -display none -serial file:dist/v0.3.0a-bios.log -no-reboot >/tmp/v03-bios.out 2>/tmp/v03-bios.err &
+          p=$!; sleep 45
+          if kill -0 "$p" 2>/dev/null; then kill "$p" || true; wait "$p" || true; else wait "$p" || true; fi
+          if grep -Eqi 'panic|kernel panic|fatal' dist/v0.3.0a-bios.log /tmp/v03-bios.err; then exit 1; fi
+          UEFI_CODE=/usr/share/OVMF/OVMF_CODE_4M.fd
+          test -f "$UEFI_CODE"
+          timeout 75s qemu-system-x86_64 -machine q35,accel=tcg -m 2048 -bios "$UEFI_CODE" -cdrom "$ISO" -boot d -display none -serial file:dist/v0.3.0a-uefi.log -no-reboot >/tmp/v03-uefi.out 2>/tmp/v03-uefi.err &
+          p=$!; sleep 45
+          if kill -0 "$p" 2>/dev/null; then kill "$p" || true; wait "$p" || true; else wait "$p" || true; fi
+          test -s dist/v0.3.0a-uefi.log
+          if grep -Eqi 'panic|kernel panic|fatal' dist/v0.3.0a-uefi.log /tmp/v03-uefi.err; then exit 1; fi
+
+      - name: Prepare verified split release assets
+        env:
+          TAG_SHA: ${{ steps.tag.outputs.tag_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ISO="dist/alpha-linux-0.3.0a-alpha-amd64.iso"
+          ASSET_DIR="dist/release-assets"
+          mkdir -p "$ASSET_DIR"
+          split -b 900M -d -a 2 "$ISO" "$ASSET_DIR/part-"
+          i=1
+          for part in "$ASSET_DIR"/part-*; do
+            mv "$part" "$ASSET_DIR/alpha-linux-0.3.0a-alpha-amd64.iso.part-$(printf '%02d' "$i")"
+            i=$((i+1))
+          done
+          sha256sum "$ASSET_DIR"/*.iso.part-* > "$ASSET_DIR/alpha-linux-0.3.0a-alpha-amd64.iso.parts.sha256"
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path("dist/release-assets")
+          manifest = json.loads(Path("dist/alpha-linux-0.3.0a-alpha-amd64.manifest.json").read_text())
+          parts = sorted(root.glob("*.iso.part-*"))
+          for p in parts:
+              if p.stat().st_size > 900 * 1024 * 1024:
+                  raise SystemExit(f"oversized part: {p}")
+          joined_sha = hashlib.sha256()
+          with Path("dist/alpha-linux-0.3.0a-alpha-amd64.iso").open("rb") as src:
+              original_sha = hashlib.sha256(src.read()).hexdigest()
+          with __import__("subprocess").Popen(["cat", *map(str, parts)], stdout=__import__("subprocess").PIPE) as proc:
+              while chunk := proc.stdout.read(1024 * 1024):
+                  joined_sha.update(chunk)
+              rc = proc.wait()
+          if rc != 0:
+              raise SystemExit("reassembly stream failed")
+          if joined_sha.hexdigest() != original_sha or original_sha != manifest["artifact_sha256"]:
+              raise SystemExit("split/reassembly SHA-256 mismatch")
+          metadata = {
+              "artifact": manifest["artifact_filename"],
+              "release_tag": "v0.3.0a",
+              "source_commit": os.environ["TAG_SHA"],
+              "source_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "iso_size_bytes": manifest["artifact_size"],
+              "iso_sha256": manifest["artifact_sha256"],
+              "part_count": len(parts),
+              "part_max_bytes": 900 * 1024 * 1024,
+              "parts": [{"name": p.name, "size_bytes": p.stat().st_size,
+                         "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],
+              "reassembly": "cat alpha-linux-0.3.0a-alpha-amd64.iso.part-* > alpha-linux-0.3.0a-alpha-amd64.iso",
+          }
+          (root / "alpha-linux-0.3.0a-alpha-amd64.iso.parts.json").write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+          PY
+          cat > "$ASSET_DIR/REASSEMBLE-ISO.txt" <<'EOF'
+          Alpha Linux 0.3.0a ISO reassembly
+
+          Linux/macOS:
+            cat alpha-linux-0.3.0a-alpha-amd64.iso.part-* > alpha-linux-0.3.0a-alpha-amd64.iso
+            sha256sum alpha-linux-0.3.0a-alpha-amd64.iso
+
+          PowerShell:
+            $parts = Get-ChildItem .\alpha-linux-0.3.0a-alpha-amd64.iso.part-* | Sort-Object Name
+            $out = [IO.File]::OpenWrite(".\alpha-linux-0.3.0a-alpha-amd64.iso")
+            try { foreach ($p in $parts) { $in = [IO.File]::OpenRead($p.FullName); try { $in.CopyTo($out) } finally { $in.Dispose() } } } finally { $out.Dispose() }
+            Get-FileHash .\alpha-linux-0.3.0a-alpha-amd64.iso -Algorithm SHA256
+          EOF
+          rm -f "$ISO"
+
+      - name: Publish assets to existing v0.3.0a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh release view v0.3.0a --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName')" = "v0.3.0a"
+          gh release upload v0.3.0a             --repo "$GITHUB_REPOSITORY"             dist/release-assets/alpha-linux-0.3.0a-alpha-amd64.iso.part-*             dist/release-assets/alpha-linux-0.3.0a-alpha-amd64.iso.parts.sha256             dist/release-assets/alpha-linux-0.3.0a-alpha-amd64.iso.parts.json             dist/release-assets/REASSEMBLE-ISO.txt             --clobber
+
+      - name: Final release evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          assets="$(gh release view v0.3.0a --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets | length')"
+          test "$assets" -ge 11
+          echo "v0.3.0a published assets: $assets"
