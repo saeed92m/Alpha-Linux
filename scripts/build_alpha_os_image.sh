@@ -489,11 +489,14 @@ if xorriso -indev "${BASE_PATH}" -ls /boot/grub/grub.cfg >/dev/null 2>&1; then
   GRUB_MAP_ARGS="-map ${ISO_BRANDING_DIR}/grub/grub.cfg /boot/grub/grub.cfg"
   export GRUB_MAP_ARGS
 fi
-if xorriso -indev "${BASE_PATH}" -ls /isolinux/txt.cfg >/dev/null 2>&1; then
-  xorriso -indev "${BASE_PATH}" -osirrox on -extract /isolinux/txt.cfg "${ISO_BRANDING_DIR}/isolinux/txt.cfg"
-  sed -i -e "s/Try or Install Ubuntu/Try or Install Alpha Linux/g" -e "s/Ubuntu (safe graphics)/Alpha Linux (safe graphics)/g" -e "s/Install Ubuntu/Install Alpha Linux/g" "${ISO_BRANDING_DIR}/isolinux/txt.cfg"
-  ISOLINUX_MAP_ARGS="-map ${ISO_BRANDING_DIR}/isolinux/txt.cfg /isolinux/txt.cfg"
-  export ISOLINUX_MAP_ARGS
+if xorriso -indev "${BASE_PATH}" -ls /isolinux >/dev/null 2>&1; then
+  if xorriso -indev "${BASE_PATH}" -osirrox on -extract /isolinux/txt.cfg "${ISO_BRANDING_DIR}/isolinux/txt.cfg" >/dev/null 2>&1; then
+    sed -i -e "s/Try or Install Ubuntu/Try or Install Alpha Linux/g" -e "s/Ubuntu (safe graphics)/Alpha Linux (safe graphics)/g" -e "s/Install Ubuntu/Install Alpha Linux/g" "${ISO_BRANDING_DIR}/isolinux/txt.cfg"
+    ISOLINUX_MAP_ARGS="-map ${ISO_BRANDING_DIR}/isolinux/txt.cfg /isolinux/txt.cfg"
+    export ISOLINUX_MAP_ARGS
+  else
+    echo "No legacy ISOLINUX txt.cfg present; retaining source ISO boot metadata unchanged"
+  fi
 fi
 
 echo "Repacking bootable Alpha Linux ISO with deterministic time inputs"
