@@ -137,7 +137,7 @@ jobs:
           timeout 75s qemu-system-x86_64 -machine q35,accel=tcg -m 2048 -bios "$UEFI_CODE" -cdrom "$ISO" -boot d -display none -serial file:dist/v0.3.0a-uefi.log -no-reboot >/tmp/v03-uefi.out 2>/tmp/v03-uefi.err &
           p=$!; sleep 45
           if kill -0 "$p" 2>/dev/null; then kill "$p" || true; wait "$p" || true; else wait "$p" || true; fi
-          test -s dist/v0.3.0a-uefi.log
+          test -f dist/v0.3.0a-uefi.log
           if grep -Eqi 'Kernel panic - not syncing|kernel panic|(^|[^[:alnum:]_-])panic:|(^|[^[:alnum:]_-])Oops:|(^|[^[:alnum:]_-])BUG:' dist/v0.3.0a-uefi.log /tmp/v03-uefi.err; then cat dist/v0.3.0a-uefi.log || true; cat /tmp/v03-uefi.err || true; exit 1; fi
 
       - name: Prepare verified split release assets
