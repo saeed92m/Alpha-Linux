@@ -11,6 +11,9 @@ on:
       - "implementation/tests/test_installer_safety.py"
       - "implementation/tests/test_installer_fixture.py"
       - "implementation/tests/test_installer_transaction.py"
+      - "implementation/tests/test_installer_transaction_fault_injection.py"
+      - "implementation/tests/test_live_installer.py"
+      - "scripts/alpha-live-installer.sh"
       - "implementation/installer_safety.md"
       - ".github/workflows/installer-safety.yml"
   pull_request:
@@ -21,6 +24,9 @@ on:
       - "implementation/alpha_core/installer_fixture.py"
       - "implementation/tests/test_installer_safety.py"
       - "implementation/tests/test_installer_fixture.py"
+      - "implementation/tests/test_installer_transaction_fault_injection.py"
+      - "implementation/tests/test_live_installer.py"
+      - "scripts/alpha-live-installer.sh"
       - "implementation/installer_safety.md"
       - ".github/workflows/installer-safety.yml"
 
@@ -52,7 +58,20 @@ jobs:
 
       - name: Run installer safety and disposable fixture tests
         run: |
-          python3 -m pytest             implementation/tests/test_installer_safety.py             implementation/tests/test_installer_fixture.py             -q
+          python3 -m pytest \
+            implementation/tests/test_installer_safety.py \
+            implementation/tests/test_installer_fixture.py \
+            implementation/tests/test_installer_transaction_fault_injection.py \
+            implementation/tests/test_live_installer.py \
+            -q
+
+      - name: Verify installer entrypoint syntax and safety boundary
+        run: |
+          bash -n scripts/alpha-live-installer.sh
+          grep -Fq "/sys/firmware/efi" scripts/alpha-live-installer.sh
+          grep -Fq "Selected disk already has partitions" scripts/alpha-live-installer.sh
+          grep -Fq "Windows/encryption/recovery indicators" scripts/alpha-live-installer.sh
+          grep -Fq "INSTALL_RESULT=PASS" scripts/alpha-live-installer.sh
 
       - name: Verify no physical block-device access
         run: |
