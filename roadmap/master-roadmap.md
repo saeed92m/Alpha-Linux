@@ -3,7 +3,7 @@
 **Roadmap state:** Active delivery control  
 **Current phase:** Phase 7 — Alpha Releases  
 **Current release context:** Alpha 0.3.0a (published prerelease)  
-**Last synchronized:** PR #271 release-pipeline cleanup; installer/recovery evidence is the active product gate
+**Last synchronized:** PR #273 Phase 7A media-matrix contract; physical USB/media evidence is now the active release gate
 
 ## Phase 0 — Product and specification
 
@@ -107,7 +107,7 @@
 
 ## Phase 7 — Alpha releases
 
-### Historical release context — Alpha 0.1.0a2
+### Historical release context — Alpha 0.1.0a2 / 0.1.0a3
 
 The immutable `v0.1.0a1` package release remains historical. The current published OS release candidate is `v0.3.0a`; its release assets are bound to the verified tag commit and remain separate from the historical package tag.
 
@@ -155,7 +155,7 @@ The current installer entrypoint is a destructive UEFI + Alpha-only prototype th
 - Package artifact verified.
 - `v0.1.0a1` package release published; its tag remains immutable.
 
-**Status:** Historical package-release lineage. Current Phase 7 state is documented above under Alpha 0.1.0a2.
+**Status:** Historical package/release lineage. The current OS release context is `v0.3.0a`.
 
 ### Phase 7A evidence contract
 
