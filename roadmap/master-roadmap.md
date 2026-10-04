@@ -2,8 +2,8 @@
 
 **Roadmap state:** Active delivery control  
 **Current phase:** Phase 7 — Alpha Releases  
-**Current release context:** Alpha 0.1.0a2  
-**Last synchronized:** PR #200 evidence protocol; Phase 7A media-compatibility contract in progress
+**Current release context:** Alpha 0.3.0a (published prerelease)  
+**Last synchronized:** PR #271 release-pipeline cleanup; installer/recovery evidence is the active product gate
 
 ## Phase 0 — Product and specification
 
@@ -107,9 +107,9 @@
 
 ## Phase 7 — Alpha releases
 
-### Release context — Alpha 0.1.0a2
+### Historical release context — Alpha 0.1.0a2
 
-The immutable `v0.1.0a1` package release remains historical. Current `main` carries newer OS-image release-candidate evidence without rewriting that tag.
+The immutable `v0.1.0a1` package release remains historical. The current published OS release candidate is `v0.3.0a`; its release assets are bound to the verified tag commit and remain separate from the historical package tag.
 
 ### Verified engineering/release evidence
 
@@ -131,6 +131,12 @@ The immutable `v0.1.0a1` package release remains historical. Current `main` carr
 - Automated tests for staging integrity, target safety, and post-install evidence requirements.
 - PR #199 merged to `main` as `35c1ff79033f7105b32e45cf1437b0191b06a5f3`; CI run `36757368104` completed successfully across all reported gates.
 - This remains fixture/runtime contract evidence; it does **not** constitute physical-disk installation or physical rollback validation.
+
+### Current v0.3.0a product boundary
+
+The published `v0.3.0a` release is a real downloadable Alpha OS image with reproducibility, provenance, BIOS/UEFI metadata, QEMU smoke and split/reassembly verification. It is not yet a Beta/Stable installer release.
+
+The current installer entrypoint is a destructive UEFI + Alpha-only prototype that requires a dedicated empty disk. Disposable-fixture transaction tests cover confirmation, commit, failure injection and rollback; physical-disk installation remains a hardware gate.
 
 ### Explicitly not yet product-complete
 
@@ -215,14 +221,13 @@ Dates are intentionally not fixed until the relevant implementation and evidence
 
 ## Current priority order
 
-1. Close documentation/evidence synchronization gaps.
-2. Complete boot/media compatibility validation.
-3. Close Live-environment product gates.
-4. Implement and validate the production installer transaction path.
-5. Execute physical installation and hardware validation.
-6. Add Secure Boot and Windows coexistence evidence.
-7. Reconcile release publication only after required gates pass.
-8. Promote only when release evidence is complete.
+1. Complete physical USB/media validation (Rufus + declared GPT/MBR matrix).
+2. Close remaining Live UX/diagnostics/recovery evidence gaps.
+3. Validate the UEFI Alpha-only installer on disposable physical hardware.
+4. Add physical recovery/interrupted-install evidence.
+5. Implement and validate Windows coexistence only after safe disk-state detection is proven on real hardware.
+6. Add Secure Boot evidence.
+7. Promote only after all release gates are independently evidenced.
 
 ## Completion and evidence protocol
 
