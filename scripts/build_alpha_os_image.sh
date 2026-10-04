@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${ALPHA_VERSION:-0.1.0a2}"
+VERSION="${ALPHA_VERSION:-0.1.0a4}"
 CHANNEL="${ALPHA_CHANNEL:-alpha}"
 ARCH="${ALPHA_ARCH:-amd64}"
-RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-1-0a2}"
+RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-1-0a4}"
 SOURCE_COMMIT="${GITHUB_SHA:?GITHUB_SHA is required}"
 CI_RUN_ID="${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
 BUILD_ENVIRONMENT="${ALPHA_BUILD_ENVIRONMENT:-github-hosted-ubuntu-latest}"
@@ -19,12 +19,15 @@ OUT_DIR="${GITHUB_WORKSPACE:-.}/dist"
 WORK_DIR="${RUNNER_TEMP:-/tmp}/alpha-os-image"
 BASE_PATH="${WORK_DIR}/${BASE_ISO}"
 OUTPUT_PATH="${OUT_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.iso"
+ISO_BRANDING_DIR="${WORK_DIR}/iso-branding"
 REFERENCE_PATH="${WORK_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.reproducibility.iso"
 SEED_PATH="${WORK_DIR}/alpha-release.json"
 MANIFEST_PATH="${OUT_DIR}/alpha-linux-${VERSION}-${CHANNEL}-${ARCH}.manifest.json"
 
 mkdir -p "${OUT_DIR}" "${WORK_DIR}"
 rm -f "${OUTPUT_PATH}" "${REFERENCE_PATH}" "${MANIFEST_PATH}" "${SEED_PATH}"
+rm -rf "${ISO_BRANDING_DIR}"
+mkdir -p "${ISO_BRANDING_DIR}/disk" "${ISO_BRANDING_DIR}/grub" "${ISO_BRANDING_DIR}/isolinux"
 
 echo "Downloading Ubuntu base image with parallel range requests: ${BASE_ISO}"
 aria2c \
@@ -97,7 +100,9 @@ build_iso() {
     -indev "${BASE_PATH}" \
     -outdev "${output_path}" \
     -map "${SEED_PATH}" /alpha-release.json \
+    -map "${ISO_BRANDING_DIR}/disk/info" /.disk/info \
     -map "${LIVE_SQUASHFS}" /casper/minimal.standard.live.squashfs \
+    ${GRUB_MAP_ARGS:-} ${ISOLINUX_MAP_ARGS:-} \
     -boot_image any replay \
     -compliance no_emul_toc \
     -padding included
@@ -182,6 +187,34 @@ sudo mount -t proc proc "${OVERLAY_ROOTFS_DIR}/proc"
 sudo mount -t sysfs sysfs "${OVERLAY_ROOTFS_DIR}/sys"
 sudo mount -t tmpfs tmpfs "${OVERLAY_ROOTFS_DIR}/run"
 sudo mount -t tmpfs tmpfs "${OVERLAY_ROOTFS_DIR}/tmp"
+echo "Applying Alpha Linux identity to the Live root filesystem"
+sudo tee "${OVERLAY_ROOTFS_DIR}/usr/lib/os-release" >/dev/null <<EOF
+NAME="Alpha Linux"
+PRETTY_NAME="Alpha Linux ${VERSION}"
+ID=alpha-linux
+ID_LIKE="ubuntu debian"
+VERSION_ID="${VERSION}"
+VERSION="${VERSION} (Alpha)"
+VERSION_CODENAME="resolute"
+HOME_URL="https://github.com/saeed92m/Alpha-Linux"
+SUPPORT_URL="https://github.com/saeed92m/Alpha-Linux/issues"
+BUG_REPORT_URL="https://github.com/saeed92m/Alpha-Linux/issues"
+UBUNTU_CODENAME=resolute
+LOGO=alpha-linux-logo
+EOF
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/lsb-release" >/dev/null <<EOF
+DISTRIB_ID=Alpha
+DISTRIB_RELEASE=${VERSION}
+DISTRIB_CODENAME=resolute
+DISTRIB_DESCRIPTION="Alpha Linux ${VERSION}"
+EOF
+printf "alpha-linux\n" | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/hostname" >/dev/null
+for desktop in "${OVERLAY_ROOTFS_DIR}"/usr/share/applications/*ubuntu*installer*.desktop "${OVERLAY_ROOTFS_DIR}"/usr/share/applications/*Ubuntu*Installer*.desktop; do
+  if [[ -f "$desktop" ]]; then
+    if ! grep -q "^NoDisplay=" "$desktop"; then printf "\nNoDisplay=true\n" | sudo tee -a "$desktop" >/dev/null; else sudo sed -i "s/^NoDisplay=.*/NoDisplay=true/" "$desktop"; fi
+  fi
+done
+
 echo "Preparing display-manager handoff for COSMIC"
 if [[ -L "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service" ]]; then
   sudo rm -f "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service"
@@ -448,7 +481,22 @@ sudo unsquashfs -cat "${LIVE_SQUASHFS}" etc/systemd/system/alpha-cosmic-graphica
 sudo unsquashfs -cat "${LIVE_SQUASHFS}" usr/local/sbin/alpha-cosmic-graphical-runtime-check >/dev/null
 echo "COSMIC graphical validator verified inside final Live leaf squashfs"
 
-echo "Repacking bootable Ubuntu ISO with deterministic time inputs"
+echo "Preparing Alpha Linux ISO branding metadata and boot menus"
+printf "Alpha Linux ${VERSION} - Alpha amd64\n" > "${ISO_BRANDING_DIR}/disk/info"
+if xorriso -indev "${BASE_PATH}" -ls /boot/grub/grub.cfg >/dev/null 2>&1; then
+  xorriso -indev "${BASE_PATH}" -osirrox on -extract /boot/grub/grub.cfg "${ISO_BRANDING_DIR}/grub/grub.cfg"
+  sed -i -e "s/Try or Install Ubuntu/Try or Install Alpha Linux/g" -e "s/Ubuntu (safe graphics)/Alpha Linux (safe graphics)/g" -e "s/Install Ubuntu/Install Alpha Linux/g" "${ISO_BRANDING_DIR}/grub/grub.cfg"
+  GRUB_MAP_ARGS="-map ${ISO_BRANDING_DIR}/grub/grub.cfg /boot/grub/grub.cfg"
+  export GRUB_MAP_ARGS
+fi
+if xorriso -indev "${BASE_PATH}" -ls /isolinux/txt.cfg >/dev/null 2>&1; then
+  xorriso -indev "${BASE_PATH}" -osirrox on -extract /isolinux/txt.cfg "${ISO_BRANDING_DIR}/isolinux/txt.cfg"
+  sed -i -e "s/Try or Install Ubuntu/Try or Install Alpha Linux/g" -e "s/Ubuntu (safe graphics)/Alpha Linux (safe graphics)/g" -e "s/Install Ubuntu/Install Alpha Linux/g" "${ISO_BRANDING_DIR}/isolinux/txt.cfg"
+  ISOLINUX_MAP_ARGS="-map ${ISO_BRANDING_DIR}/isolinux/txt.cfg /isolinux/txt.cfg"
+  export ISOLINUX_MAP_ARGS
+fi
+
+echo "Repacking bootable Alpha Linux ISO with deterministic time inputs"
 build_iso "${OUTPUT_PATH}"
 
 REPRODUCIBILITY_RESULT="not-run"
