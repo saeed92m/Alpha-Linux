@@ -320,7 +320,7 @@ command = "cosmic-greeter-start"
 user = "cosmic-greeter"
 [initial_session]
 command = "/usr/local/sbin/alpha-start-cosmic-session"
-user = "ubuntu"
+user = "alpha"
 GREETD
 
 echo "Binding display-manager.service to greetd"
@@ -371,9 +371,9 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
     type=$(loginctl show-session "$sid" -p Type --value 2>/dev/null || true)
     desktop=$(loginctl show-session "$sid" -p Desktop --value 2>/dev/null || true)
     echo "session sid=$sid name=$name type=$type desktop=$desktop"
-    if [ "$name" = "ubuntu" ] && [ "$type" = "wayland" ]; then
+    if [ "$name" = "alpha" ] && [ "$type" = "wayland" ]; then
       session_ok=1
-    elif [ "$name" = "ubuntu" ] && [ "$type" = "tty" ] && [ "$cosmic_wayland_ok" -eq 1 ]; then
+    elif [ "$name" = "alpha" ] && [ "$type" = "tty" ] && [ "$cosmic_wayland_ok" -eq 1 ]; then
       # greetd initial_session is autologin and does not open a PAM login session;
       # therefore logind can legitimately report the inherited VT session as tty.
       session_ok=1
