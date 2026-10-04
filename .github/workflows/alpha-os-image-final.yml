@@ -522,7 +522,7 @@ jobs:
             "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
             -f body="Alpha OS image workflow run \`${{ github.run_id }}\` completed with job status \`${{ job.status }}\`. Trigger: \`${{ github.event.comment.body }}\`. Source commit: \`${{ env.ALPHA_SOURCE_SHA }}\`. Reproducibility: two-build comparison."
 
-      - name: Publish verified A3 release directly from build workspace
+      - name: Publish verified A4 release directly from build workspace
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
