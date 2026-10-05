@@ -155,7 +155,7 @@ cleanup_chroot() {
     "${OVERLAY_ROOTFS_DIR}/sys" \
     "${OVERLAY_ROOTFS_DIR}/proc" \
     "${OVERLAY_ROOTFS_DIR}/dev/pts" \
-    "${OVERLAY_ROOTFS_DIR}/dev"
+    "${OVERLAY_ROOTFS_DIR}/dev" \
     "${OVERLAY_ROOTFS_DIR}"
   do
     if sudo mountpoint -q "${mount_path}" 2>/dev/null; then
