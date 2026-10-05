@@ -2,7 +2,8 @@
 
 **Roadmap state:** Active delivery control  
 **Current phase:** Phase 7 — Alpha Releases  
-**Current release context:** Alpha 0.3.0a (published prerelease)  
+**Development baseline:** Alpha 0.3.0a (last validated OS-image baseline)  
+**Next release:** Alpha 0.4.0 — Lightweight / Modular Installable  
 **Last synchronized:** PR #273 Phase 7A media-matrix contract; physical USB/media evidence is now the active release gate
 
 ## Phase 0 — Product and specification
@@ -109,7 +110,7 @@
 
 ### Historical release context — Alpha 0.1.0a2 / 0.1.0a3
 
-The immutable `v0.1.0a1` package release remains historical. The current published OS release candidate is `v0.3.0a`; its release assets are bound to the verified tag commit and remain separate from the historical package tag.
+The immutable `v0.1.0a1` package lineage remains historical. `v0.3.0a` is the last validated OS-image baseline. `v0.1.0a4` is archived historical engineering evidence and is not the active baseline.
 
 ### Verified engineering/release evidence
 
@@ -132,11 +133,15 @@ The immutable `v0.1.0a1` package release remains historical. The current publish
 - PR #199 merged to `main` as `35c1ff79033f7105b32e45cf1437b0191b06a5f3`; CI run `36757368104` completed successfully across all reported gates.
 - This remains fixture/runtime contract evidence; it does **not** constitute physical-disk installation or physical rollback validation.
 
-### Current v0.3.0a product boundary
+### Baseline decision: v0.3.0a → v0.4.0
+
+v0.3.0a is the validated product baseline. v0.4.0 preserves its lightweight Core + COSMIC experience and adds modular online software installation. A4 lessons are retained, but A4 is not the development baseline.
+
+### v0.3.0a product boundary
 
 The published `v0.3.0a` release is a real downloadable Alpha OS image with reproducibility, provenance, BIOS/UEFI metadata, QEMU smoke and split/reassembly verification. It is not yet a Beta/Stable installer release.
 
-The current installer entrypoint is a destructive UEFI + Alpha-only prototype that requires a dedicated empty disk. Disposable-fixture transaction tests cover confirmation, commit, failure injection and rollback; physical-disk installation remains a hardware gate.
+The installer entrypoint remains a destructive UEFI + Alpha-only prototype that requires a dedicated empty disk. Disposable-fixture transaction tests cover confirmation, commit, failure injection and rollback; physical-disk installation remains a hardware gate.
 
 ### Explicitly not yet product-complete
 
