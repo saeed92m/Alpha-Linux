@@ -13,12 +13,12 @@ The product vision includes a polished end-to-end experience from **boot media �
 ## Project Status
 
 **Current phase: Phase 7 — Alpha Releases**  
-**Current release context: Alpha 0.1.0a4 candidate**  
+**Current release context: Alpha v0.3.5a candidate**  
 **Master Handbook: v1.1.0**
 
 Phase 0 specification/architecture work is frozen as the normative foundation. Phases 1–6 established the executable engineering, Alpha Core, desktop/interaction, AI platform, domain platform, and hardening reference foundations. Phase 7 is implementing release-scoped artifact, boot, Live-environment, installer, traceability, readiness, and publication foundations with deterministic contracts, executable tests, CI evidence, and explicit non-goal boundaries.
 
-The immutable `v0.1.0a1` package lineage remains historical. Current `main` carries the Alpha 0.1.0a4 release context and a real amd64 OS-image evidence track with checksums, provenance, reproducibility, QEMU boot evidence, Live runtime evidence, COSMIC graphical-runtime evidence and release-safe split assets.
+The immutable `v0.1.0a1` package lineage remains historical. Current `main` carries the Alpha 0.1.0a4 release context and a real amd64 OS-image evidence track with checksums, provenance, reproducibility, QEMU boot evidence, Live runtime evidence, COSMIC graphical-runtime evidence, preserved Ubuntu/Subiquity installation path, and additive Alpha branding assets.
 
 This is not a claim of physical installation readiness or a public Beta/Stable OS release.
 
