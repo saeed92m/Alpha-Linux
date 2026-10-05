@@ -96,17 +96,18 @@ export SOURCE_DATE_EPOCH
 build_iso() {
   local output_path="$1"
   echo "Building ISO: ${output_path}"
-  # Explicitly replace upstream identity/boot-tree files before replaying boot metadata.
-  # xorriso may otherwise retain an existing directory-tree entry from the source ISO.
+  # Replace upstream directory-tree payloads in-place. xorriso's -rm accepts
+  # a variable-length path list, so using it without the explicit "--" terminator
+  # would consume following commands such as -map as path arguments.
   xorriso \
     -indev "${BASE_PATH}" \
     -outdev "${output_path}" \
-    -rm /alpha-release.json /.disk/info \
+    -overwrite on \
     -map "${SEED_PATH}" /alpha-release.json \
     -map "${ISO_BRANDING_DIR}/disk/info" /.disk/info \
-    -rm /casper/minimal.standard.live.squashfs \
     -map "${LIVE_SQUASHFS}" /casper/minimal.standard.live.squashfs \
     ${GRUB_MAP_ARGS:-} ${ISOLINUX_MAP_ARGS:-} \
+    -volid "Alpha Linux ${VERSION} ${CHANNEL} ${ARCH}" \
     -boot_image any replay \
     -compliance no_emul_toc \
     -padding included
