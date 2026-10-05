@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alpha-linux-core"
-version = "0.1.0a4"
+version = "0.4.0"
 description = "Foundational contracts and policy boundaries for Alpha Linux"
 requires-python = ">=3.11"
 license = {file = "LICENSE.md"}
