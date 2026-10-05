@@ -71,6 +71,14 @@ jobs:
           sudo unsquashfs -d dist/alpha-live-root-check dist/alpha-live.squashfs >/dev/null
           grep -Fq 'PRETTY_NAME="Alpha Linux 0.1.0a4"' dist/alpha-live-root-check/usr/lib/os-release
           grep -Fq 'ID=alpha-linux' dist/alpha-live-root-check/usr/lib/os-release
+    test -L dist/alpha-live-root-check/etc/systemd/system/snap.ubuntu-desktop-bootstrap.subiquity-server.service
+    test "$(readlink dist/alpha-live-root-check/etc/systemd/system/snap.ubuntu-desktop-bootstrap.subiquity-server.service)" = "/dev/null"
+    if [[ -d dist/alpha-live-root-check/var/lib/snapd/desktop/applications ]]; then
+      if find dist/alpha-live-root-check/var/lib/snapd/desktop/applications -type f -name '*.desktop' -print0 | xargs -0 grep -EHi '^(Name|X-GNOME-FullName|Comment)=.*(Ubuntu|Subiquity|Bootstrap).*Installer|Exec=.*(subiquity|ubuntu-desktop-bootstrap)' 2>/dev/null | grep -q .; then
+        echo "Ubuntu/Subiquity installer desktop entry remains visible in the Alpha Live image"
+        exit 1
+      fi
+    fi
           grep -Fq 'DISTRIB_ID=Alpha' dist/alpha-live-root-check/etc/lsb-release
           while IFS= read -r desktop; do
             test -f "$desktop"
