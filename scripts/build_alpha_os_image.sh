@@ -96,20 +96,21 @@ export SOURCE_DATE_EPOCH
 build_iso() {
   local output_path="$1"
   echo "Building ISO: ${output_path}"
-  # Explicitly remove the upstream identity/boot files before mapping Alpha replacements.\n  # xorriso otherwise preserves the existing directory-tree entry in some replay cases.\n  xorriso \\
-    -indev "${BASE_PATH}" \\
-    -outdev "${output_path}" \\
-    -rm /alpha-release.json /.disk/info \\
-    -map "${SEED_PATH}" /alpha-release.json \\
-    -map "${ISO_BRANDING_DIR}/disk/info" /.disk/info \\
-    -rm /casper/minimal.standard.live.squashfs \\
-    -map "${LIVE_SQUASHFS}" /casper/minimal.standard.live.squashfs \\
-    ${GRUB_MAP_ARGS:-} ${ISOLINUX_MAP_ARGS:-} \\
-    -boot_image any replay \\
-    -compliance no_emul_toc \\
+  # Explicitly replace upstream identity/boot-tree files before replaying boot metadata.
+  # xorriso may otherwise retain an existing directory-tree entry from the source ISO.
+  xorriso \
+    -indev "${BASE_PATH}" \
+    -outdev "${output_path}" \
+    -rm /alpha-release.json /.disk/info \
+    -map "${SEED_PATH}" /alpha-release.json \
+    -map "${ISO_BRANDING_DIR}/disk/info" /.disk/info \
+    -rm /casper/minimal.standard.live.squashfs \
+    -map "${LIVE_SQUASHFS}" /casper/minimal.standard.live.squashfs \
+    ${GRUB_MAP_ARGS:-} ${ISOLINUX_MAP_ARGS:-} \
+    -boot_image any replay \
+    -compliance no_emul_toc \
     -padding included
 }
-
 COSMIC_REPOSITORY="https://apt.pop-os.org/release"
 COSMIC_KEY_URL="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x63C46DF0140D738961429F4E204DD8AEC33A7AFF"
 BASE_ROOTFS_DIR="${WORK_DIR}/minimal-root"
