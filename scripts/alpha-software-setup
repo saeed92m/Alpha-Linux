@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/alpha-linux"
+STATE_FILE="$STATE_DIR/software-setup-complete"
+mkdir -p "$STATE_DIR"
+if [[ -f "$STATE_FILE" || -d /run/live/medium ]]; then exit 0; fi
+if ! command -v zenity >/dev/null 2>&1; then exit 0; fi
+declare -A PACKAGES=(
+  [ai]="python3-numpy python3-scipy python3-matplotlib python3-pandas python3-sklearn python3-pytorch"
+  [dev]="build-essential git curl wget python3 python3-pip python3-venv cmake ninja-build gdb"
+  [eng]="freecad kicad openscad"
+  [science]="python3-numpy python3-scipy python3-matplotlib python3-pandas python3-astropy"
+  [aerospace]="python3-numpy python3-scipy python3-matplotlib python3-pandas"
+  [security]="wireshark nmap tcpdump traceroute net-tools"
+  [media]="blender vlc obs-studio"
+  [office]="libreoffice"
+)
+choices="$(zenity --list --checklist --width=760 --height=560 --title="Alpha Linux — Software Setup"   --text="Your Alpha Linux Core + COSMIC installation is ready. Choose the capability bundles you want to install online."   --column="Install" --column="Capability" --column="Description"   TRUE "AI & Automation" "AI tooling, scientific Python and ML runtime"   FALSE "Development" "Compilers, Git, Python, CMake and debugging"   FALSE "Engineering & CAD" "FreeCAD, KiCad and OpenSCAD"   FALSE "Science & Astronomy" "Scientific Python and Astropy"   FALSE "Aerospace" "Scientific/numerical engineering foundation"   FALSE "Networking & Security" "Network diagnostics and analysis tools"   FALSE "Media & Creative" "Blender, VLC and OBS"   FALSE "Office" "LibreOffice suite" --separator="|")" || true
+if [[ -z "$choices" ]]; then
+  if zenity --question --width=520 --title="Alpha Linux" --text="No optional bundles were selected. You can run Software Setup later from the Applications menu.\n\nFinish setup now?"; then touch "$STATE_FILE"; fi
+  exit 0
+fi
+keys=()
+IFS='|' read -ra selected <<< "$choices"
+for item in "${selected[@]}"; do
+  case "$item" in
+    "AI & Automation") keys+=(ai) ;; "Development") keys+=(dev) ;;
+    "Engineering & CAD") keys+=(eng) ;; "Science & Astronomy") keys+=(science) ;;
+    "Aerospace") keys+=(aerospace) ;; "Networking & Security") keys+=(security) ;;
+    "Media & Creative") keys+=(media) ;; "Office") keys+=(office) ;;
+  esac
+done
+pkgs=()
+for key in "${keys[@]}"; do
+  for pkg in ${PACKAGES[$key]}; do
+    if apt-cache show "$pkg" >/dev/null 2>&1; then pkgs+=("$pkg"); fi
+  done
+done
+printf '%s\n' "${pkgs[@]}" | grep -q . || { zenity --error --width=520 --title="Alpha Linux" --text="No selected packages are available from the configured repositories. No changes were made."; exit 1; }
+mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | LC_ALL=C sort -u)
+count=$(printf '%s\n' "${pkgs[@]}" | wc -l)
+if ! zenity --question --width=620 --title="Alpha Linux — Confirm" --text="Install $count selected packages online?\n\nAPT will download and install them from the configured Ubuntu repositories. Large AI/ML packages may require significant storage and bandwidth."; then exit 0; fi
+(
+  echo 10; echo "# Refreshing package metadata…"; apt-get update
+  echo 35; echo "# Installing selected Alpha capability bundles…"; apt-get install -y --no-install-recommends "${pkgs[@]}"
+  echo 95; echo "# Finalizing…"; rm -rf /var/lib/apt/lists/*; echo 100
+) | pkexec tee /tmp/alpha-software-setup-progress >/dev/null
+rm -f /tmp/alpha-software-setup-progress
+apt-get update >/dev/null
+apt-get install -y --no-install-recommends "${pkgs[@]}"
+touch "$STATE_FILE"
+zenity --info --width=560 --title="Alpha Linux — Ready" --text="The selected Alpha Linux capability bundles were installed successfully. You can add more software later from the Applications menu."
