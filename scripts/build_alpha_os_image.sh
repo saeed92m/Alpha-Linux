@@ -501,15 +501,15 @@ sudo test -L "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.targ
 echo "COSMIC graphical validator persisted in unmounted live leaf layer"
 
 echo "Finalizing Alpha Linux identity directly in the Live leaf layer"
-ALPHA_OS_RELEASE="\${WORK_DIR}/alpha-os-release"
-ALPHA_LSB_RELEASE="\${WORK_DIR}/alpha-lsb-release"
-cat > "\${ALPHA_OS_RELEASE}" <<EOF
+ALPHA_OS_RELEASE="${WORK_DIR}/alpha-os-release"
+ALPHA_LSB_RELEASE="${WORK_DIR}/alpha-lsb-release"
+cat > "${ALPHA_OS_RELEASE}" <<EOF
 NAME="Alpha Linux"
-PRETTY_NAME="Alpha Linux \${VERSION}"
+PRETTY_NAME="Alpha Linux ${VERSION}"
 ID=alpha-linux
 ID_LIKE="ubuntu debian"
-VERSION_ID="\${VERSION}"
-VERSION="\${VERSION} (Alpha)"
+VERSION_ID="${VERSION}"
+VERSION="${VERSION} (Alpha)"
 VERSION_CODENAME="resolute"
 HOME_URL="https://github.com/saeed92m/Alpha-Linux"
 SUPPORT_URL="https://github.com/saeed92m/Alpha-Linux/issues"
@@ -517,18 +517,18 @@ BUG_REPORT_URL="https://github.com/saeed92m/Alpha-Linux/issues"
 UBUNTU_CODENAME=resolute
 LOGO=alpha-linux-logo
 EOF
-cat > "\${ALPHA_LSB_RELEASE}" <<EOF
+cat > "${ALPHA_LSB_RELEASE}" <<EOF
 DISTRIB_ID=Alpha
-DISTRIB_RELEASE=\${VERSION}
+DISTRIB_RELEASE=${VERSION}
 DISTRIB_CODENAME=resolute
-DISTRIB_DESCRIPTION="Alpha Linux \${VERSION}"
+DISTRIB_DESCRIPTION="Alpha Linux ${VERSION}"
 EOF
-sudo mkdir -p "\${LIVE_ROOTFS_DIR}/usr/lib" "\${LIVE_ROOTFS_DIR}/etc"
-sudo install -m 0644 "\${ALPHA_OS_RELEASE}" "\${LIVE_ROOTFS_DIR}/usr/lib/os-release"
-sudo install -m 0644 "\${ALPHA_LSB_RELEASE}" "\${LIVE_ROOTFS_DIR}/etc/lsb-release"
-sudo grep -Fq 'PRETTY_NAME="Alpha Linux \${VERSION}"' "\${LIVE_ROOTFS_DIR}/usr/lib/os-release"
-sudo grep -Fq 'ID=alpha-linux' "\${LIVE_ROOTFS_DIR}/usr/lib/os-release"
-sudo grep -Fq 'DISTRIB_ID=Alpha' "\${LIVE_ROOTFS_DIR}/etc/lsb-release"
+sudo mkdir -p "${LIVE_ROOTFS_DIR}/usr/lib" "${LIVE_ROOTFS_DIR}/etc"
+sudo install -m 0644 "${ALPHA_OS_RELEASE}" "${LIVE_ROOTFS_DIR}/usr/lib/os-release"
+sudo install -m 0644 "${ALPHA_LSB_RELEASE}" "${LIVE_ROOTFS_DIR}/etc/lsb-release"
+sudo grep -Fq 'PRETTY_NAME="Alpha Linux ${VERSION}"' "${LIVE_ROOTFS_DIR}/usr/lib/os-release"
+sudo grep -Fq 'ID=alpha-linux' "${LIVE_ROOTFS_DIR}/usr/lib/os-release"
+sudo grep -Fq 'DISTRIB_ID=Alpha' "${LIVE_ROOTFS_DIR}/etc/lsb-release"
 
 echo "Repacking modified Ubuntu Live layer"
 sudo mksquashfs "${LIVE_ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"
