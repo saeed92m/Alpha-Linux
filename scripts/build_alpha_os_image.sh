@@ -209,35 +209,10 @@ DISTRIB_CODENAME=resolute
 DISTRIB_DESCRIPTION="Alpha Linux ${VERSION}"
 EOF
 printf "alpha-linux\n" | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/hostname" >/dev/null
-echo "Disabling Ubuntu Desktop Bootstrap installer on the Alpha Live desktop"
-sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system"
-sudo ln -sfn /dev/null "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/snap.ubuntu-desktop-bootstrap.subiquity-server.service"
-# The Ubuntu 26.04 desktop base includes Ubuntu Desktop Bootstrap/Subiquity.
-# Alpha Linux has its own dedicated installer; leaving the bootstrap service enabled
-# can start Subiquity independently of the Alpha installer launcher and present a
-# misleading/failing Ubuntu installer window in the Live session.
-for desktop_dir in \
-  "${OVERLAY_ROOTFS_DIR}/usr/share/applications" \
-  "${OVERLAY_ROOTFS_DIR}/var/lib/snapd/desktop/applications" \
-  "${OVERLAY_ROOTFS_DIR}/snap/ubuntu-desktop-bootstrap/current/meta/gui/applications"; do
-  if [[ -d "$desktop_dir" ]]; then
-    while IFS= read -r desktop; do
-      if grep -Eiq '^(Name|X-GNOME-FullName|Comment)=.*(Ubuntu|Subiquity|Bootstrap).*Installer|Exec=.*(subiquity|ubuntu-desktop-bootstrap)' "$desktop"; then
-        if ! grep -q '^NoDisplay=' "$desktop"; then
-          printf '\nNoDisplay=true\n' | sudo tee -a "$desktop" >/dev/null
-        else
-          sudo sed -i 's/^NoDisplay=.*/NoDisplay=true/' "$desktop"
-        fi
-      fi
-    done < <(find "$desktop_dir" -type f -name '*.desktop' -print 2>/dev/null)
-  fi
-done
-
-for desktop in "${OVERLAY_ROOTFS_DIR}"/usr/share/applications/*ubuntu*installer*.desktop "${OVERLAY_ROOTFS_DIR}"/usr/share/applications/*Ubuntu*Installer*.desktop; do
-  if [[ -f "$desktop" ]]; then
-    if ! grep -q "^NoDisplay=" "$desktop"; then printf "\nNoDisplay=true\n" | sudo tee -a "$desktop" >/dev/null; else sudo sed -i "s/^NoDisplay=.*/NoDisplay=true/" "$desktop"; fi
-  fi
-done
+echo "Preserving Ubuntu Desktop Bootstrap/Subiquity installer from the verified Ubuntu base"
+# Keep the upstream Ubuntu installer intact for this release. Alpha branding is
+# applied separately; installer replacement is intentionally deferred until the
+# upstream install path is independently validated.
 
 echo "Preparing display-manager handoff for COSMIC"
 if [[ -L "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/display-manager.service" ]]; then
@@ -270,20 +245,8 @@ fi
 INSTALLER_SOURCE="${GITHUB_WORKSPACE:-.}/scripts/alpha-live-installer.sh"
 test -f "${INSTALLER_SOURCE}"
 sudo install -D -m 0755 "${INSTALLER_SOURCE}" "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-live-installer.sh"
-sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/usr/share/applications"
-sudo tee "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop" >/dev/null <<'DESKTOP'
-[Desktop Entry]
-Type=Application
-Name=Alpha Linux Installer
-Comment=Install Alpha Linux to a dedicated empty disk
-Exec=pkexec /usr/local/sbin/alpha-live-installer.sh
-Icon=system-software-install
-Terminal=false
-Categories=System;Settings;
-DESKTOP
-sudo chmod 0644 "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop"
-sudo test -x "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-live-installer.sh"
-sudo test -f "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop"
+# Do not replace or wrap the upstream Ubuntu/Subiquity installer in this release.
+# The Live image keeps the verified Ubuntu installer path unchanged.
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean || true
 sudo rm -rf "${OVERLAY_ROOTFS_DIR}/var/lib/apt/lists/"*
 
@@ -509,13 +472,13 @@ echo "Preparing Alpha Linux ISO branding metadata and boot menus"
 printf "Alpha Linux ${VERSION} - Alpha amd64\n" > "${ISO_BRANDING_DIR}/disk/info"
 if xorriso -indev "${BASE_PATH}" -ls /boot/grub/grub.cfg >/dev/null 2>&1; then
   xorriso -indev "${BASE_PATH}" -osirrox on -extract /boot/grub/grub.cfg "${ISO_BRANDING_DIR}/grub/grub.cfg"
-  sed -i -e "s/Try or Install Ubuntu/Try or Install Alpha Linux/g" -e "s/Ubuntu (safe graphics)/Alpha Linux (safe graphics)/g" -e "s/Install Ubuntu/Install Alpha Linux/g" "${ISO_BRANDING_DIR}/grub/grub.cfg"
+  true
   GRUB_MAP_ARGS="-map ${ISO_BRANDING_DIR}/grub/grub.cfg /boot/grub/grub.cfg"
   export GRUB_MAP_ARGS
 fi
 if xorriso -indev "${BASE_PATH}" -ls /isolinux >/dev/null 2>&1; then
   if xorriso -indev "${BASE_PATH}" -osirrox on -extract /isolinux/txt.cfg "${ISO_BRANDING_DIR}/isolinux/txt.cfg" >/dev/null 2>&1; then
-    sed -i -e "s/Try or Install Ubuntu/Try or Install Alpha Linux/g" -e "s/Ubuntu (safe graphics)/Alpha Linux (safe graphics)/g" -e "s/Install Ubuntu/Install Alpha Linux/g" "${ISO_BRANDING_DIR}/isolinux/txt.cfg"
+    true
     ISOLINUX_MAP_ARGS="-map ${ISO_BRANDING_DIR}/isolinux/txt.cfg /isolinux/txt.cfg"
     export ISOLINUX_MAP_ARGS
   else
