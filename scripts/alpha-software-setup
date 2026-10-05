@@ -5,6 +5,8 @@ STATE_FILE="$STATE_DIR/software-setup-complete"
 mkdir -p "$STATE_DIR"
 if [[ -f "$STATE_FILE" || -d /run/live/medium ]]; then exit 0; fi
 command -v zenity >/dev/null 2>&1 || exit 0
+zenity --question --width=620 --title="Alpha Linux — Online setup" --text="Alpha Linux will refresh package metadata before showing available capability bundles. An Internet connection is required." || exit 0
+pkexec env DEBIAN_FRONTEND=noninteractive apt-get update
 declare -A PACKAGES=(
  [ai]="python3-numpy python3-scipy python3-matplotlib python3-pandas python3-sklearn python3-pytorch"
  [dev]="build-essential git curl wget python3 python3-pip python3-venv cmake ninja-build gdb"
