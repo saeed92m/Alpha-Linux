@@ -40,13 +40,8 @@ printf '%s\n' "${pkgs[@]}" | grep -q . || { zenity --error --width=520 --title="
 mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | LC_ALL=C sort -u)
 count=$(printf '%s\n' "${pkgs[@]}" | wc -l)
 if ! zenity --question --width=620 --title="Alpha Linux — Confirm" --text="Install $count selected packages online?\n\nAPT will download and install them from the configured Ubuntu repositories. Large AI/ML packages may require significant storage and bandwidth."; then exit 0; fi
-(
-  echo 10; echo "# Refreshing package metadata…"; apt-get update
-  echo 35; echo "# Installing selected Alpha capability bundles…"; apt-get install -y --no-install-recommends "${pkgs[@]}"
-  echo 95; echo "# Finalizing…"; rm -rf /var/lib/apt/lists/*; echo 100
-) | pkexec tee /tmp/alpha-software-setup-progress >/dev/null
-rm -f /tmp/alpha-software-setup-progress
-apt-get update >/dev/null
-apt-get install -y --no-install-recommends "${pkgs[@]}"
+pkexec env DEBIAN_FRONTEND=noninteractive apt-get update
+pkexec env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${pkgs[@]}"
+pkexec rm -rf /var/lib/apt/lists/*
 touch "$STATE_FILE"
 zenity --info --width=560 --title="Alpha Linux — Ready" --text="The selected Alpha Linux capability bundles were installed successfully. You can add more software later from the Applications menu."
