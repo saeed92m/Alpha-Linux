@@ -96,15 +96,17 @@ export SOURCE_DATE_EPOCH
 build_iso() {
   local output_path="$1"
   echo "Building ISO: ${output_path}"
-  xorriso \
-    -indev "${BASE_PATH}" \
-    -outdev "${output_path}" \
-    -map "${SEED_PATH}" /alpha-release.json \
-    -map "${ISO_BRANDING_DIR}/disk/info" /.disk/info \
-    -map "${LIVE_SQUASHFS}" /casper/minimal.standard.live.squashfs \
-    ${GRUB_MAP_ARGS:-} ${ISOLINUX_MAP_ARGS:-} \
-    -boot_image any replay \
-    -compliance no_emul_toc \
+  # Explicitly remove the upstream identity/boot files before mapping Alpha replacements.\n  # xorriso otherwise preserves the existing directory-tree entry in some replay cases.\n  xorriso \\
+    -indev "${BASE_PATH}" \\
+    -outdev "${output_path}" \\
+    -rm /alpha-release.json /.disk/info \\
+    -map "${SEED_PATH}" /alpha-release.json \\
+    -map "${ISO_BRANDING_DIR}/disk/info" /.disk/info \\
+    -rm /casper/minimal.standard.live.squashfs \\
+    -map "${LIVE_SQUASHFS}" /casper/minimal.standard.live.squashfs \\
+    ${GRUB_MAP_ARGS:-} ${ISOLINUX_MAP_ARGS:-} \\
+    -boot_image any replay \\
+    -compliance no_emul_toc \\
     -padding included
 }
 
