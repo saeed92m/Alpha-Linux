@@ -149,12 +149,12 @@ sudo mount -t overlay overlay -o lowerdir="${STANDARD_ROOTFS_DIR}:${BASE_ROOTFS_
 cleanup_chroot() {
   # The build runs with set -e; make cleanup explicitly idempotent and never
   # let an already-unmounted path abort the image build.
-  for mount_path in
-    "${OVERLAY_ROOTFS_DIR}/run"
-    "${OVERLAY_ROOTFS_DIR}/tmp"
-    "${OVERLAY_ROOTFS_DIR}/sys"
-    "${OVERLAY_ROOTFS_DIR}/proc"
-    "${OVERLAY_ROOTFS_DIR}/dev/pts"
+  for mount_path in \
+    "${OVERLAY_ROOTFS_DIR}/run" \
+    "${OVERLAY_ROOTFS_DIR}/tmp" \
+    "${OVERLAY_ROOTFS_DIR}/sys" \
+    "${OVERLAY_ROOTFS_DIR}/proc" \
+    "${OVERLAY_ROOTFS_DIR}/dev/pts" \
     "${OVERLAY_ROOTFS_DIR}/dev"
     "${OVERLAY_ROOTFS_DIR}"
   do
