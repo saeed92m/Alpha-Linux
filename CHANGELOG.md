@@ -1,11 +1,25 @@
 # Changelog
 
-**Current documentation/release context:** Alpha 0.1.0a2  
+**Current documentation/release context:** Alpha 0.4.0  
 **Handbook:** v1.1.0
 
 All notable Alpha Linux changes will be documented here.
 
 The project follows a release-oriented change history. Unreleased work is kept under the `Unreleased` section until it is assigned to a release.
+
+## Alpha 0.4.0 — Modular Core & Online Software
+
+### Added
+
+- First-login graphical Software Setup selector for optional workstation capability bundles.
+- AI & Automation / ML, Development, Engineering & CAD, Science & Astronomy, Aerospace, Networking & Security, Media & Creative, and Office package groups.
+- Reusable Software Setup launcher for installing additional capabilities later.
+- Repository availability filtering before optional package installation.
+
+### Changed
+
+- Alpha 0.4.0 keeps Core + COSMIC as the release-critical ISO payload while moving heavy optional applications online.
+- The 0.4.0 image path preserves the stable installable COSMIC/Ubuntu foundation and does not require optional branding assets.
 
 ## Unreleased
 
