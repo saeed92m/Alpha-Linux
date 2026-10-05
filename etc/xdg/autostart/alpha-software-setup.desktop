@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Alpha Linux First-Run Software Setup
+Exec=/usr/local/bin/alpha-software-setup --first-login
+OnlyShowIn=COSMIC;
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

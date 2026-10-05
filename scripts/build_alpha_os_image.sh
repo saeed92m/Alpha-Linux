@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${ALPHA_VERSION:-0.3.5a}"
+VERSION="${ALPHA_VERSION:-0.4.0}"
 CHANNEL="${ALPHA_CHANNEL:-alpha}"
 ARCH="${ALPHA_ARCH:-amd64}"
-RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-3-5a}"
+RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-4-0}"
 SOURCE_COMMIT="${GITHUB_SHA:?GITHUB_SHA is required}"
 CI_RUN_ID="${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
 BUILD_ENVIRONMENT="${ALPHA_BUILD_ENVIRONMENT:-github-hosted-ubuntu-latest}"
@@ -248,6 +248,32 @@ fi
 INSTALLER_SOURCE="${GITHUB_WORKSPACE:-.}/scripts/alpha-live-installer.sh"
 test -f "${INSTALLER_SOURCE}"
 sudo install -D -m 0755 "${INSTALLER_SOURCE}" "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-live-installer.sh"
+echo "Installing Alpha Linux modular online software setup"
+SOFTWARE_SETUP_SOURCE="${GITHUB_WORKSPACE:-.}/scripts/alpha-software-setup"
+test -x "${SOFTWARE_SETUP_SOURCE}"
+sudo install -D -m 0755 "${SOFTWARE_SETUP_SOURCE}" "${OVERLAY_ROOTFS_DIR}/usr/local/bin/alpha-software-setup"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/usr/share/applications" "${OVERLAY_ROOTFS_DIR}/etc/xdg/autostart"
+sudo tee "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-software-setup.desktop" >/dev/null <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=Alpha Linux Software Setup
+Comment=Choose optional Alpha Linux capability bundles
+Exec=/usr/local/bin/alpha-software-setup
+Icon=system-software-install
+Terminal=false
+Categories=System;Settings;
+DESKTOP
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/xdg/autostart/alpha-software-setup.desktop" >/dev/null <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=Alpha Linux First-Run Software Setup
+Exec=/usr/local/bin/alpha-software-setup --first-login
+OnlyShowIn=COSMIC;
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
+DESKTOP
+sudo chmod 0644 "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-software-setup.desktop" "${OVERLAY_ROOTFS_DIR}/etc/xdg/autostart/alpha-software-setup.desktop"
+sudo test -x "${OVERLAY_ROOTFS_DIR}/usr/local/bin/alpha-software-setup"
 # Do not replace or wrap the upstream Ubuntu/Subiquity installer in this release.
 # The Live image keeps the verified Ubuntu installer path unchanged.
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean || true
