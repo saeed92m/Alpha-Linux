@@ -14,7 +14,7 @@ The product vision includes a polished end-to-end experience from **boot media �
 
 **Current phase: Phase 7 — Alpha Releases**  
 **Current release context: Alpha v0.4.0 — Modular Core & Online Software**  
-**Master Handbook: v1.1.0**
+**Master Handbook: v1.5.0**
 
 Phase 0 specification/architecture work is frozen as the normative foundation. Phases 1–6 established the executable engineering, Alpha Core, desktop/interaction, AI platform, domain platform, and hardening reference foundations. Phase 7 is implementing release-scoped artifact, boot, Live-environment, installer, traceability, readiness, and publication foundations with deterministic contracts, executable tests, CI evidence, and explicit non-goal boundaries.
 
@@ -110,7 +110,7 @@ The CI/CD workflow covers:
 - COSMIC graphical-runtime validation;
 - installer safety and disposable transaction validation.
 
-The `v0.1.0a1` package release lineage is immutable and historical. The `v0.1.0a3` OS-image candidate is superseded by the brand-corrected `v0.1.0a4` candidate and is not retroactively modified. Physical installation, complete hardware validation, Windows dual-boot, Secure Boot, production installer readiness and Beta/Stable promotion remain future gates.
+The `v0.1.0a1` package release lineage is immutable and historical. `v0.3.0a` is the last validated OS-image baseline. `v0.1.0a4` is archived historical engineering evidence and is not the active development baseline. Physical installation, complete hardware validation, Windows dual-boot, Secure Boot, production installer readiness and Beta/Stable promotion remain future gates.
 
 ## Documentation hierarchy
 
