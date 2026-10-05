@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${ALPHA_VERSION:-0.1.0a2}"
+VERSION="${ALPHA_VERSION:-0.4.0}"
 CHANNEL="${ALPHA_CHANNEL:-alpha}"
 ARCH="${ALPHA_ARCH:-amd64}"
-RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-1-0a2}"
+RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-4-0}"
 SOURCE_COMMIT="${GITHUB_SHA:?GITHUB_SHA is required}"
 CI_RUN_ID="${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
 BUILD_ENVIRONMENT="${ALPHA_BUILD_ENVIRONMENT:-github-hosted-ubuntu-latest}"
@@ -227,6 +227,24 @@ DESKTOP
 sudo chmod 0644 "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop"
 sudo test -x "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-live-installer.sh"
 sudo test -f "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop"
+
+echo "Installing Alpha Linux modular online software setup"
+SOFTWARE_SETUP_SOURCE="${GITHUB_WORKSPACE:-.}/scripts/alpha-software-setup"
+test -x "${SOFTWARE_SETUP_SOURCE}"
+sudo install -D -m 0755 "${SOFTWARE_SETUP_SOURCE}" "${OVERLAY_ROOTFS_DIR}/usr/local/bin/alpha-software-setup"
+sudo test -x "${OVERLAY_ROOTFS_DIR}/usr/local/bin/alpha-software-setup"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/xdg/autostart"
+sudo tee "${OVERLAY_ROOTFS_DIR}/etc/xdg/autostart/alpha-software-setup.desktop" >/dev/null <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=Alpha Linux First-Run Software Setup
+Exec=/usr/local/bin/alpha-software-setup --first-login
+OnlyShowIn=COSMIC;
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
+DESKTOP
+sudo chmod 0644 "${OVERLAY_ROOTFS_DIR}/etc/xdg/autostart/alpha-software-setup.desktop"
+sudo test -f "${OVERLAY_ROOTFS_DIR}/etc/xdg/autostart/alpha-software-setup.desktop"
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean || true
 sudo rm -rf "${OVERLAY_ROOTFS_DIR}/var/lib/apt/lists/"*
 
