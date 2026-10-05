@@ -46,10 +46,10 @@ jobs:
 
       - name: Build and validate Alpha OS ISO
         env:
-          ALPHA_VERSION: "0.1.0a4"
+          ALPHA_VERSION: "0.3.5a"
           ALPHA_CHANNEL: "alpha"
           ALPHA_ARCH: "amd64"
-          ALPHA_RELEASE_ID: "alpha-os-0-1-0a4"
+          ALPHA_RELEASE_ID: "alpha-os-0-3-5a"
           ALPHA_BUILD_ENVIRONMENT: "github-hosted-ubuntu-latest"
           ALPHA_VERIFY_REPRODUCIBILITY: "true"
           SOURCE_DATE_EPOCH: "946684800"
@@ -60,24 +60,23 @@ jobs:
       - name: Validate Alpha Linux Live identity and branding
         run: |
           set -euo pipefail
-          ISO="dist/alpha-linux-0.1.0a4-alpha-amd64.iso"
+          ISO="dist/alpha-linux-0.3.5a-alpha-amd64.iso"
           test -s "$ISO"
           xorriso -indev "$ISO" -osirrox on -extract /.disk/info dist/alpha-disk-info.txt
-          grep -Fq "Alpha Linux 0.1.0a4" dist/alpha-disk-info.txt
+          grep -Fq "Alpha Linux 0.3.5a" dist/alpha-disk-info.txt
           rm -rf dist/alpha-live-root-check
           mkdir -p dist/alpha-live-root-check
           xorriso -indev "$ISO" -ls /casper | tee dist/alpha-casper-list.txt
           xorriso -indev "$ISO" -osirrox on -extract /casper/minimal.standard.live.squashfs dist/alpha-live.squashfs
           sudo unsquashfs -d dist/alpha-live-root-check dist/alpha-live.squashfs >/dev/null
-          grep -Fq 'PRETTY_NAME="Alpha Linux 0.1.0a4"' dist/alpha-live-root-check/usr/lib/os-release
+          grep -Fq 'PRETTY_NAME="Alpha Linux 0.3.5a"' dist/alpha-live-root-check/usr/lib/os-release
           grep -Fq 'ID=alpha-linux' dist/alpha-live-root-check/usr/lib/os-release
-    test -L dist/alpha-live-root-check/etc/systemd/system/snap.ubuntu-desktop-bootstrap.subiquity-server.service
-    test "$(readlink dist/alpha-live-root-check/etc/systemd/system/snap.ubuntu-desktop-bootstrap.subiquity-server.service)" = "/dev/null"
+    # The verified Ubuntu Desktop Bootstrap/Subiquity installer is intentionally preserved.
+    test -e dist/alpha-live-root-check/snap/ubuntu-desktop-bootstrap/current/bin/subiquity/subiquitycore/__init__.py
+    test -S dist/alpha-live-root-check/run/subiquity/socket || true
     if [[ -d dist/alpha-live-root-check/var/lib/snapd/desktop/applications ]]; then
-      if find dist/alpha-live-root-check/var/lib/snapd/desktop/applications -type f -name '*.desktop' -print0 | xargs -0 grep -EHi '^(Name|X-GNOME-FullName|Comment)=.*(Ubuntu|Subiquity|Bootstrap).*Installer|Exec=.*(subiquity|ubuntu-desktop-bootstrap)' 2>/dev/null | grep -q .; then
-        echo "Ubuntu/Subiquity installer desktop entry remains visible in the Alpha Live image"
-        exit 1
-      fi
+      find dist/alpha-live-root-check/var/lib/snapd/desktop/applications -type f -name '*.desktop' -print0 |
+        xargs -0 grep -EHi '^(Name|X-GNOME-FullName|Comment)=.*(Install Ubuntu|Ubuntu Desktop Installer|Subiquity)' 2>/dev/null || true
     fi
           grep -Fq 'DISTRIB_ID=Alpha' dist/alpha-live-root-check/etc/lsb-release
           while IFS= read -r desktop; do
@@ -89,6 +88,14 @@ jobs:
             ! grep -Fq "Try or Install Ubuntu" dist/alpha-grub.cfg
             grep -Fq "Alpha Linux" dist/alpha-grub.cfg
           fi
+          echo "Alpha Linux additive branding assets" >> "$GITHUB_STEP_SUMMARY"
+          test -s dist/alpha-live-root-check/usr/share/pixmaps/alpha-linux-logo-big.png
+          test -s dist/alpha-live-root-check/usr/share/pixmaps/alpha-linux-logo-small.png
+          test -s dist/alpha-live-root-check/usr/share/icons/hicolor/512x512/apps/alpha-linux.png
+          test -s dist/alpha-live-root-check/var/cache/systemd/home/alpha/login-background
+          test -s dist/alpha-live-root-check/usr/share/alpha-linux-branding.sha256
+          test -d dist/alpha-live-root-check/usr/share/backgrounds/alpha-linux
+          test "$(find dist/alpha-live-root-check/usr/share/backgrounds/alpha-linux -maxdepth 1 -type f -name '*.png' | wc -l)" -eq 6
           echo "Alpha Linux Live identity and boot branding validated." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate COSMIC Live runtime payload
@@ -111,14 +118,14 @@ jobs:
       - name: Validate BIOS and UEFI boot metadata
         run: |
           set -euo pipefail
-          xorriso -indev dist/alpha-linux-0.1.0a4-alpha-amd64.iso -report_el_torito plain | tee dist/el-torito-boot-matrix.txt
+          xorriso -indev dist/alpha-linux-0.3.5a-alpha-amd64.iso -report_el_torito plain | tee dist/el-torito-boot-matrix.txt
           grep -Eqi 'BIOS|El Torito' dist/el-torito-boot-matrix.txt
           grep -Eqi 'EFI|UEFI' dist/el-torito-boot-matrix.txt
 
       - name: Run automated BIOS boot smoke test
         run: |
           set -euo pipefail
-          timeout 75s qemu-system-x86_64 -machine pc -m 2048 -cdrom dist/alpha-linux-0.1.0a4-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-bios-boot-smoke.log -no-reboot >/tmp/alpha-qemu-bios.stdout 2>/tmp/alpha-qemu-bios.stderr &
+          timeout 75s qemu-system-x86_64 -machine pc -m 2048 -cdrom dist/alpha-linux-0.3.5a-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-bios-boot-smoke.log -no-reboot >/tmp/alpha-qemu-bios.stdout 2>/tmp/alpha-qemu-bios.stderr &
           QEMU_PID=$!
           sleep 45
           if kill -0 "$QEMU_PID" 2>/dev/null; then kill "$QEMU_PID" || true; wait "$QEMU_PID" || true; else QEMU_STATUS=0; wait "$QEMU_PID" || QEMU_STATUS=$?; echo "BIOS QEMU exit status $QEMU_STATUS"; fi
@@ -132,7 +139,7 @@ jobs:
           if [[ ! -f "$UEFI_CODE" ]]; then UEFI_CODE=/usr/share/OVMF/OVMF_CODE.fd; fi
           test -f "$UEFI_CODE"
           echo "Using UEFI firmware: $UEFI_CODE"
-          timeout 75s qemu-system-x86_64 -machine q35,accel=tcg -m 2048 -bios "$UEFI_CODE" -cdrom dist/alpha-linux-0.1.0a4-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-uefi-boot-smoke.log -no-reboot >/tmp/alpha-qemu-uefi.stdout 2>/tmp/alpha-qemu-uefi.stderr &
+          timeout 75s qemu-system-x86_64 -machine q35,accel=tcg -m 2048 -bios "$UEFI_CODE" -cdrom dist/alpha-linux-0.3.5a-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-uefi-boot-smoke.log -no-reboot >/tmp/alpha-qemu-uefi.stdout 2>/tmp/alpha-qemu-uefi.stderr &
           QEMU_PID=$!
           sleep 45
           if kill -0 "$QEMU_PID" 2>/dev/null; then kill "$QEMU_PID" || true; wait "$QEMU_PID" || true; else QEMU_STATUS=0; wait "$QEMU_PID" || QEMU_STATUS=$?; echo "UEFI QEMU exit status $QEMU_STATUS"; fi
@@ -143,7 +150,7 @@ jobs:
       - name: Validate Live filesystem structure prerequisites
         run: |
           set -euo pipefail
-          ISO="dist/alpha-linux-0.1.0a4-alpha-amd64.iso"
+          ISO="dist/alpha-linux-0.3.5a-alpha-amd64.iso"
           test -s "$ISO"
           xorriso -indev "$ISO" -ls /casper | tee dist/live-filesystem-evidence.txt
           grep -Eq "\.squashfs['[:space:]]*$" dist/live-filesystem-evidence.txt
@@ -155,7 +162,7 @@ jobs:
       - name: Run automated Live kernel/initramfs runtime validation
         run: |
           set -euo pipefail
-          ISO="dist/alpha-linux-0.1.0a4-alpha-amd64.iso"
+          ISO="dist/alpha-linux-0.3.5a-alpha-amd64.iso"
           LIVE_DIR="dist/live-runtime"
           mkdir -p "$LIVE_DIR"
           xorriso -indev "$ISO" -osirrox on -extract /casper/vmlinuz "$LIVE_DIR/vmlinuz"
@@ -192,7 +199,7 @@ jobs:
       - name: Run automated COSMIC graphical session runtime validation
         run: |
           set -euo pipefail
-          ISO="dist/alpha-linux-0.1.0a4-alpha-amd64.iso"
+          ISO="dist/alpha-linux-0.3.5a-alpha-amd64.iso"
           LIVE_DIR="dist/live-runtime"
           test -s "$LIVE_DIR/vmlinuz"
           test -s "$LIVE_DIR/initrd"
@@ -236,7 +243,7 @@ jobs:
       - name: Run automated ISO boot smoke test
         run: |
           set -euo pipefail
-          timeout 75s qemu-system-x86_64 -machine accel=tcg -m 2048 -cdrom dist/alpha-linux-0.1.0a4-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-boot-smoke.log -no-reboot >/tmp/alpha-qemu.stdout 2>/tmp/alpha-qemu.stderr &
+          timeout 75s qemu-system-x86_64 -machine accel=tcg -m 2048 -cdrom dist/alpha-linux-0.3.5a-alpha-amd64.iso -boot d -display none -serial file:dist/qemu-boot-smoke.log -no-reboot >/tmp/alpha-qemu.stdout 2>/tmp/alpha-qemu.stderr &
           QEMU_PID=$!
           sleep 45
           if kill -0 "$QEMU_PID" 2>/dev/null; then
@@ -264,7 +271,7 @@ jobs:
           import json
           from pathlib import Path
 
-          manifest = json.loads(Path("dist/alpha-linux-0.1.0a4-alpha-amd64.manifest.json").read_text())
+          manifest = json.loads(Path("dist/alpha-linux-0.3.5a-alpha-amd64.manifest.json").read_text())
 
           required = [
               "release_id",
@@ -289,7 +296,7 @@ jobs:
               raise SystemExit("manifest source commit does not match workflow SHA")
           if manifest["ci_run_id"] != "${{ github.run_id }}":
               raise SystemExit("manifest CI run ID does not match workflow run")
-          if manifest["artifact_filename"] != "alpha-linux-0.1.0a4-alpha-amd64.iso":
+          if manifest["artifact_filename"] != "alpha-linux-0.3.5a-alpha-amd64.iso":
               raise SystemExit("unexpected deterministic artifact filename")
           if manifest["artifact_size"] <= 0:
               raise SystemExit("artifact size must be positive")
@@ -351,7 +358,7 @@ jobs:
           from alpha_core.alpha_release import AlphaReleaseCandidateEvidence, AlphaReleaseManifest
 
           package = json.loads(next(Path("dist/package-evidence").rglob("release-evidence.json")).read_text())
-          os_manifest = json.loads(Path("dist/alpha-linux-0.1.0a4-alpha-amd64.manifest.json").read_text())
+          os_manifest = json.loads(Path("dist/alpha-linux-0.3.5a-alpha-amd64.manifest.json").read_text())
           print("PACKAGE_EVIDENCE", json.dumps(package, sort_keys=True))
           print("OS_EVIDENCE", json.dumps(os_manifest, sort_keys=True))
           package_manifest = AlphaReleaseManifest(
@@ -381,7 +388,7 @@ jobs:
         run: |
           echo "## Alpha OS Image" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Artifact: alpha-linux-0.1.0a4-alpha-amd64.iso" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: alpha-linux-0.3.5a-alpha-amd64.iso" >> "$GITHUB_STEP_SUMMARY"
           echo "Source commit: ${{ env.ALPHA_SOURCE_SHA }}" >> "$GITHUB_STEP_SUMMARY"
           echo "CI run: ${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Boot metadata: validated with xorriso" >> "$GITHUB_STEP_SUMMARY"
@@ -393,37 +400,37 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
-          ISO="dist/alpha-linux-0.1.0a4-alpha-amd64.iso"
+          ISO="dist/alpha-linux-0.3.5a-alpha-amd64.iso"
           test -s "$ISO"
           mkdir -p dist/release-assets
           split -b 900M -d -a 2 "$ISO" dist/release-assets/part-
           i=1
           for part in dist/release-assets/part-*; do
-            mv "$part" "dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-$(printf '%02d' "$i")"
+            mv "$part" "dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-$(printf '%02d' "$i")"
             i=$((i + 1))
           done
-          sha256sum dist/release-assets/*.iso.part-* > dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.parts.sha256
+          sha256sum dist/release-assets/*.iso.part-* > dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.parts.sha256
           python3 - <<'PY'
           import hashlib, json
           from pathlib import Path
           root=Path("dist/release-assets")
-          iso=Path("dist/alpha-linux-0.1.0a4-alpha-amd64.iso")
+          iso=Path("dist/alpha-linux-0.3.5a-alpha-amd64.iso")
           parts=sorted(root.glob("*.iso.part-*"))
-          m={"artifact":iso.name,"source_run_id":int("${{ github.run_id }}"),"release_tag":"v0.1.0a4","source_commit":"${{ env.ALPHA_SOURCE_SHA }}","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.1.0a4-alpha-amd64.iso.part-* > alpha-linux-0.1.0a4-alpha-amd64.iso"}
-          (root/"alpha-linux-0.1.0a4-alpha-amd64.iso.parts.json").write_text(json.dumps(m,indent=2,sort_keys=True)+"\n")
+          m={"artifact":iso.name,"source_run_id":int("${{ github.run_id }}"),"release_tag":"v0.3.5a","source_commit":"${{ env.ALPHA_SOURCE_SHA }}","iso_size_bytes":iso.stat().st_size,"iso_sha256":hashlib.sha256(iso.read_bytes()).hexdigest(),"part_count":len(parts),"part_max_bytes":900*1024*1024,"parts":[{"name":p.name,"size_bytes":p.stat().st_size,"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in parts],"reassembly":"cat alpha-linux-0.3.5a-alpha-amd64.iso.part-* > alpha-linux-0.3.5a-alpha-amd64.iso"}
+          (root/"alpha-linux-0.3.5a-alpha-amd64.iso.parts.json").write_text(json.dumps(m,indent=2,sort_keys=True)+"\n")
           PY
           cat > dist/release-assets/REASSEMBLE-ISO.txt <<'EOF'
-          Alpha Linux 0.1.0a4 ISO reassembly
+          Alpha Linux 0.3.5a ISO reassembly
 
           Linux/macOS:
-            cat alpha-linux-0.1.0a4-alpha-amd64.iso.part-* > alpha-linux-0.1.0a4-alpha-amd64.iso
-            sha256sum alpha-linux-0.1.0a4-alpha-amd64.iso
+            cat alpha-linux-0.3.5a-alpha-amd64.iso.part-* > alpha-linux-0.3.5a-alpha-amd64.iso
+            sha256sum alpha-linux-0.3.5a-alpha-amd64.iso
 
           PowerShell:
-            $parts = Get-ChildItem .\alpha-linux-0.1.0a4-alpha-amd64.iso.part-* | Sort-Object Name
-            $out = [IO.File]::OpenWrite(".\alpha-linux-0.1.0a4-alpha-amd64.iso")
+            $parts = Get-ChildItem .\alpha-linux-0.3.5a-alpha-amd64.iso.part-* | Sort-Object Name
+            $out = [IO.File]::OpenWrite(".\alpha-linux-0.3.5a-alpha-amd64.iso")
             try { foreach ($p in $parts) { $in = [IO.File]::OpenRead($p.FullName); try { $in.CopyTo($out) } finally { $in.Dispose() } } } finally { $out.Dispose() }
-            Get-FileHash .\alpha-linux-0.1.0a4-alpha-amd64.iso -Algorithm SHA256
+            Get-FileHash .\alpha-linux-0.3.5a-alpha-amd64.iso -Algorithm SHA256
           EOF
           rm -f "$ISO"
 
@@ -431,8 +438,8 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-iso-part-01
-          path: dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-01
+          name: alpha-linux-0.3.5a-alpha-amd64-iso-part-01
+          path: dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-01
           archive: false
           compression-level: 0
           if-no-files-found: error
@@ -441,8 +448,8 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-iso-part-02
-          path: dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-02
+          name: alpha-linux-0.3.5a-alpha-amd64-iso-part-02
+          path: dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-02
           archive: false
           compression-level: 0
           if-no-files-found: error
@@ -451,8 +458,8 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-iso-part-03
-          path: dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-03
+          name: alpha-linux-0.3.5a-alpha-amd64-iso-part-03
+          path: dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-03
           archive: false
           compression-level: 0
           if-no-files-found: error
@@ -461,8 +468,8 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-iso-part-04
-          path: dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-04
+          name: alpha-linux-0.3.5a-alpha-amd64-iso-part-04
+          path: dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-04
           archive: false
           compression-level: 0
           if-no-files-found: error
@@ -471,8 +478,8 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-iso-part-05
-          path: dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-05
+          name: alpha-linux-0.3.5a-alpha-amd64-iso-part-05
+          path: dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-05
           archive: false
           compression-level: 0
           if-no-files-found: error
@@ -481,8 +488,8 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-iso-part-06
-          path: dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-06
+          name: alpha-linux-0.3.5a-alpha-amd64-iso-part-06
+          path: dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-06
           archive: false
           compression-level: 0
           if-no-files-found: error
@@ -491,8 +498,8 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-iso-part-07
-          path: dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-07
+          name: alpha-linux-0.3.5a-alpha-amd64-iso-part-07
+          path: dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-07
           archive: false
           compression-level: 0
           if-no-files-found: error
@@ -501,8 +508,8 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-iso-part-08
-          path: dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-08
+          name: alpha-linux-0.3.5a-alpha-amd64-iso-part-08
+          path: dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-08
           archive: false
           compression-level: 0
           if-no-files-found: error
@@ -511,10 +518,10 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_run' || github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-release-metadata
+          name: alpha-linux-0.3.5a-alpha-amd64-release-metadata
           path: |
-            dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.parts.sha256
-            dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.parts.json
+            dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.parts.sha256
+            dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.parts.json
             dist/release-assets/REASSEMBLE-ISO.txt
           archive: true
           compression-level: 0
@@ -536,7 +543,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="v0.1.0a4"
+          TAG="v0.3.5a"
           gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
@@ -544,18 +551,18 @@ jobs:
             --prerelease \
             --notes "Verified Alpha Linux release built from $GITHUB_SHA. This release is published directly from the validated OS-image workspace to avoid large GitHub Actions artifact transport. ISO parts are <=900 MiB and are accompanied by SHA-256 and reassembly metadata."
           gh release upload "$TAG" \
-            dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.part-* \
-            dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.parts.sha256 \
-            dist/release-assets/alpha-linux-0.1.0a4-alpha-amd64.iso.parts.json \
+            dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.part-* \
+            dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.parts.sha256 \
+            dist/release-assets/alpha-linux-0.3.5a-alpha-amd64.iso.parts.json \
             dist/release-assets/REASSEMBLE-ISO.txt \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
       - name: Upload Alpha OS evidence
         uses: actions/upload-artifact@v7
         with:
-          name: alpha-linux-0.1.0a4-alpha-amd64-evidence
+          name: alpha-linux-0.3.5a-alpha-amd64-evidence
           path: |
-            dist/alpha-linux-0.1.0a4-alpha-amd64.manifest.json
+            dist/alpha-linux-0.3.5a-alpha-amd64.manifest.json
             dist/el-torito-report.txt
             dist/alpha-release-candidate-evidence.json
             dist/qemu-boot-smoke.log
