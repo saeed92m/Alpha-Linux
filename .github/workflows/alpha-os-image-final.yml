@@ -71,13 +71,14 @@ jobs:
           sudo unsquashfs -d dist/alpha-live-root-check dist/alpha-live.squashfs >/dev/null
           grep -Fq 'PRETTY_NAME="Alpha Linux 0.3.5a"' dist/alpha-live-root-check/usr/lib/os-release
           grep -Fq 'ID=alpha-linux' dist/alpha-live-root-check/usr/lib/os-release
-    # The verified Ubuntu Desktop Bootstrap/Subiquity installer is intentionally preserved.
-    test -e dist/alpha-live-root-check/snap/ubuntu-desktop-bootstrap/current/bin/subiquity/subiquitycore/__init__.py
-    test -S dist/alpha-live-root-check/run/subiquity/socket || true
-    if [[ -d dist/alpha-live-root-check/var/lib/snapd/desktop/applications ]]; then
-      find dist/alpha-live-root-check/var/lib/snapd/desktop/applications -type f -name '*.desktop' -print0 |
-        xargs -0 grep -EHi '^(Name|X-GNOME-FullName|Comment)=.*(Install Ubuntu|Ubuntu Desktop Installer|Subiquity)' 2>/dev/null || true
-    fi
+              # The verified Ubuntu Desktop Bootstrap/Subiquity installer is intentionally preserved.
+              test -e dist/alpha-live-root-check/snap/ubuntu-desktop-bootstrap/current/bin/subiquity/subiquitycore/__init__.py
+              test -S dist/alpha-live-root-check/run/subiquity/socket || true
+              if [[ -d dist/alpha-live-root-check/var/lib/snapd/desktop/applications ]]; then
+                find dist/alpha-live-root-check/var/lib/snapd/desktop/applications -type f -name '*.desktop' -print0 |
+                  xargs -0 grep -EHi '^(Name|X-GNOME-FullName|Comment)=.*(Install Ubuntu|Ubuntu Desktop Installer|Subiquity)' 2>/dev/null || true
+              fi
+
           grep -Fq 'DISTRIB_ID=Alpha' dist/alpha-live-root-check/etc/lsb-release
           while IFS= read -r desktop; do
             test -f "$desktop"
