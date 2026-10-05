@@ -194,7 +194,7 @@ jobs:
       - name: Validate PEP 517 metadata
         run: |
           metadata="$(python -m build --metadata)"
-          python -c 'import json,sys; m=json.loads(sys.stdin.read()); assert m["name"]=="alpha-linux-core"; assert m["version"]=="0.1.0a3"' <<< "$metadata"
+          python -c 'import json,sys; m=json.loads(sys.stdin.read()); assert m["name"]=="alpha-linux-core"; assert m["version"]=="0.1.0a4"' <<< "$metadata"
 
   ci_art_001:
     name: CI-ART-001 Artifact
@@ -264,7 +264,7 @@ jobs:
           from pathlib import Path
 
           artifact = next(Path("dist").glob("*.whl"))
-          release_tag = "v0.1.0a3"
+          release_tag = "v0.1.0a4"
           try:
               tag_commit = subprocess.check_output(
                   ["git", "rev-list", "-n", "1", f"refs/tags/{release_tag}"],
@@ -275,8 +275,8 @@ jobs:
 
           source_commit = "${{ env.SOURCE_COMMIT }}"
           evidence = {
-              "release_id": "alpha-0-1-0a1",
-              "version": "0.1.0a3",
+              "release_id": "alpha-0-1-0a4",
+              "version": "0.1.0a4",
               "artifact_id": artifact.name,
               "artifact_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
               "source_commit": source_commit,
