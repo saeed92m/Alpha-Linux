@@ -2,6 +2,7 @@
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
     branches: [main]
 
@@ -108,7 +109,13 @@ jobs:
           grep -Fq 'AI & Automation' dist/modular-root/usr/local/bin/alpha-software-setup
           grep -Fq 'Engineering & CAD' dist/modular-root/usr/local/bin/alpha-software-setup
           grep -Fq 'Science & Astronomy' dist/modular-root/usr/local/bin/alpha-software-setup
-          echo "Alpha 0.4.0 modular online software payload validated."
+          grep -Fq 'Individual Applications' dist/modular-root/usr/local/bin/alpha-software-setup
+          grep -Fq 'Stellarium' dist/modular-root/usr/local/bin/alpha-software-setup
+          grep -Fq 'TOPCAT' dist/modular-root/usr/local/bin/alpha-software-setup
+          grep -Fq 'SAOImage DS9' dist/modular-root/usr/local/bin/alpha-software-setup
+          grep -Fq 'Each application' dist/modular-root/usr/local/bin/alpha-software-setup
+          bash -n dist/modular-root/usr/local/bin/alpha-software-setup
+          echo "Alpha 0.4.0 modular online software payload and per-application selection validated."
 
       - name: Install QEMU boot-smoke tooling
         run: |

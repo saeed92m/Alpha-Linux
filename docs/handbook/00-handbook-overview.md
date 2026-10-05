@@ -69,7 +69,7 @@ Testing demonstrates that the system satisfies its requirements.
 
 ## Current phase
 
-The project is currently in **Phase 7 — Alpha Releases**, with **Alpha 0.1.0a4** as the active release context on `main`.
+The project is currently in **Phase 7 — Alpha Releases**, with **Alpha 0.4.0 — Modular Core & Online Software** as the active development/release context on the current branch.
 
 The immutable `v0.1.0a1` lineage remains historical and unchanged. Current `main` has a real amd64 OS-image build/evidence track with deterministic manifests, SHA-256/provenance, reproducibility validation, QEMU boot evidence, Live kernel/initramfs evidence, automated COSMIC graphical-runtime evidence, and release-safe ISO split assets.
 
@@ -77,7 +77,7 @@ These are engineering/CI evidence capabilities, not claims of physical installat
 
 PR #199 adds deterministic filesystem staging and a fail-closed post-install evidence contract. The implementation verifies the staged filesystem manifest before and after commit, while post-install success requires filesystem, boot-configuration and health evidence. This is fixture/runtime evidence and does not claim physical-disk installation or physical rollback.
 
-The A4 pipeline now has an explicit Alpha identity gate; the remaining release-scoped work closes the COSMIC graphical-runtime gate and then the physical boot/install validation sequence.
+The current release engineering path retains the Alpha identity and COSMIC runtime gates while CR #290 adds the Persistent Portable and per-application modular software workstreams. These new capabilities remain unverified until their own implementation and runtime/physical evidence gates pass.
 
 The Handbook remains educational and must not be treated as a substitute for normative requirements or architecture decisions.
 
@@ -155,4 +155,27 @@ For every release-critical feature, record four things: **implementation**, **au
 
 ### Current Phase 7 completion gates
 
-The remaining gates are tracked explicitly in the roadmap: boot/media compatibility matrix, Live UX/diagnostics/recovery, production installer UX and real-disk transaction, physical installation/hardware validation, Windows coexistence, Secure Boot, post-install boot/health validation, and Beta/Stable promotion.
+The remaining gates are tracked explicitly in the roadmap: boot/media compatibility matrix, Live UX/diagnostics/recovery, production installer UX and real-disk transaction, Persistent Portable implementation/persistence/recovery/encryption/physical-media validation, physical installation/hardware validation, Windows coexistence, Secure Boot, post-install boot/health validation, and Beta/Stable promotion.
+
+
+## Portable Persistent workstation model
+
+Under Change Request #290, Alpha Linux now has a first-class target for a **Persistent Portable** deployment. This is deliberately distinct from a disposable Live environment.
+
+The intended user experience is:
+
+**USB → Boot Menu → Alpha Linux + COSMIC → login → work normally → shutdown → remove USB → next boot restores the persistent state.**
+
+The portable system uses the RAM and detected hardware of the host machine. The USB supplies the operating system and persistent storage. zram is preferred; USB-backed swap is optional.
+
+The first reference target is a 64-GB-class device. The Base remains minimal so the device is not consumed by software the user may never use.
+
+### Application modularity rule
+
+An individual application is independently installable. A bundle such as Science & Astronomy is a convenience selection, not a prerequisite. A user can install one application without installing the rest of the bundle.
+
+This rule applies equally to Installed and Persistent Portable modes.
+
+### Evidence rule
+
+A Live ISO written to USB is not automatically a Persistent Portable system. Persistence, reboot survival, package/update survival, filesystem integrity, recovery, encryption (when advertised), and physical USB behavior require their own evidence. QEMU and CI evidence do not prove physical USB/hardware compatibility.

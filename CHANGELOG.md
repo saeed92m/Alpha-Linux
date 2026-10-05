@@ -23,6 +23,20 @@ The project follows a release-oriented change history. Unreleased work is kept u
 
 ## Unreleased
 
+### Added — Change Request #290
+
+- Persistent Portable deployment architecture: full Alpha + COSMIC execution from removable media with persistent user state, applications, updates and files.
+- Separate Portable Persistent requirements and release gates; disposable Live ISO semantics remain distinct.
+- Minimal 64-GB-class reference storage layout with zram-first and optional USB-backed swap policy.
+- Modular software architecture where individual applications are independently installable and domain bundles are convenience selections only.
+- Software Setup support for individual applications including astronomy, development, engineering, media, office and networking tools.
+
+### Changed
+
+- Alpha OS image CI now validates the per-application software selector and shell syntax on pull requests.
+- Heavy optional applications and datasets remain outside the release-critical ISO payload.
+
+
 ### Documentation synchronization
 
 - Synchronized README, Master Handbook, roadmap and release traceability with the actual Phase 7 / Alpha 0.1.0a2 state.

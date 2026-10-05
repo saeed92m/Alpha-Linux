@@ -109,3 +109,36 @@ Record architectural and product decisions so the project remains understandable
 **Context:** Installer correctness and user safety require testable separation between intent/UI and disk mutation.
 
 **Status:** Accepted; disposable transaction evidence exists; physical adapter remains future work.
+
+
+## D-015 — Persistent Portable as a first-class deployment mode
+
+**Decision:** Alpha Linux will support a Persistent Portable deployment mode in addition to disposable Live/Recovery and native Installed modes.
+
+**Context:** A complete Ubuntu + COSMIC desktop can run from removable media while persisting user state, applications, updates and files. The host internal disk should not need to be modified.
+
+**Chosen approach:** Keep one shared Alpha Base and implement Portable Persistent as a distinct artifact/storage contract. Do not turn the existing disposable Live ISO into a misleading persistent product.
+
+**Trade-offs:** Removable-media I/O, filesystem integrity, recovery, encryption, capacity and physical hardware validation become additional release gates.
+
+**Status:** Accepted as additive product direction; implementation under CR #290.
+
+## D-016 — Minimal Base and independent applications
+
+**Decision:** The Alpha Base remains minimal. Individual applications are independently installable; bundles are convenience manifests only.
+
+**Context:** Users must be able to install one astronomy, engineering, AI or development application without pulling an entire domain stack.
+
+**Chosen approach:** Keep Ubuntu/Debian package mechanisms as the foundation and layer Alpha catalog/grouping/UX/provenance over them.
+
+**Trade-offs:** Software catalog and dependency presentation require more metadata and testing, but the ISO and Portable device remain significantly lighter.
+
+**Status:** Accepted; implementation under CR #290.
+
+## D-017 — zram-first optional USB swap
+
+**Decision:** zram is the default memory-pressure mechanism for Portable Persistent. USB-backed swap is optional.
+
+**Context:** The portable device should use the host machine's RAM and avoid unnecessary write amplification on removable media.
+
+**Status:** Accepted; implementation and runtime validation required.

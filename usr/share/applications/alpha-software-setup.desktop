@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Alpha Linux Software Setup
-Comment=Choose optional Alpha Linux capability bundles
+Comment=Install individual Alpha Linux applications or optional bundles
 Exec=/usr/local/bin/alpha-software-setup
 Icon=system-software-install
 Terminal=false

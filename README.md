@@ -8,19 +8,32 @@ Alpha Linux is an Ubuntu 26.04 LTS–based, AI-native universal workstation plat
 
 Alpha Linux preserves Ubuntu compatibility while providing an integrated platform for AI, scientific computing, engineering, astronomy, aerospace, motorsport, development, creator workflows, music and audio, education, business, and advanced desktop computing.
 
-The product vision includes a polished end-to-end experience from **boot media → Live environment → installation → first boot → desktop → AI and domain workflows**, while keeping privileged system operations behind explicit safety and verification boundaries.
+The product vision includes a polished end-to-end experience from **boot media → Live/Recovery → Persistent Portable desktop or installation → first boot → desktop → AI and domain workflows**, while keeping privileged system operations behind explicit safety and verification boundaries.
 
 ## Project Status
 
 **Current phase: Phase 7 — Alpha Releases**  
 **Current release context: Alpha v0.4.0 — Modular Core & Online Software**  
-**Master Handbook: v1.1.0**
+**Master Handbook: v1.1.0**  
+**Portable architecture:** Change Request #290 — implementation branch active
 
 Phase 0 specification/architecture work is frozen as the normative foundation. Phases 1–6 established the executable engineering, Alpha Core, desktop/interaction, AI platform, domain platform, and hardening reference foundations. Phase 7 is implementing release-scoped artifact, boot, Live-environment, installer, traceability, readiness, and publication foundations with deterministic contracts, executable tests, CI evidence, and explicit non-goal boundaries.
 
-The immutable `v0.1.0a1` package lineage remains historical. Alpha 0.4.0 keeps the validated Core + COSMIC desktop path and adds a modular online software layer. Heavy optional applications are not release-critical ISO payloads and are selected after installation.
+The immutable `v0.1.0a1` package lineage remains historical. Alpha 0.4.0 keeps the validated Core + COSMIC desktop path and adds a modular online software layer. Heavy optional applications and datasets are not release-critical ISO payloads. Individual applications are independently installable; bundles are convenience selections only.
 
 This is not a claim of physical installation readiness or a public Beta/Stable OS release.
+
+## Deployment model
+
+Alpha Linux is one product with three deployment modes:
+
+- **Persistent Portable:** full Alpha + COSMIC runs from removable media; user files, installed applications, updates and settings persist on the media. No host installation is required.
+- **Live/Recovery:** disposable environment for evaluation, diagnostics and recovery.
+- **Installed:** the same Alpha base is installed to internal storage.
+
+The first Portable reference target is a 64-GB-class device, using host RAM, zram by default and optional USB-backed swap. Persistent storage is designed to minimize unnecessary writes and can support encryption.
+
+See [Portable Persistent Architecture](docs/architecture/portable-persistent.md) and [Portable Persistent Requirements](docs/requirements/portable-persistent-requirements.md).
 
 ## Boot and installation product goals
 
@@ -44,7 +57,7 @@ These are **product requirements and roadmap targets**, not blanket claims of cu
 
 ## Alpha 0.4.0 modular software model
 
-Alpha 0.4.0 keeps Core + COSMIC in the ISO and provides a first-login graphical Software Setup selector. Optional capabilities are installed online only after explicit user confirmation and can be added later from the Applications menu.
+Alpha 0.4.0 keeps Core + COSMIC in the ISO and provides a first-login graphical Software Setup selector. Optional capabilities are installed online only after explicit user confirmation and can be added later from the Applications menu. **Each application is independently installable; bundles never force installation of unrelated applications.**
 
 Bundles:
 - AI & Automation / machine learning
@@ -141,6 +154,9 @@ See:
 - [Master Handbook](docs/handbook/00-handbook-overview.md)
 - [Boot, Live and Installer Architecture](docs/architecture/boot-live-installer.md)
 - [Boot, Live and Installer Requirements](docs/requirements/boot-live-installer-requirements.md)
+- [Portable Persistent Architecture](docs/architecture/portable-persistent.md)
+- [Portable Persistent Requirements](docs/requirements/portable-persistent-requirements.md)
+- [Modular Software Architecture](docs/architecture/modular-software.md)
 - [Phase 0 Freeze Decision](docs/audits/phase-0-freeze-decision.md)
 - [Decision Log](planning/decision-log.md)
 - [Roadmap](roadmap/master-roadmap.md)

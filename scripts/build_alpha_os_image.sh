@@ -96,18 +96,22 @@ export SOURCE_DATE_EPOCH
 build_iso() {
   local output_path="$1"
   echo "Building ISO: ${output_path}"
+  # Replace upstream directory-tree payloads in-place. xorriso's -rm accepts
+  # a variable-length path list, so using it without the explicit "--" terminator
+  # would consume following commands such as -map as path arguments.
   xorriso \
     -indev "${BASE_PATH}" \
     -outdev "${output_path}" \
+    -overwrite on \
     -map "${SEED_PATH}" /alpha-release.json \
     -map "${ISO_BRANDING_DIR}/disk/info" /.disk/info \
     -map "${LIVE_SQUASHFS}" /casper/minimal.standard.live.squashfs \
     ${GRUB_MAP_ARGS:-} ${ISOLINUX_MAP_ARGS:-} \
+    -volid "Alpha Linux ${VERSION} ${CHANNEL} ${ARCH}" \
     -boot_image any replay \
     -compliance no_emul_toc \
     -padding included
 }
-
 COSMIC_REPOSITORY="https://apt.pop-os.org/release"
 COSMIC_KEY_URL="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x63C46DF0140D738961429F4E204DD8AEC33A7AFF"
 BASE_ROOTFS_DIR="${WORK_DIR}/minimal-root"
@@ -143,13 +147,22 @@ sudo unsquashfs -d "${LIVE_ROOTFS_DIR}" "${WORK_DIR}/minimal.standard.live.squas
 sudo mkdir -p "${OVERLAY_ROOTFS_DIR}" "${OVERLAY_WORK_DIR}"
 sudo mount -t overlay overlay -o lowerdir="${STANDARD_ROOTFS_DIR}:${BASE_ROOTFS_DIR}",upperdir="${LIVE_ROOTFS_DIR}",workdir="${OVERLAY_WORK_DIR}" "${OVERLAY_ROOTFS_DIR}"
 cleanup_chroot() {
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/run" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/tmp" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/sys" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/proc" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/dev/pts" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/dev" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}" || true
+  # The build runs with set -e; make cleanup explicitly idempotent and never
+  # let an already-unmounted path abort the image build.
+  for mount_path in \
+    "${OVERLAY_ROOTFS_DIR}/run" \
+    "${OVERLAY_ROOTFS_DIR}/tmp" \
+    "${OVERLAY_ROOTFS_DIR}/sys" \
+    "${OVERLAY_ROOTFS_DIR}/proc" \
+    "${OVERLAY_ROOTFS_DIR}/dev/pts" \
+    "${OVERLAY_ROOTFS_DIR}/dev" \
+    "${OVERLAY_ROOTFS_DIR}"
+  do
+    if sudo mountpoint -q "${mount_path}" 2>/dev/null; then
+      sudo umount -lf "${mount_path}" || true
+    fi
+  done
+  return 0
 }
 trap cleanup_chroot EXIT
 
@@ -486,6 +499,36 @@ sudo test -f "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-graphical-runti
 sudo test -L "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/greetd.service"
 sudo test -L "${LIVE_ROOTFS_DIR}/etc/systemd/system/alpha-cosmic-validation.target.wants/alpha-cosmic-graphical-runtime.service"
 echo "COSMIC graphical validator persisted in unmounted live leaf layer"
+
+echo "Finalizing Alpha Linux identity directly in the Live leaf layer"
+ALPHA_OS_RELEASE="${WORK_DIR}/alpha-os-release"
+ALPHA_LSB_RELEASE="${WORK_DIR}/alpha-lsb-release"
+cat > "${ALPHA_OS_RELEASE}" <<EOF
+NAME="Alpha Linux"
+PRETTY_NAME="Alpha Linux ${VERSION}"
+ID=alpha-linux
+ID_LIKE="ubuntu debian"
+VERSION_ID="${VERSION}"
+VERSION="${VERSION} (Alpha)"
+VERSION_CODENAME="resolute"
+HOME_URL="https://github.com/saeed92m/Alpha-Linux"
+SUPPORT_URL="https://github.com/saeed92m/Alpha-Linux/issues"
+BUG_REPORT_URL="https://github.com/saeed92m/Alpha-Linux/issues"
+UBUNTU_CODENAME=resolute
+LOGO=alpha-linux-logo
+EOF
+cat > "${ALPHA_LSB_RELEASE}" <<EOF
+DISTRIB_ID=Alpha
+DISTRIB_RELEASE=${VERSION}
+DISTRIB_CODENAME=resolute
+DISTRIB_DESCRIPTION="Alpha Linux ${VERSION}"
+EOF
+sudo mkdir -p "${LIVE_ROOTFS_DIR}/usr/lib" "${LIVE_ROOTFS_DIR}/etc"
+sudo install -m 0644 "${ALPHA_OS_RELEASE}" "${LIVE_ROOTFS_DIR}/usr/lib/os-release"
+sudo install -m 0644 "${ALPHA_LSB_RELEASE}" "${LIVE_ROOTFS_DIR}/etc/lsb-release"
+sudo grep -Fq 'PRETTY_NAME="Alpha Linux ${VERSION}"' "${LIVE_ROOTFS_DIR}/usr/lib/os-release"
+sudo grep -Fq 'ID=alpha-linux' "${LIVE_ROOTFS_DIR}/usr/lib/os-release"
+sudo grep -Fq 'DISTRIB_ID=Alpha' "${LIVE_ROOTFS_DIR}/etc/lsb-release"
 
 echo "Repacking modified Ubuntu Live layer"
 sudo mksquashfs "${LIVE_ROOTFS_DIR}" "${LIVE_SQUASHFS}" -comp xz -noappend -all-root -xattrs -mkfs-time "${SOURCE_DATE_EPOCH}"

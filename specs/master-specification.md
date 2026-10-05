@@ -21,9 +21,11 @@ The master scope includes:
 - Adaptive Resource Intelligence
 - Hardware and Firmware management
 - Installer, Live environment, Boot and Recovery
+- Persistent Portable execution from removable media
 - Updates and rollback
 - WSL and Windows integration
 - Storage, filesystems, swap/ZRAM/hibernate
+- Persistent Portable storage, optional encryption and removable-media lifecycle
 - Networking, identity, privacy and secrets
 - Virtualization, containers and distributed computing
 - Developer platform
@@ -72,3 +74,22 @@ Planned → Specified → Designed → Ready → Implementing → Implemented �
 The Phase 0 specification baseline has been frozen. New scope is introduced through the Change Request process.
 
 Implementation work in later phases must continue to trace back to the frozen specification and preserve its security, compatibility, recovery, testability and release constraints.
+
+
+## 6. Product deployment model
+
+Alpha Linux is one product with a shared Ubuntu 26.04 LTS + COSMIC base and three deployment modes:
+
+1. **Persistent Portable:** full desktop execution from removable media with persistent user state, installed applications, updates, configuration and user data.
+2. **Live/Recovery:** disposable execution for evaluation, diagnostics and recovery.
+3. **Installed:** native installation of the same Alpha base to internal storage.
+
+Persistent Portable must not be treated as a conventional non-persistent Live ISO. It has a separate artifact contract, storage layout, persistence tests and release gates.
+
+## 7. Modular software policy
+
+The release-critical Base remains minimal. Applications are independently installable through Ubuntu/Debian-compatible package mechanisms and Alpha's software catalog/UX. Bundles are convenience manifests; installing one application must not require installing an entire domain bundle. Large datasets and heavy optional stacks are not mandatory Base/ISO payload.
+
+## 8. Change control
+
+The Portable Persistent and modular per-application direction is introduced through Change Request #290. The Phase 0 freeze remains intact; this additive scope must satisfy the existing security, compatibility, recovery, reproducibility and evidence rules before release promotion.
