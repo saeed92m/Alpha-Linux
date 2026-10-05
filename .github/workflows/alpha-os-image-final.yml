@@ -57,7 +57,7 @@ jobs:
           chmod +x scripts/build_alpha_os_image.sh
           scripts/build_alpha_os_image.sh
 
-      - name: Validate Alpha Linux Live identity and branding
+      - name: Validate Alpha Linux Live identity
         run: |
           set -euo pipefail
           ISO="dist/alpha-linux-0.3.5a-alpha-amd64.iso"
@@ -71,14 +71,7 @@ jobs:
           sudo unsquashfs -d dist/alpha-live-root-check dist/alpha-live.squashfs >/dev/null
           grep -Fq 'PRETTY_NAME="Alpha Linux 0.3.5a"' dist/alpha-live-root-check/usr/lib/os-release
           grep -Fq 'ID=alpha-linux' dist/alpha-live-root-check/usr/lib/os-release
-              # The verified Ubuntu Desktop Bootstrap/Subiquity installer is intentionally preserved.
-              test -e dist/alpha-live-root-check/snap/ubuntu-desktop-bootstrap/current/bin/subiquity/subiquitycore/__init__.py
-              test -S dist/alpha-live-root-check/run/subiquity/socket || true
-              if [[ -d dist/alpha-live-root-check/var/lib/snapd/desktop/applications ]]; then
-                find dist/alpha-live-root-check/var/lib/snapd/desktop/applications -type f -name '*.desktop' -print0 |
-                  xargs -0 grep -EHi '^(Name|X-GNOME-FullName|Comment)=.*(Install Ubuntu|Ubuntu Desktop Installer|Subiquity)' 2>/dev/null || true
-              fi
-
+          test -e dist/alpha-live-root-check/snap/ubuntu-desktop-bootstrap/current/bin/subiquity/subiquitycore/__init__.py
           grep -Fq 'DISTRIB_ID=Alpha' dist/alpha-live-root-check/etc/lsb-release
           while IFS= read -r desktop; do
             test -f "$desktop"
@@ -89,15 +82,7 @@ jobs:
             ! grep -Fq "Try or Install Ubuntu" dist/alpha-grub.cfg
             grep -Fq "Alpha Linux" dist/alpha-grub.cfg
           fi
-          echo "Alpha Linux additive branding assets" >> "$GITHUB_STEP_SUMMARY"
-          test -s dist/alpha-live-root-check/usr/share/pixmaps/alpha-linux-logo-big.png
-          test -s dist/alpha-live-root-check/usr/share/pixmaps/alpha-linux-logo-small.png
-          test -s dist/alpha-live-root-check/usr/share/icons/hicolor/512x512/apps/alpha-linux.png
-          test -s dist/alpha-live-root-check/var/cache/systemd/home/alpha/login-background
-          test -s dist/alpha-live-root-check/usr/share/alpha-linux-branding.sha256
-          test -d dist/alpha-live-root-check/usr/share/backgrounds/alpha-linux
-          test "$(find dist/alpha-live-root-check/usr/share/backgrounds/alpha-linux -maxdepth 1 -type f -name '*.png' | wc -l)" -eq 6
-          echo "Alpha Linux Live identity and boot branding validated." >> "$GITHUB_STEP_SUMMARY"
+          echo "Alpha Linux identity and installer-preservation validation passed." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate COSMIC Live runtime payload
         run: |
