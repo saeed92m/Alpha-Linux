@@ -245,20 +245,8 @@ fi
 INSTALLER_SOURCE="${GITHUB_WORKSPACE:-.}/scripts/alpha-live-installer.sh"
 test -f "${INSTALLER_SOURCE}"
 sudo install -D -m 0755 "${INSTALLER_SOURCE}" "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-live-installer.sh"
-sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/usr/share/applications"
-sudo tee "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop" >/dev/null <<'DESKTOP'
-[Desktop Entry]
-Type=Application
-Name=Alpha Linux Installer
-Comment=Install Alpha Linux to a dedicated empty disk
-Exec=pkexec /usr/local/sbin/alpha-live-installer.sh
-Icon=system-software-install
-Terminal=false
-Categories=System;Settings;
-DESKTOP
-sudo chmod 0644 "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop"
-sudo test -x "${OVERLAY_ROOTFS_DIR}/usr/local/sbin/alpha-live-installer.sh"
-sudo test -f "${OVERLAY_ROOTFS_DIR}/usr/share/applications/alpha-installer.desktop"
+# Do not replace or wrap the upstream Ubuntu/Subiquity installer in this release.
+# The Live image keeps the verified Ubuntu installer path unchanged.
 sudo chroot "${OVERLAY_ROOTFS_DIR}" /usr/bin/apt-get clean || true
 sudo rm -rf "${OVERLAY_ROOTFS_DIR}/var/lib/apt/lists/"*
 
