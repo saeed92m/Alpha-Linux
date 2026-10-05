@@ -1,49 +1,182 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/alpha-linux"
 STATE_FILE="$STATE_DIR/software-setup-complete"
 mkdir -p "$STATE_DIR"
-if [[ -f "$STATE_FILE" || -d /run/live/medium ]]; then exit 0; fi
-command -v zenity >/dev/null 2>&1 || exit 0
-zenity --question --width=620 --title="Alpha Linux — Online setup" --text="Alpha Linux will refresh package metadata before showing available capability bundles. An Internet connection is required." || exit 0
-pkexec env DEBIAN_FRONTEND=noninteractive apt-get update
-declare -A PACKAGES=(
- [ai]="python3-numpy python3-scipy python3-matplotlib python3-pandas python3-sklearn python3-pytorch"
- [dev]="build-essential git curl wget python3 python3-pip python3-venv cmake ninja-build gdb"
- [eng]="freecad kicad openscad"
- [science]="python3-numpy python3-scipy python3-matplotlib python3-pandas python3-astropy"
- [aerospace]="python3-numpy python3-scipy python3-matplotlib python3-pandas"
- [security]="wireshark nmap tcpdump traceroute net-tools"
- [media]="blender vlc obs-studio"
- [office]="libreoffice"
-)
-choices="$(zenity --list --checklist --width=760 --height=560 --title="Alpha Linux — Software Setup"  --text="Your Alpha Linux Core + COSMIC installation is ready. Choose the capability bundles you want to install online."  --column="Install" --column="Capability" --column="Description"  TRUE "AI & Automation" "AI tooling, scientific Python and ML runtime"  FALSE "Development" "Compilers, Git, Python, CMake and debugging"  FALSE "Engineering & CAD" "FreeCAD, KiCad and OpenSCAD"  FALSE "Science & Astronomy" "Scientific Python and Astropy"  FALSE "Aerospace" "Scientific/numerical engineering foundation"  FALSE "Networking & Security" "Network diagnostics and analysis tools"  FALSE "Media & Creative" "Blender, VLC and OBS"  FALSE "Office" "LibreOffice suite" --separator="|")" || true
-if [[ -z "$choices" ]]; then
- if zenity --question --width=520 --title="Alpha Linux" --text="No optional bundles were selected. You can run Software Setup later from the Applications menu.\n\nFinish setup now?"; then touch "$STATE_FILE"; fi
- exit 0
+
+# The disposable Live environment must not mutate its temporary root.
+if [[ -d /run/live/medium ]]; then
+  exit 0
 fi
-keys=(); IFS='|' read -ra selected <<< "$choices"
-for item in "${selected[@]}"; do
- case "$item" in
-  "AI & Automation") keys+=(ai);; "Development") keys+=(dev);;
-  "Engineering & CAD") keys+=(eng);; "Science & Astronomy") keys+=(science);;
-  "Aerospace") keys+=(aerospace);; "Networking & Security") keys+=(security);;
-  "Media & Creative") keys+=(media);; "Office") keys+=(office);;
- esac
-done
-pkgs=()
-for key in "${keys[@]}"; do
- for pkg in ${PACKAGES[$key]}; do
-  apt-cache show "$pkg" >/dev/null 2>&1 && pkgs+=("$pkg")
- done
-done
-printf '%s\n' "${pkgs[@]}" | grep -q . || { zenity --error --title="Alpha Linux" --text="No selected packages are available from the configured repositories. No changes were made."; exit 1; }
-mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | sort -u)
-count=$(printf '%s\n' "${pkgs[@]}" | wc -l)
-zenity --question --width=620 --title="Alpha Linux — Confirm" --text="Install $count selected packages online?\n\nLarge AI/ML packages may require significant storage and bandwidth." || exit 0
-zenity --info --no-wrap --width=650 --title="Alpha Linux — Installing" --text="Authentication may be requested. Package installation will now start." || true
+
+command -v zenity >/dev/null 2>&1 || exit 0
+
+zenity --question --width=660 --title="Alpha Linux — Online Software" \
+  --text="Alpha Linux Core + COSMIC is ready. You may install individual applications or optional bundles. An Internet connection is required." || exit 0
+
 pkexec env DEBIAN_FRONTEND=noninteractive apt-get update
+
+declare -A APPS=(
+  [numpy]="python3-numpy"
+  [scipy]="python3-scipy"
+  [matplotlib]="python3-matplotlib"
+  [pandas]="python3-pandas"
+  [sklearn]="python3-sklearn"
+  [pytorch]="python3-pytorch"
+  [astropy]="python3-astropy"
+  [stellarium]="stellarium"
+  [topcat]="topcat"
+  [ds9]="saods9"
+  [git]="git"
+  [python]="python3 python3-pip python3-venv"
+  [build-tools]="build-essential cmake ninja-build gdb"
+  [freecad]="freecad"
+  [kicad]="kicad"
+  [openscad]="openscad"
+  [blender]="blender"
+  [vlc]="vlc"
+  [obs]="obs-studio"
+  [libreoffice]="libreoffice"
+  [wireshark]="wireshark"
+  [nmap]="nmap"
+  [tcpdump]="tcpdump"
+  [traceroute]="traceroute"
+  [net-tools]="net-tools"
+)
+
+declare -A BUNDLES=(
+  [ai]="numpy scipy matplotlib pandas sklearn pytorch"
+  [dev]="git python build-tools"
+  [eng]="freecad kicad openscad"
+  [science]="numpy scipy matplotlib pandas astropy"
+  [astronomy]="stellarium topcat ds9 astropy"
+  [aerospace]="numpy scipy matplotlib pandas"
+  [security]="wireshark nmap tcpdump traceroute net-tools"
+  [media]="blender vlc obs"
+  [office]="libreoffice"
+)
+
+bundle_choices="$(zenity --list --checklist --width=820 --height=560 \
+  --title="Alpha Linux — Optional Bundles" \
+  --text="Bundles are convenience selections only. You can install individual applications without installing a bundle." \
+  --column="Install" --column="Bundle" --column="Description" \
+  FALSE "AI & Automation" "Scientific Python and ML runtime" \
+  FALSE "Development" "Compilers, Git, Python, CMake and debugging" \
+  FALSE "Engineering & CAD" "FreeCAD, KiCad and OpenSCAD" \
+  FALSE "Science" "Scientific Python and Astropy" \
+  FALSE "Astronomy" "Stellarium, TOPCAT, DS9 and Astropy" \
+  FALSE "Aerospace" "Scientific/numerical engineering foundation" \
+  FALSE "Networking & Security" "Network diagnostics and analysis" \
+  FALSE "Media & Creative" "Blender, VLC and OBS" \
+  FALSE "Office" "LibreOffice suite" --separator="|")" || true
+
+app_choices="$(zenity --list --checklist --width=900 --height=700 \
+  --title="Alpha Linux — Individual Applications" \
+  --text="Select any individual applications. You do not need to install a whole domain bundle." \
+  --column="Install" --column="Application" --column="Package" \
+  FALSE "Stellarium" "${APPS[stellarium]}" \
+  FALSE "TOPCAT" "${APPS[topcat]}" \
+  FALSE "SAOImage DS9" "${APPS[ds9]}" \
+  FALSE "Astropy" "${APPS[astropy]}" \
+  FALSE "Python scientific stack" "numpy, scipy, matplotlib, pandas" \
+  FALSE "PyTorch" "${APPS[pytorch]}" \
+  FALSE "Git" "${APPS[git]}" \
+  FALSE "Python" "${APPS[python]}" \
+  FALSE "Build tools" "${APPS[build-tools]}" \
+  FALSE "FreeCAD" "${APPS[freecad]}" \
+  FALSE "KiCad" "${APPS[kicad]}" \
+  FALSE "OpenSCAD" "${APPS[openscad]}" \
+  FALSE "Blender" "${APPS[blender]}" \
+  FALSE "VLC" "${APPS[vlc]}" \
+  FALSE "OBS Studio" "${APPS[obs]}" \
+  FALSE "LibreOffice" "${APPS[libreoffice]}" \
+  FALSE "Wireshark" "${APPS[wireshark]}" \
+  FALSE "Nmap" "${APPS[nmap]}" \
+  FALSE "tcpdump" "${APPS[tcpdump]}" \
+  FALSE "traceroute" "${APPS[traceroute]}" \
+  FALSE "net-tools" "${APPS[net-tools]}" --separator="|")" || true
+
+selected_keys=()
+
+if [[ -n "$bundle_choices" ]]; then
+  IFS='|' read -ra bundles <<< "$bundle_choices"
+  for item in "${bundles[@]}"; do
+    case "$item" in
+      "AI & Automation") selected_keys+=(ai);;
+      "Development") selected_keys+=(dev);;
+      "Engineering & CAD") selected_keys+=(eng);;
+      "Science") selected_keys+=(science);;
+      "Astronomy") selected_keys+=(astronomy);;
+      "Aerospace") selected_keys+=(aerospace);;
+      "Networking & Security") selected_keys+=(security);;
+      "Media & Creative") selected_keys+=(media);;
+      "Office") selected_keys+=(office);;
+    esac
+  done
+fi
+
+if [[ -n "$app_choices" ]]; then
+  IFS='|' read -ra apps <<< "$app_choices"
+  for item in "${apps[@]}"; do
+    case "$item" in
+      "Stellarium") selected_keys+=(stellarium);;
+      "TOPCAT") selected_keys+=(topcat);;
+      "SAOImage DS9") selected_keys+=(ds9);;
+      "Astropy") selected_keys+=(astropy);;
+      "Python scientific stack") selected_keys+=(numpy scipy matplotlib pandas);;
+      "PyTorch") selected_keys+=(pytorch);;
+      "Git") selected_keys+=(git);;
+      "Python") selected_keys+=(python);;
+      "Build tools") selected_keys+=(build-tools);;
+      "FreeCAD") selected_keys+=(freecad);;
+      "KiCad") selected_keys+=(kicad);;
+      "OpenSCAD") selected_keys+=(openscad);;
+      "Blender") selected_keys+=(blender);;
+      "VLC") selected_keys+=(vlc);;
+      "OBS Studio") selected_keys+=(obs);;
+      "LibreOffice") selected_keys+=(libreoffice);;
+      "Wireshark") selected_keys+=(wireshark);;
+      "Nmap") selected_keys+=(nmap);;
+      "tcpdump") selected_keys+=(tcpdump);;
+      "traceroute") selected_keys+=(traceroute);;
+      "net-tools") selected_keys+=(net-tools);;
+    esac
+  done
+fi
+
+pkgs=()
+for key in "${selected_keys[@]}"; do
+  [[ -n "${BUNDLES[$key]:-}" ]] && keys_from_bundle="${BUNDLES[$key]}" || keys_from_bundle="$key"
+  for app_key in $keys_from_bundle; do
+    for pkg in ${APPS[$app_key]:-}; do
+      if apt-cache show "$pkg" >/dev/null 2>&1; then
+        pkgs+=("$pkg")
+      fi
+    done
+  done
+done
+
+mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | sed '/^$/d' | sort -u)
+
+if [[ "${#pkgs[@]}" -eq 0 ]]; then
+  zenity --info --width=620 --title="Alpha Linux" \
+    --text="No optional applications were selected or no selected package is available from the configured repositories. The Alpha Base remains unchanged."
+  touch "$STATE_FILE"
+  exit 0
+fi
+
+count="${#pkgs[@]}"
+printf -v package_list '%s\n' "${pkgs[@]}"
+zenity --question --width=760 --height=520 --title="Alpha Linux — Confirm" \
+  --text="Install $count selected package(s)?\n\n$package_list\nOnly the selected applications and their required dependencies will be installed." || exit 0
+
+zenity --info --no-wrap --width=700 --title="Alpha Linux — Installing" \
+  --text="Authentication may be requested. Only the selected applications and required dependencies will be installed." || true
+
 pkexec env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${pkgs[@]}"
 pkexec rm -rf /var/lib/apt/lists/*
 touch "$STATE_FILE"
-zenity --info --width=560 --title="Alpha Linux — Ready" --text="The selected Alpha Linux capability bundles were installed successfully. You can add more software later from the Applications menu."
+
+zenity --info --width=650 --title="Alpha Linux — Ready" \
+  --text="The selected applications were installed. You can install additional applications later without installing an entire domain bundle."
