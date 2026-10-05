@@ -1,10 +1,11 @@
 # Alpha Linux Master Handbook
 
-**Handbook version:** 1.4.0  
+**Handbook version:** 1.5.0  
 **Handbook state:** Current / maintained  
-**Repository release context:** Alpha 0.1.0a4  
+**Development baseline:** Alpha v0.3.0a (last validated OS-image baseline)  
+**Next release:** Alpha v0.4.0 — Lightweight / Modular Installable  
+**A4 status:** Archived engineering candidate; not the development baseline  
 **Current program phase:** Phase 7 — Alpha Releases  
-**Last synchronized:** A4 branding/runtime validation, custom-distro engineering review, and COSMIC Live runtime hardening
 
 ## Purpose
 
@@ -69,7 +70,7 @@ Testing demonstrates that the system satisfies its requirements.
 
 ## Current phase
 
-The project is currently in **Phase 7 — Alpha Releases**, with **Alpha 0.1.0a4** as the active release context on `main`.
+The project is currently in **Phase 7 — Alpha Releases**, with **v0.3.0a as the validated baseline** and **v0.4.0** as the active development target.
 
 The immutable `v0.1.0a1` lineage remains historical and unchanged. Current `main` has a real amd64 OS-image build/evidence track with deterministic manifests, SHA-256/provenance, reproducibility validation, QEMU boot evidence, Live kernel/initramfs evidence, automated COSMIC graphical-runtime evidence, and release-safe ISO split assets.
 
@@ -129,8 +130,7 @@ Public engineering patterns reviewed included Ubuntu image-build/livecd-rootfs, 
 
 ### Current release evidence
 
-`v0.1.0a3` is a published prerelease from the validated A3 pipeline. It contains eight ISO parts, with parts 01–07 at 900 MiB and part 08 smaller, plus the SHA-256 manifest, parts metadata and reassembly instructions. The release is downloadable as a split ISO but remains an **Alpha/experimental** build; physical installation, production installer readiness, hardware matrix, Secure Boot and Windows coexistence are still separate gates.
-
+`v0.3.0a` remains the last validated OS-image baseline. A4 is archived historical engineering evidence and is not the active baseline.
 
 ## Project completion protocol
 
