@@ -69,7 +69,7 @@ Testing demonstrates that the system satisfies its requirements.
 
 ## Current phase
 
-The project is currently in **Phase 7 — Alpha Releases**, with **Alpha 0.1.0a4** as the active release context on `main`.
+The project is currently in **Phase 7 — Alpha Releases**, with **Alpha 0.4.0 — Modular Core & Online Software** as the active development/release context on the current branch.
 
 The immutable `v0.1.0a1` lineage remains historical and unchanged. Current `main` has a real amd64 OS-image build/evidence track with deterministic manifests, SHA-256/provenance, reproducibility validation, QEMU boot evidence, Live kernel/initramfs evidence, automated COSMIC graphical-runtime evidence, and release-safe ISO split assets.
 
@@ -77,7 +77,7 @@ These are engineering/CI evidence capabilities, not claims of physical installat
 
 PR #199 adds deterministic filesystem staging and a fail-closed post-install evidence contract. The implementation verifies the staged filesystem manifest before and after commit, while post-install success requires filesystem, boot-configuration and health evidence. This is fixture/runtime evidence and does not claim physical-disk installation or physical rollback.
 
-The A4 pipeline now has an explicit Alpha identity gate; the remaining release-scoped work closes the COSMIC graphical-runtime gate and then the physical boot/install validation sequence.
+The current release engineering path retains the Alpha identity and COSMIC runtime gates while CR #290 adds the Persistent Portable and per-application modular software workstreams. These new capabilities remain unverified until their own implementation and runtime/physical evidence gates pass.
 
 The Handbook remains educational and must not be treated as a substitute for normative requirements or architecture decisions.
 
@@ -155,7 +155,7 @@ For every release-critical feature, record four things: **implementation**, **au
 
 ### Current Phase 7 completion gates
 
-The remaining gates are tracked explicitly in the roadmap: boot/media compatibility matrix, Live UX/diagnostics/recovery, production installer UX and real-disk transaction, physical installation/hardware validation, Windows coexistence, Secure Boot, post-install boot/health validation, and Beta/Stable promotion.
+The remaining gates are tracked explicitly in the roadmap: boot/media compatibility matrix, Live UX/diagnostics/recovery, production installer UX and real-disk transaction, Persistent Portable implementation/persistence/recovery/encryption/physical-media validation, physical installation/hardware validation, Windows coexistence, Secure Boot, post-install boot/health validation, and Beta/Stable promotion.
 
 
 ## Portable Persistent workstation model
