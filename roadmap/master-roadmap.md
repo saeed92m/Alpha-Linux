@@ -2,8 +2,8 @@
 
 **Roadmap state:** Active delivery control  
 **Current phase:** Phase 7 — Alpha Releases  
-**Current release context:** Alpha 0.3.0a (published prerelease)  
-**Last synchronized:** PR #273 Phase 7A media-matrix contract; physical USB/media evidence is now the active release gate
+**Current release context:** Alpha 0.4.0 — Modular Core & Online Software; Portable Persistent is a new additive Phase 7 workstream  
+**Last synchronized:** Change Request #290 — Persistent Portable + per-application modular software architecture
 
 ## Phase 0 — Product and specification
 
@@ -201,6 +201,35 @@ The current installer entrypoint is a destructive UEFI + Alpha-only prototype th
 - Post-install verification.
 - Boot configuration.
 
+
+### Phase 7E — Persistent Portable USB
+
+**Goal:** produce a lightweight, full Alpha + COSMIC workstation that boots directly from removable media without host installation and preserves user state across reboot.
+
+- Define a separate Persistent Portable artifact contract.
+- Build a 64-GB-class reference layout.
+- Persist user account, /home, installed packages, configuration and selected application state.
+- Use zram by default; make USB-backed swap optional.
+- Minimize cache/log/write amplification on removable media.
+- Add encrypted persistence design and recovery workflow.
+- Validate package installation/update persistence across reboot.
+- Validate filesystem integrity and recovery.
+- Validate physical USB boot/media behavior before making hardware support claims.
+
+**Status:** Architecture and requirements added under CR #290; implementation and evidence gates remain open.
+
+### Phase 7F — Modular per-application software
+
+**Goal:** keep the Alpha Base lightweight while allowing any supported application to be installed independently.
+
+- Separate application records from convenience bundles.
+- Expose dependency, download-size and installed-size information.
+- Ensure bundle membership never becomes a dependency requirement.
+- Keep heavy optional applications and datasets out of the release-critical ISO.
+- Reuse the same application model in Installed and Portable Persistent modes.
+
+**Status:** Product architecture defined under CR #290; implementation/evidence gates remain open.
+
 ### Phase 7D — Physical validation
 
 - Physical UEFI installation.
@@ -221,13 +250,16 @@ Dates are intentionally not fixed until the relevant implementation and evidence
 
 ## Current priority order
 
-1. Complete physical USB/media validation (Rufus + declared GPT/MBR matrix).
+1. Protect the existing installable/Live path while implementing the CR #290 Portable Persistent contracts.
+2. Complete physical USB/media validation (Rufus + declared GPT/MBR matrix).
 2. Close remaining Live UX/diagnostics/recovery evidence gaps.
 3. Validate the UEFI Alpha-only installer on disposable physical hardware.
 4. Add physical recovery/interrupted-install evidence.
 5. Implement and validate Windows coexistence only after safe disk-state detection is proven on real hardware.
 6. Add Secure Boot evidence.
-7. Promote only after all release gates are independently evidenced.
+7. Validate Portable Persistent reboot/package/file persistence and its recovery/encryption gates.
+8. Validate individual-application modular installation without bundle over-installation.
+9. Promote only after all release gates are independently evidenced.
 
 ## Completion and evidence protocol
 
