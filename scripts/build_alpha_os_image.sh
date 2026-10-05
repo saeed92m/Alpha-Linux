@@ -147,13 +147,22 @@ sudo unsquashfs -d "${LIVE_ROOTFS_DIR}" "${WORK_DIR}/minimal.standard.live.squas
 sudo mkdir -p "${OVERLAY_ROOTFS_DIR}" "${OVERLAY_WORK_DIR}"
 sudo mount -t overlay overlay -o lowerdir="${STANDARD_ROOTFS_DIR}:${BASE_ROOTFS_DIR}",upperdir="${LIVE_ROOTFS_DIR}",workdir="${OVERLAY_WORK_DIR}" "${OVERLAY_ROOTFS_DIR}"
 cleanup_chroot() {
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/run" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/tmp" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/sys" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/proc" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/dev/pts" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}/dev" || true
-  sudo umount -lf "${OVERLAY_ROOTFS_DIR}" || true
+  # The build runs with set -e; make cleanup explicitly idempotent and never
+  # let an already-unmounted path abort the image build.
+  for mount_path in
+    "${OVERLAY_ROOTFS_DIR}/run"
+    "${OVERLAY_ROOTFS_DIR}/tmp"
+    "${OVERLAY_ROOTFS_DIR}/sys"
+    "${OVERLAY_ROOTFS_DIR}/proc"
+    "${OVERLAY_ROOTFS_DIR}/dev/pts"
+    "${OVERLAY_ROOTFS_DIR}/dev"
+    "${OVERLAY_ROOTFS_DIR}"
+  do
+    if sudo mountpoint -q "${mount_path}" 2>/dev/null; then
+      sudo umount -lf "${mount_path}" || true
+    fi
+  done
+  return 0
 }
 trap cleanup_chroot EXIT
 
