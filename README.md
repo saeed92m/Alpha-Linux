@@ -13,12 +13,12 @@ The product vision includes a polished end-to-end experience from **boot media �
 ## Project Status
 
 **Current phase: Phase 7 — Alpha Releases**  
-**Current release context: Alpha 0.1.0a2**  
+**Current release context: Alpha 0.4.0 — Modular Core & Online Software**  
 **Master Handbook: v1.1.0**
 
 Phase 0 specification/architecture work is frozen as the normative foundation. Phases 1–6 established the executable engineering, Alpha Core, desktop/interaction, AI platform, domain platform, and hardening reference foundations. Phase 7 is implementing release-scoped artifact, boot, Live-environment, installer, traceability, readiness, and publication foundations with deterministic contracts, executable tests, CI evidence, and explicit non-goal boundaries.
 
-The immutable `v0.1.0a1` package lineage remains historical. Current `main` carries the Alpha 0.1.0a2 release context and a real amd64 OS-image evidence track with checksums, provenance, reproducibility, QEMU boot evidence, Live runtime evidence, COSMIC graphical-runtime evidence and release-safe split assets.
+The immutable `v0.1.0a1` package lineage remains historical. Alpha 0.4.0 is based on the verified v0.3.0a foundation and adds a lightweight modular software layer: Core + COSMIC remain in the ISO while optional workstation capabilities are installed online after installation.
 
 This is not a claim of physical installation readiness or a public Beta/Stable OS release.
 
@@ -41,6 +41,22 @@ Alpha Linux targets a single ISO that can provide, where supported and validated
 - transactional installation with verification and rollback/recovery.
 
 These are **product requirements and roadmap targets**, not blanket claims of current completion. Each capability requires corresponding implementation and evidence.
+
+## Alpha 0.4.0 modular software model
+
+Alpha 0.4.0 keeps the Core + COSMIC desktop in the ISO and moves optional workstation software to an online, user-selected first-run setup. The first-run selector is non-destructive and can be skipped; the same Software Setup launcher remains available later.
+
+Capability bundles:
+- AI & Automation / machine learning
+- Development
+- Engineering & CAD
+- Science & Astronomy
+- Aerospace
+- Networking & Security
+- Media & Creative
+- Office
+
+Unavailable packages are filtered against the configured repositories rather than causing the entire bundle installation to fail. Heavy AI/ML components remain optional so the base ISO stays compact.
 
 ## Core principles
 
