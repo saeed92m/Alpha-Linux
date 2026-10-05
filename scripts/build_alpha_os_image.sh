@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${ALPHA_VERSION:-0.1.0a4}"
+VERSION="${ALPHA_VERSION:-0.3.5a}"
 CHANNEL="${ALPHA_CHANNEL:-alpha}"
 ARCH="${ALPHA_ARCH:-amd64}"
-RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-1-0a4}"
+RELEASE_ID="${ALPHA_RELEASE_ID:-alpha-os-0-3-5a}"
 SOURCE_COMMIT="${GITHUB_SHA:?GITHUB_SHA is required}"
 CI_RUN_ID="${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}"
 BUILD_ENVIRONMENT="${ALPHA_BUILD_ENVIRONMENT:-github-hosted-ubuntu-latest}"
@@ -209,6 +209,40 @@ DISTRIB_CODENAME=resolute
 DISTRIB_DESCRIPTION="Alpha Linux ${VERSION}"
 EOF
 printf "alpha-linux\n" | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/hostname" >/dev/null
+echo "Installing additive Alpha Linux visual assets (Ubuntu/COSMIC assets are preserved)"
+BRANDING_ASSETS_DIR="${GITHUB_WORKSPACE:-.}/assets/branding/v0.3.5a"
+ALPHA_WALLPAPER_DIR="${BRANDING_ASSETS_DIR}/wallpapers"
+ALPHA_LOGO_DIR="${BRANDING_ASSETS_DIR}/logos"
+ALPHA_GREETER="${BRANDING_ASSETS_DIR}/greeter/alpha-greeter.png"
+test -d "${ALPHA_WALLPAPER_DIR}"
+test -d "${ALPHA_LOGO_DIR}"
+test -s "${ALPHA_GREETER}"
+for asset in \
+  "${ALPHA_WALLPAPER_DIR}/alpha-wallpaper-ai.png" \
+  "${ALPHA_WALLPAPER_DIR}/alpha-wallpaper-astronomy.png" \
+  "${ALPHA_WALLPAPER_DIR}/alpha-wallpaper-aerospace.png" \
+  "${ALPHA_WALLPAPER_DIR}/alpha-wallpaper-energy.png" \
+  "${ALPHA_WALLPAPER_DIR}/alpha-wallpaper-motorsport.png" \
+  "${ALPHA_WALLPAPER_DIR}/alpha-wallpaper-remote-sensing.png" \
+  "${ALPHA_LOGO_DIR}/logo-transparent-big.png" \
+  "${ALPHA_LOGO_DIR}/logo-transparent-small.png"; do
+  test -s "$asset"
+done
+sudo mkdir -p \
+  "${OVERLAY_ROOTFS_DIR}/usr/share/backgrounds/alpha-linux" \
+  "${OVERLAY_ROOTFS_DIR}/usr/share/pixmaps" \
+  "${OVERLAY_ROOTFS_DIR}/usr/share/icons/hicolor/512x512/apps" \
+  "${OVERLAY_ROOTFS_DIR}/var/cache/systemd/home/alpha"
+sudo install -m 0644 "${ALPHA_WALLPAPER_DIR}/"*.png "${OVERLAY_ROOTFS_DIR}/usr/share/backgrounds/alpha-linux/"
+sudo install -m 0644 "${ALPHA_LOGO_DIR}/logo-transparent-big.png" "${OVERLAY_ROOTFS_DIR}/usr/share/pixmaps/alpha-linux-logo-big.png"
+sudo install -m 0644 "${ALPHA_LOGO_DIR}/logo-transparent-small.png" "${OVERLAY_ROOTFS_DIR}/usr/share/pixmaps/alpha-linux-logo-small.png"
+sudo install -m 0644 "${ALPHA_LOGO_DIR}/logo-transparent-small.png" "${OVERLAY_ROOTFS_DIR}/usr/share/icons/hicolor/512x512/apps/alpha-linux.png"
+# COSMIC Greeter supported per-user fallback path; packaged COSMIC fallback remains untouched.
+sudo install -m 0644 "${ALPHA_GREETER}" "${OVERLAY_ROOTFS_DIR}/var/cache/systemd/home/alpha/login-background"
+{
+  echo "Alpha Linux v0.3.5a visual assets"
+  sha256sum "${ALPHA_WALLPAPER_DIR}/"*.png "${ALPHA_LOGO_DIR}/"*.png "${ALPHA_GREETER}"
+} | sudo tee "${OVERLAY_ROOTFS_DIR}/usr/share/alpha-linux-branding.sha256" >/dev/null
 echo "Preserving Ubuntu Desktop Bootstrap/Subiquity installer from the verified Ubuntu base"
 # Keep the upstream Ubuntu installer intact for this release. Alpha branding is
 # applied separately; installer replacement is intentionally deferred until the
