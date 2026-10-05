@@ -209,6 +209,30 @@ DISTRIB_CODENAME=resolute
 DISTRIB_DESCRIPTION="Alpha Linux ${VERSION}"
 EOF
 printf "alpha-linux\n" | sudo tee "${OVERLAY_ROOTFS_DIR}/etc/hostname" >/dev/null
+echo "Disabling Ubuntu Desktop Bootstrap installer on the Alpha Live desktop"
+sudo mkdir -p "${OVERLAY_ROOTFS_DIR}/etc/systemd/system"
+sudo ln -sfn /dev/null "${OVERLAY_ROOTFS_DIR}/etc/systemd/system/snap.ubuntu-desktop-bootstrap.subiquity-server.service"
+# The Ubuntu 26.04 desktop base includes Ubuntu Desktop Bootstrap/Subiquity.
+# Alpha Linux has its own dedicated installer; leaving the bootstrap service enabled
+# can start Subiquity independently of the Alpha installer launcher and present a
+# misleading/failing Ubuntu installer window in the Live session.
+for desktop_dir in \
+  "${OVERLAY_ROOTFS_DIR}/usr/share/applications" \
+  "${OVERLAY_ROOTFS_DIR}/var/lib/snapd/desktop/applications" \
+  "${OVERLAY_ROOTFS_DIR}/snap/ubuntu-desktop-bootstrap/current/meta/gui/applications"; do
+  if [[ -d "$desktop_dir" ]]; then
+    while IFS= read -r desktop; do
+      if grep -Eiq '^(Name|X-GNOME-FullName|Comment)=.*(Ubuntu|Subiquity|Bootstrap).*Installer|Exec=.*(subiquity|ubuntu-desktop-bootstrap)' "$desktop"; then
+        if ! grep -q '^NoDisplay=' "$desktop"; then
+          printf '\nNoDisplay=true\n' | sudo tee -a "$desktop" >/dev/null
+        else
+          sudo sed -i 's/^NoDisplay=.*/NoDisplay=true/' "$desktop"
+        fi
+      fi
+    done < <(find "$desktop_dir" -type f -name '*.desktop' -print 2>/dev/null)
+  fi
+done
+
 for desktop in "${OVERLAY_ROOTFS_DIR}"/usr/share/applications/*ubuntu*installer*.desktop "${OVERLAY_ROOTFS_DIR}"/usr/share/applications/*Ubuntu*Installer*.desktop; do
   if [[ -f "$desktop" ]]; then
     if ! grep -q "^NoDisplay=" "$desktop"; then printf "\nNoDisplay=true\n" | sudo tee -a "$desktop" >/dev/null; else sudo sed -i "s/^NoDisplay=.*/NoDisplay=true/" "$desktop"; fi
